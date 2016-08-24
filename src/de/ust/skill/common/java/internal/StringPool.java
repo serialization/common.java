@@ -16,29 +16,28 @@ import de.ust.skill.common.jvm.streams.FileOutputStream;
 
 /**
  * @author Timm Felden
- * @note String pools use magic index 0 for faster translation of string ids to strings.
- * @note String pool may contain duplicates, if strings have been added. This is a necessary behavior, if add should be
- *       an O(1) operation and Strings are loaded from file lazily.
+ * @note String pools use magic index 0 for faster translation of string ids to
+ *       strings.
+ * @note String pool may contain duplicates, if strings have been added. This is
+ *       a necessary behavior, if add should be an O(1) operation and Strings
+ *       are loaded from file lazily.
  */
 public class StringPool implements StringAccess {
     private FileInputStream input;
 
     /**
-     * the set of all known strings, i.e. strings which do not have an ID as well as strings that already have one
+     * the set of all known strings, i.e. strings which do not have an ID as
+     * well as strings that already have one
      */
     private final HashSet<String> knownStrings = new HashSet<>();
 
     /**
-     * ID ⇀ (absolute offset, length) will be used if idMap contains a null reference
+     * ID ⇀ (absolute offset, length) will be used if idMap contains a null
+     * reference
      *
      * @note there is a fake entry at ID 0
      */
     final ArrayList<Position> stringPositions;
-
-    /**
-     * number of strings loaded; required for correct size calculation
-     */
-    private int stringsLoaded = 0;
 
     final static class Position {
         public Position(long l, int i) {
@@ -68,7 +67,7 @@ public class StringPool implements StringAccess {
 
     @Override
     public int size() {
-        return stringPositions.size() - stringsLoaded + knownStrings.size();
+        return knownStrings.size();
     }
 
     @Override
@@ -104,7 +103,6 @@ public class StringPool implements StringAccess {
             }
             idMap.set((int) index, result);
             knownStrings.add(result);
-            stringsLoaded++;
         }
         return result;
     }
@@ -120,7 +118,8 @@ public class StringPool implements StringAccess {
         }
 
         // instert new strings to the map;
-        // this is the place where duplications with lazy strings will be detected and eliminated
+        // this is the place where duplications with lazy strings will be
+        // detected and eliminated
         for (String s : knownStrings) {
             if (!serializationIDs.containsKey(s)) {
                 serializationIDs.put(s, idMap.size());
@@ -167,7 +166,8 @@ public class StringPool implements StringAccess {
     }
 
     /**
-     * prepares serialization of the string pool and appends new Strings to the output stream.
+     * prepares serialization of the string pool and appends new Strings to the
+     * output stream.
      */
     public void prepareAndAppend(FileOutputStream out, StateAppender as) throws IOException {
         final HashMap<String, Integer> serializationIDs = as.stringIDs;
@@ -182,8 +182,10 @@ public class StringPool implements StringAccess {
         ArrayList<byte[]> todo = new ArrayList<byte[]>();
 
         // Insert new strings to the map;
-        // this is the place where duplications with lazy strings will be detected and eliminated
-        // this is also the place, where new instances are appended to the output file
+        // this is the place where duplications with lazy strings will be
+        // detected and eliminated
+        // this is also the place, where new instances are appended to the
+        // output file
         final Charset utf8 = Charset.forName("UTF-8");
         for (String s : knownStrings) {
             if (!serializationIDs.containsKey(s)) {
