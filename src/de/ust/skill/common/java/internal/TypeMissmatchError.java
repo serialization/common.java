@@ -10,7 +10,7 @@ import de.ust.skill.common.java.api.SkillException;
  */
 public class TypeMissmatchError extends SkillException {
 
-    public TypeMissmatchError(de.ust.skill.common.java.api.FieldType<?> type, String expected, String field, String pool) {
+    public TypeMissmatchError(FieldType<?> type, String expected, String field, String pool) {
         super(String.format("During construction of %s.%s: Encountered incompatible type \"%s\" (expected: %s)", pool,
                 field, type.toString(), expected));
     }
