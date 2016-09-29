@@ -35,8 +35,9 @@ import de.ust.skill.common.jvm.streams.OutStream;
  * @param <B>
  *            base type of this hierarchy
  * @note Storage pools must be created in type order!
- * @note We do not guarantee functional correctness if instances from multiple skill files are mixed. Such usage will
- *       likely break at least one of the files.
+ * @note We do not guarantee functional correctness if instances from multiple
+ *       skill files are mixed. Such usage will likely break at least one of the
+ *       files.
  */
 abstract public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T>
         implements Access<T>, ReferenceType {
@@ -45,8 +46,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * Builder for new instances of the pool.
      * 
      * @author Timm Felden
-     * @todo revisit implementation after the pool is completely implemented. Having an instance as constructor argument
-     *       is questionable.
+     * @todo revisit implementation after the pool is completely implemented.
+     *       Having an instance as constructor argument is questionable.
      */
     protected static abstract class Builder<T> {
         protected StoragePool<T, ? super T> pool;
@@ -57,10 +58,13 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             this.instance = instance;
         }
 
-        public T make() {
-            pool.add(instance);
-            return instance;
-        }
+        /**
+         * registers the object and invalidates the builder
+         * 
+         * @note abstract to work around JVM bug
+         * @return the created object
+         */
+        abstract public T make();
     }
 
     final String name;
@@ -85,7 +89,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * names of known fields, the actual field information is given in the generated addKnownFiled method.
+     * names of known fields, the actual field information is given in the
+     * generated addKnownFiled method.
      */
     public final Set<String> knownFields;
 
@@ -93,19 +98,23 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * all fields that are declared as auto, including skillID
      * 
      * @note stores fields at index "-f.index"
-     * @note sub-constructor adds auto fields from super types to this array; this is an optimization to make iteration
-     *       O(1); the array cannot change anyway
-     * @note the initial type constructor will already allocate an array of the correct size, because the right size is
-     *       statically known (a generation time constant)
+     * @note sub-constructor adds auto fields from super types to this array;
+     *       this is an optimization to make iteration O(1); the array cannot
+     *       change anyway
+     * @note the initial type constructor will already allocate an array of the
+     *       correct size, because the right size is statically known (a
+     *       generation time constant)
      */
     protected final AutoField<?, T>[] autoFields;
     /**
-     * used as placeholder, if there are no auto fields at all to optimize allocation time and memory usage
+     * used as placeholder, if there are no auto fields at all to optimize
+     * allocation time and memory usage
      */
     static final AutoField<?, ?>[] noAutoFields = new AutoField<?, ?>[0];
 
     /**
-     * @return magic cast to placeholder which well never fail at runtime, because the array is empty anyway
+     * @return magic cast to placeholder which well never fail at runtime,
+     *         because the array is empty anyway
      */
     @SuppressWarnings("unchecked")
     protected static final <T extends SkillObject> AutoField<?, T>[] noAutoFields() {
@@ -144,13 +153,15 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * All stored objects, which have exactly the type T. Objects are stored as arrays of field entries. The types of
-     * the respective fields can be retrieved using the fieldTypes map.
+     * All stored objects, which have exactly the type T. Objects are stored as
+     * arrays of field entries. The types of the respective fields can be
+     * retrieved using the fieldTypes map.
      */
     final ArrayList<T> newObjects = new ArrayList<>();
 
     /**
-     * Ensures that at least capacity many new objects can be stored in this pool without moving references.
+     * Ensures that at least capacity many new objects can be stored in this
+     * pool without moving references.
      */
     public void hintNewObjectsSize(int capacity) {
         newObjects.ensureCapacity(capacity);
@@ -165,7 +176,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             if (subIter.hasNext())
                 is.add(subIter);
         }
-        return Iterators.<T> concatenate(is);
+        return Iterators.<T>concatenate(is);
     }
 
     protected final int newDynamicInstancesSize() {
@@ -186,7 +197,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     final Iterator<T> staticInstances() {
-        return Iterators.<T> concatenate(staticData.iterator(), newObjects.iterator());
+        return Iterators.<T>concatenate(staticData.iterator(), newObjects.iterator());
     }
 
     /**
@@ -195,10 +206,11 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     final protected ArrayList<T> staticData = new ArrayList<>();
 
     /**
-     * storage pools can be fixed, i.e. no dynamic instances can be added to the pool. Fixing a pool requires that it
-     * does not contain a new object. Fixing a pool will fix subpools as well. Un-fixing a pool will un-fix super pools
-     * as well, thus being fixed is a transitive property over the sub pool relation. Pools will be fixed by flush
-     * operations.
+     * storage pools can be fixed, i.e. no dynamic instances can be added to the
+     * pool. Fixing a pool requires that it does not contain a new object.
+     * Fixing a pool will fix subpools as well. Un-fixing a pool will un-fix
+     * super pools as well, thus being fixed is a transitive property over the
+     * sub pool relation. Pools will be fixed by flush operations.
      */
     boolean fixed = false;
     /**
@@ -219,9 +231,11 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * set new fixation status; if setting fails, some sub pools may have been fixed nonetheless.
+     * set new fixation status; if setting fails, some sub pools may have been
+     * fixed nonetheless.
      * 
-     * @note this may change the result of size(), because from now on, the deleted objects will be taken into account
+     * @note this may change the result of size(), because from now on, the
+     *       deleted objects will be taken into account
      */
     public final void fixed(boolean newStatus) {
         if (fixed == newStatus)
@@ -254,8 +268,9 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * @note the unchecked cast is required, because we can not supply this as an argument in a super constructor, thus
-     *       the base pool can not be an argument to the constructor. The cast will never fail anyway.
+     * @note the unchecked cast is required, because we can not supply this as
+     *       an argument in a super constructor, thus the base pool can not be
+     *       an argument to the constructor. The cast will never fail anyway.
      */
     @SuppressWarnings("unchecked")
     StoragePool(int poolIndex, String name, StoragePool<? super T, B> superPool, Set<String> knownFields,
@@ -378,8 +393,9 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * 
      * @param target
      *            the object to be deleted
-     * @note we type target using the erasure directly, because the Java type system is too weak to express correct
-     *       typing, when taking the pool from a map
+     * @note we type target using the erasure directly, because the Java type
+     *       system is too weak to express correct typing, when taking the pool
+     *       from a map
      */
     final void delete(SkillObject target) {
         if (!target.isDeleted()) {
@@ -451,7 +467,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
     @Override
     public Iterator<FieldDeclaration<?, T>> fields() {
-        return Iterators.<FieldDeclaration<?, T>> concatenate(Iterators.array(autoFields), dataFields.iterator());
+        return Iterators.<FieldDeclaration<?, T>>concatenate(Iterators.array(autoFields), dataFields.iterator());
     }
 
     @Override
@@ -502,7 +518,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * called after a prepare append operation to write empty the new objects buffer and to set blocks correctly
+     * called after a prepare append operation to write empty the new objects
+     * buffer and to set blocks correctly
      */
     protected final void updateAfterPrepareAppend(Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
         final boolean newInstances = newDynamicInstances().hasNext();
@@ -524,12 +541,14 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
             // build block chunk
             final int lcount = newDynamicInstancesSize();
-            // //@ note this is the index into the data array and NOT the written lbpo
+            // //@ note this is the index into the data array and NOT the
+            // written lbpo
             final int lbpo = (0 == lcount) ? 0 : ((int) newDynamicInstances().next().skillID - 1);
 
             blocks.addLast(new Block(lbpo, lcount));
 
-            // @note: if this does not hold for p; then it will not hold for p.subPools either!
+            // @note: if this does not hold for p; then it will not hold for
+            // p.subPools either!
             if (newInstances || !newPool) {
                 // build field chunks
                 for (FieldDeclaration<?, T> f : dataFields) {
