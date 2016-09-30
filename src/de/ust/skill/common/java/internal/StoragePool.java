@@ -351,7 +351,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
     @Override
     public boolean isEmpty() {
-        return size() != 0;
+        return size() == 0;
     }
 
     @Override
