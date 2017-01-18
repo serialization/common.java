@@ -41,6 +41,10 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @Override
     public void writeSingleField(HashMap<K, V> data, OutStream out) throws IOException {
+        if (null == data || data.isEmpty()) {
+            out.i8((byte) 0);
+            return;
+        }
         out.v64(data.size());
         for (Entry<K, V> e : data.entrySet()) {
             keyType.writeSingleField(e.getKey(), out);
