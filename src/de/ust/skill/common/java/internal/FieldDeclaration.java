@@ -2,6 +2,7 @@ package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -25,8 +26,9 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         implements de.ust.skill.common.java.api.FieldDeclaration<T> {
 
     /**
-     * @note types may change during file parsing. this may seem like a hack, but it makes file parser implementation a
-     *       lot easier, because there is no need for two mostly similar type hierarchy implementations
+     * @note types may change during file parsing. this may seem like a hack,
+     *       but it makes file parser implementation a lot easier, because there
+     *       is no need for two mostly similar type hierarchy implementations
      */
     protected FieldType<T> type;
 
@@ -162,21 +164,23 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     }
 
     /**
-     * Read data from a mapped input stream and set it accordingly. This is invoked at the very end of state
-     * construction and done massively in parallel.
+     * Read data from a mapped input stream and set it accordingly. This is
+     * invoked at the very end of state construction and done massively in
+     * parallel.
      */
     protected abstract void read(ChunkEntry target);
 
     /**
-     * offset calculation as preparation of writing data belonging to the owners last block
+     * offset calculation as preparation of writing data belonging to the owners
+     * last block
      */
     public abstract long offset();
 
     /**
      * write data into a map at the end of a write/append operation
      * 
-     * @note this will always write the last chunk, as, in contrast to read, it is impossible to write to fields in
-     *       parallel
+     * @note this will always write the last chunk, as, in contrast to read, it
+     *       is impossible to write to fields in parallel
      * @note only called, if there actually is field data to be written
      */
     public abstract void write(MappedOutStream out) throws SkillException, IOException;
@@ -185,7 +189,8 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * Coordinates reads and prevents from state corruption using the barrier.
      * 
      * @param barrier
-     *            takes one permit in the caller thread and returns one in the reader thread (per block)
+     *            takes one permit in the caller thread and returns one in the
+     *            reader thread (per block)
      * @param readErrors
      *            errors will be reported in this queue
      */
@@ -225,5 +230,17 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
                 }
             });
         }
+    }
+
+    /**
+     * punch a hole into the java type system that eases implementation of maps
+     * of interfaces
+     * 
+     * @note the hole is only necessary, because interfaces cannot inherit from
+     *       classes
+     */
+    @SuppressWarnings("unchecked")
+    protected static final <K1, V1, K2, V2> HashMap<K1, V1> castMap(HashMap<K2, V2> arg) {
+        return (HashMap<K1, V1>) arg;
     }
 }
