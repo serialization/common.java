@@ -5,7 +5,12 @@ import java.util.Iterator;
 
 import de.ust.skill.common.java.internal.SkillObject;
 
-public interface Access<T extends SkillObject> extends Collection<T> {
+/**
+ * Access to class type <T>.
+ * 
+ * @author Timm Felden
+ */
+public interface Access<T extends SkillObject> extends GeneralAccess<T> {
 
     /**
      * @return the skill file owning this access
@@ -13,20 +18,9 @@ public interface Access<T extends SkillObject> extends Collection<T> {
     public SkillFile owner();
 
     /**
-     * @return the skill name of the type
-     */
-    public String name();
-
-    /**
      * @return the skill name of the super type, if it exists
      */
     public String superName();
-
-    /**
-     * @return a type ordered Container iterator over all instances of T
-     * @note do not invoke this function, if you do not know what "type order" means
-     */
-    public Iterator<T> typeOrderIterator();
 
     /**
      * @return an iterator over all fields of T
@@ -36,8 +30,10 @@ public interface Access<T extends SkillObject> extends Collection<T> {
     /**
      * @return a new T instance with default field values
      * @throws SkillException
-     *             if no instance can be created. This is either caused by restrictions, such as @singleton, or by
-     *             invocation on unknown types, which are implicitly unmodifiable in this SKilL-implementation.
+     *             if no instance can be created. This is either caused by
+     *             restrictions, such as @singleton, or by invocation on unknown
+     *             types, which are implicitly unmodifiable in this
+     *             SKilL-implementation.
      */
     public T make() throws SkillException;
 }

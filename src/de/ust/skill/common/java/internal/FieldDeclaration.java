@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import de.ust.skill.common.java.api.Access;
+import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.fieldDeclarations.IgnoredField;
@@ -83,7 +83,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     }
 
     @Override
-    public Access<Obj> owner() {
+    public GeneralAccess<Obj> owner() {
         return owner;
     }
 

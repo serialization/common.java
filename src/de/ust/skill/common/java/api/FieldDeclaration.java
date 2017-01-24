@@ -25,7 +25,7 @@ public interface FieldDeclaration<T> {
     /**
      * @return enclosing type
      */
-    public Access<?> owner();
+    public GeneralAccess<?> owner();
 
     /**
      * Generic getter for an object.
