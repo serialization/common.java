@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Stack;
 
 import de.ust.skill.common.java.api.SkillException;
@@ -48,6 +47,16 @@ import de.ust.skill.common.jvm.streams.FileInputStream;
  *            the specific state used by the parser
  */
 public abstract class FileParser<State extends SkillState> {
+    private static final class LFEntry {
+        public final StoragePool<?, ?> p;
+        public final int count;
+
+        public LFEntry(StoragePool<?, ?> p, int count) {
+            this.p = p;
+            this.count = count;
+        }
+    }
+
     protected FileInputStream in;
 
     // ERROR REPORTING
@@ -110,7 +119,7 @@ public abstract class FileParser<State extends SkillState> {
     // deferred pool resize requests
     private final LinkedList<StoragePool<?, ?>> resizeQueue = new LinkedList<>();
     // pool ⇒ local field count
-    private final Map<StoragePool<?, ?>, Integer> localFields = new HashMap<>();
+    private final ArrayList<LFEntry> localFields = new ArrayList<>();
 
     // field data updates: pool x fieldID
     private final LinkedList<DataEntry> fieldDataQueue = new LinkedList<>();
@@ -335,7 +344,7 @@ public abstract class FileParser<State extends SkillState> {
             definition.blocks.add(new Block(bpo, count));
             resizeQueue.add(definition);
 
-            localFields.put(definition, (int) in.v64());
+            localFields.add(new LFEntry(definition, (int) in.v64()));
         } catch (java.nio.BufferUnderflowException e) {
             throw new ParseException(in, blockCounter, e, "unexpected end of file");
         }
@@ -373,14 +382,15 @@ public abstract class FileParser<State extends SkillState> {
         }
 
         // parse fields
-        for (StoragePool<?, ?> p : localFields.keySet()) {
+        for (LFEntry lfe : localFields) {
+            final StoragePool<?, ?> p = lfe.p;
 
             // read field part
             int legalFieldIDBarrier = 1 + p.dataFields.size();
 
             final Block lastBlock = p.blocks.get(p.blocks.size() - 1);
 
-            for (int fieldCounter = localFields.get(p); fieldCounter != 0; fieldCounter--) {
+            for (int fieldCounter = lfe.count; fieldCounter != 0; fieldCounter--) {
                 final int ID = (int) in.v64();
                 if (ID > legalFieldIDBarrier || ID <= 0)
                     throw new ParseException(in, blockCounter, null, "Found an illegal field ID: %d", ID);
