@@ -14,7 +14,11 @@ final public class StateWriter extends SerializationFunctions {
     public StateWriter(SkillState state, FileOutputStream out) throws Exception {
         super(state);
 
-        // make lbpo map, update data map to contain dynamic instances and create skill IDs for serialization
+        // ensure fast size() operations
+        StoragePool.fixed(state.types);
+
+        // make lbpo map, update data map to contain dynamic instances and
+        // create skill IDs for serialization
         // index → bpo
         // @note pools.par would not be possible if it were an actual map:)
         final int[] lbpoMap = new int[state.types.size()];
@@ -46,7 +50,7 @@ final public class StateWriter extends SerializationFunctions {
         ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>();
         for (StoragePool<?, ?> p : state.types) {
             string(p.name, out);
-            long LCount = p.blocks.getLast().count;
+            long LCount = p.lastBlock().count;
             out.v64(LCount);
             restrictions(p, out);
             if (null == p.superPool)

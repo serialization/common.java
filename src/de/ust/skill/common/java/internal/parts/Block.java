@@ -11,8 +11,10 @@ package de.ust.skill.common.java.internal.parts;
  *       written.
  */
 public final class Block {
-    public final long bpo;
-    public final long count;
+    public final int bpo;
+    public final int count;
+    // @note cannot be file because it is calculated on resize
+    public int staticCount;
 
     /**
      * @param bpo
@@ -20,13 +22,14 @@ public final class Block {
      * @param count
      *            the number of instances in this chunk
      */
-    public Block(long bpo, long count) {
+    public Block(int bpo, int count, int staticCount) {
         this.bpo = bpo;
         this.count = count;
+        this.staticCount = staticCount;
     }
 
-	public boolean contains(long skillID) {
-		return bpo <= skillID  && skillID < bpo + count;
-	}
+    public boolean contains(long skillID) {
+        return bpo <= skillID && skillID < bpo + count;
+    }
 
 }

@@ -37,7 +37,11 @@ final public class StateAppender extends SerializationFunctions {
             newPoolIndex = i;
         }
 
-        // make lbpsi map, update data map to contain dynamic instances and create serialization skill IDs for
+        // ensure fast size() operations
+        StoragePool.fixed(state.types);
+
+        // make lbpsi map, update data map to contain dynamic instances and
+        // create serialization skill IDs for
         // serialization
         // index → bpsi
         final int[] lbpoMap = new int[state.types.size()];
@@ -46,7 +50,6 @@ final public class StateAppender extends SerializationFunctions {
             if (p instanceof BasePool<?>) {
                 makeLBPOMap(p, lbpoMap, 0);
                 ((BasePool<?>) p).prepareAppend(chunkMap);
-                p.fixed(true);
             }
         });
 
@@ -104,7 +107,7 @@ final public class StateAppender extends SerializationFunctions {
             if (newPool || (0 != fields.size() && p.size() > 0)) {
 
                 string(p.name, out);
-                final long count = p.blocks.getLast().count;
+                final long count = p.lastBlock().count;
                 out.v64(count);
 
                 if (newPool) {
@@ -159,13 +162,10 @@ final public class StateAppender extends SerializationFunctions {
     /**
      * create lbpo map using size of new objects
      */
-    private final static int makeLBPOMap(StoragePool<?, ?> p, int[] lbpoMap, int next) {
-        lbpoMap[p.typeID - 32] = next;
-        int result = next + p.newObjects.size();
-        for (SubPool<?, ?> sub : p.subPools) {
-            result = makeLBPOMap(sub, lbpoMap, result);
+    private final static void makeLBPOMap(StoragePool<?, ?> base, int[] lbpoMap, int next) {
+        for (StoragePool<?, ?> p : new TypeHierarchyIterator<>(base)) {
+            lbpoMap[p.typeID - 32] = next;
+            next += p.newObjects.size();
         }
-        return result;
-
     }
 }

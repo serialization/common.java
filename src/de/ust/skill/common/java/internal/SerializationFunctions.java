@@ -50,12 +50,12 @@ abstract public class SerializationFunctions {
         this.state = state;
 
         /**
-         * collect String instances from known string types; this is needed, because strings are something special on
-         * the jvm
+         * collect String instances from known string types; this is needed,
+         * because strings are something special on the jvm
          * 
          * @note this is a O(σ) operation:)
-         * @note we do no longer make use of the generation time type info, because we want to treat generic fields as
-         *       well
+         * @note we do no longer make use of the generation time type info,
+         *       because we want to treat generic fields as well
          */
         StringPool strings = (StringPool) state.Strings();
 
@@ -126,7 +126,8 @@ abstract public class SerializationFunctions {
     }
 
     /**
-     * serialization of types is fortunately independent of state, because field types know their ID
+     * serialization of types is fortunately independent of state, because field
+     * types know their ID
      */
     protected static final void writeType(FieldType<?> t, OutStream out) throws IOException {
         switch (t.typeID) {
@@ -201,7 +202,8 @@ abstract public class SerializationFunctions {
         for (Task t : data) {
             final FieldDeclaration<?, ?> f = t.f;
             final MappedOutStream outMap = writeMap.clone((int) t.begin, (int) t.end);
-            // @note use semaphore instead of data.par, because map is not thread-safe
+            // @note use semaphore instead of data.par, because map is not
+            // thread-safe
             SkillState.pool.execute(new Runnable() {
 
                 @Override
@@ -216,8 +218,10 @@ abstract public class SerializationFunctions {
                         writeErrors
                                 .add(new SkillException("unexpected failure while writing field " + f.toString(), e));
                     } finally {
-                        // ensure that writer can terminate, errors will be printed to command line anyway, and we wont
-                        // be able to recover, because errors can only happen if the skill implementation itself is
+                        // ensure that writer can terminate, errors will be
+                        // printed to command line anyway, and we wont
+                        // be able to recover, because errors can only happen if
+                        // the skill implementation itself is
                         // broken
                         barrier.release(1);
                     }
@@ -240,9 +244,6 @@ abstract public class SerializationFunctions {
          */
         // release data structures
         state.stringType.clearIDs();
-        // unfix pools
-        for (StoragePool<?, ?> p : state.types) {
-            p.fixed(false);
-        }
+        StoragePool.unfix(state.types);
     }
 }

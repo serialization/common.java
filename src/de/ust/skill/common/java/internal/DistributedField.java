@@ -63,7 +63,7 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     @SuppressWarnings("unchecked")
     @Override
     public long offset() {
-        final Block range = owner.blocks.getLast();
+        final Block range = owner.lastBlock();
         // @note order is not important, because we calculate offsets only!!!
         if (range.count == data.size())
             return type.calculateOffset(data.values());

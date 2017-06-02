@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Stack;
 
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
@@ -89,6 +88,12 @@ public abstract class FileParser<State extends SkillState> {
         Strings = new StringPool(in);
         StringType = new StringType(Strings);
         Annotation = new Annotation(types);
+
+        // parse blocks
+        while (!in.eof()) {
+            stringBlock();
+            typeBlock();
+        }
     }
 
     final protected void stringBlock() throws ParseException {
@@ -304,7 +309,7 @@ public abstract class FileParser<State extends SkillState> {
 
         // try to parse the type definition
         try {
-            long count = in.v64();
+            int count = (int) in.v64();
 
             StoragePool<T, B> definition = null;
             if (poolByName.containsKey(name)) {
@@ -337,11 +342,27 @@ public abstract class FileParser<State extends SkillState> {
                         "Found unordered type block. Type %s has id %i, barrier was %i.", name, definition.typeID,
                         blockIDBarrier);
 
-            final long bpo = definition.basePool.data.length
-                    + ((0L != count && null != definition.superPool) ? in.v64() : 0L);
+            // in contrast to prior implementation, bpo is the position inside
+            // of data, even if there are no actual
+            // instances. We need this behavior, because that way we can cheaply
+            // calculate the number of static instances
+            final int bpo = definition.basePool.cachedSize + (null == definition.superPool ? 0
+                    : (0 != count ? (int) in.v64() : definition.superPool.lastBlock().bpo));
 
-            // store block info and prepare resize
-            definition.blocks.add(new Block(bpo, count));
+            // ensure that bpo is in fact inside of the parents block
+            if (null != definition.superPool) {
+                Block b = definition.superPool.lastBlock();
+                if (bpo < b.bpo || b.bpo + b.count < bpo)
+                    throw new ParseException(in, blockCounter, null, "Found broken bpo.");
+            }
+
+            // static count and cached size are updated in the resize phase
+            // @note we assume that all dynamic instance are static instances as
+            // well, until we know for sure
+            definition.blocks.add(new Block(bpo, count, count));
+            definition.staticDataInstances += count;
+
+            // prepare resize
             resizeQueue.add(definition);
 
             localFields.add(new LFEntry(definition, (int) in.v64()));
@@ -363,21 +384,27 @@ public abstract class FileParser<State extends SkillState> {
         for (int count = (int) in.v64(); count != 0; count--)
             typeDefinition();
 
-        // resize pools
-        {
-            Stack<StoragePool<?, ?>> resizeStack = new Stack<>();
+        // resize pools by updating cachedSize and staticCount
+        // @note instances will be allocated just before field deserialization
+        for (StoragePool<?, ?> p : resizeQueue) {
+            Block b = p.lastBlock();
+            p.cachedSize += b.count;
 
-            // resize base pools and push entries to stack
-            for (StoragePool<?, ?> p : resizeQueue) {
-                if (p instanceof BasePool<?>) {
-                    ((BasePool<?>) p).resizeData();
+            if (0 != b.count) {
+                // calculate static count of our parent
+                StoragePool<?, ?> parent = p.superPool;
+                if (null != parent) {
+                    Block sb = parent.lastBlock();
+                    // assumed static instances, minus what static instances
+                    // would be, if p were the first sub pool.
+                    int delta = sb.staticCount - (b.bpo - sb.bpo);
+                    // if positive, then we have to subtract it from the assumed
+                    // static count (local and global)
+                    if (delta > 0) {
+                        sb.staticCount -= delta;
+                        parent.staticDataInstances -= delta;
+                    }
                 }
-                resizeStack.push(p);
-            }
-
-            // create instances from stack
-            while (!resizeStack.isEmpty()) {
-                resizeStack.pop().insertInstances();
             }
         }
 
@@ -407,7 +434,7 @@ public abstract class FileParser<State extends SkillState> {
                     end = in.v64();
 
                     try {
-                        p.addField(ID, t, fieldName, rest).addChunk(new BulkChunk(offset, end, p.size()));
+                        p.addField(ID, t, fieldName, rest).addChunk(new BulkChunk(offset, end, p.cachedSize));
                     } catch (SkillException e) {
                         // transform to parse exception with propper values
                         throw new ParseException(in, blockCounter, null, e.getMessage());

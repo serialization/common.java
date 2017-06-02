@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,7 +20,9 @@ import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
+import de.ust.skill.common.java.iterators.DynamicNewInstancesIterator;
 import de.ust.skill.common.java.iterators.Iterators;
+import de.ust.skill.common.java.iterators.TypeOrderIterator;
 import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
@@ -71,8 +72,44 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
     // type hierarchy
     final StoragePool<? super T, B> superPool;
+    public final int typeHierarchyHeight;
+
     protected final BasePool<B> basePool;
-    final ArrayList<SubPool<? extends T, B>> subPools = new ArrayList<>();
+
+    private StoragePool<?, B> nextPool;
+
+    /**
+     * solves type equation
+     */
+    @SuppressWarnings("unchecked")
+    private void setNextPool(StoragePool<?, ?> nx) {
+        nextPool = (StoragePool<?, B>) nx;
+    }
+
+    /**
+     * @return next pool of this hierarchy in weak type order
+     */
+    public StoragePool<?, B> nextPool() {
+        return nextPool;
+    }
+
+    /**
+     * initialize the next pointer
+     * 
+     * @note invoked from base pool
+     * @note destroys subPools, because they are no longer needed
+     */
+    static void establishNextPools(ArrayList<StoragePool<?, ?>> types) {
+        StoragePool<?, ?>[] L = new StoragePool<?, ?>[types.size()];
+
+        // walk in reverse and store last reference in L[base]
+        for (int i = types.size() - 1; i >= 0; i--) {
+            final StoragePool<?, ?> t = types.get(i);
+            final int base = t.basePool.typeID - 32;
+            t.setNextPool(L[base]);
+            L[base] = t;
+        }
+    }
 
     /**
      * used by generated file parsers
@@ -87,6 +124,11 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     public BasePool<B> basePool() {
         return basePool;
     }
+
+    /**
+     * pointer to base-pool-managed data array
+     */
+    protected B[] data;
 
     /**
      * names of known fields, the actual field information is given in the
@@ -139,9 +181,12 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     /**
      * The block layout of instances of this pool.
      */
-    final LinkedList<Block> blocks = new LinkedList<>();
+    final ArrayList<Block> blocks = new ArrayList<>();
 
-    protected LinkedList<Block> blocks() {
+    /**
+     * internal use only!
+     */
+    public ArrayList<Block> blocks() {
         return blocks;
     }
 
@@ -149,7 +194,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * internal use only!
      */
     public Block lastBlock() {
-        return blocks.getLast();
+        return blocks.get(blocks.size() - 1);
     }
 
     /**
@@ -160,32 +205,48 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     final ArrayList<T> newObjects = new ArrayList<>();
 
     /**
+     * @return number of new object
+     */
+    public final int newObjectsSize() {
+        return newObjects.size();
+    }
+
+    /**
+     * retrieve a new object
+     * 
+     * @param index
+     *            in [0;{@link #newObjectsSize()}[
+     * @return the new object at the given position
+     */
+    public final T newObject(int index) {
+        return newObjects.get(index);
+    }
+
+    /**
      * Ensures that at least capacity many new objects can be stored in this
      * pool without moving references.
      */
-    public void hintNewObjectsSize(int capacity) {
+    public final void hintNewObjectsSize(int capacity) {
         newObjects.ensureCapacity(capacity);
     }
 
-    protected final Iterator<T> newDynamicInstances() {
-        LinkedList<Iterator<? extends T>> is = new LinkedList<>();
-        if (!newObjects.isEmpty())
-            is.add(newObjects.iterator());
-        for (SubPool<? extends T, B> sub : subPools) {
-            Iterator<? extends T> subIter = sub.newDynamicInstances();
-            if (subIter.hasNext())
-                is.add(subIter);
-        }
-        return Iterators.<T>concatenate(is);
+    protected final DynamicNewInstancesIterator<T, B> newDynamicInstances() {
+        return new DynamicNewInstancesIterator<>(this);
     }
 
     protected final int newDynamicInstancesSize() {
-        int rval = newObjects.size();
-        for (SubPool<? extends T, B> sub : subPools) {
-            rval += sub.newDynamicInstancesSize();
-        }
+        int rval = 0;
+        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
+        while (ts.hasNext())
+            rval += ts.next().newObjects.size();
+
         return rval;
     }
+
+    /**
+     * Number of static instances of T in data. Managed by read/compress.
+     */
+    int staticDataInstances;
 
     /**
      * the number of instances of exactly this type, excluding sub-types
@@ -193,17 +254,12 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * @return size excluding subtypes
      */
     final public int staticSize() {
-        return staticData.size() + newObjects.size();
+        return staticDataInstances + newObjects.size();
     }
 
     final Iterator<T> staticInstances() {
-        return Iterators.<T>concatenate(staticData.iterator(), newObjects.iterator());
+        return Iterators.<T>concatenate(new StaticDataIterator<>(this), newObjects.iterator());
     }
-
-    /**
-     * the number of static instances loaded from the file
-     */
-    final protected ArrayList<T> staticData = new ArrayList<>();
 
     /**
      * storage pools can be fixed, i.e. no dynamic instances can be added to the
@@ -231,28 +287,27 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     /**
-     * set new fixation status; if setting fails, some sub pools may have been
-     * fixed nonetheless.
+     * fix all pool sizes
      * 
      * @note this may change the result of size(), because from now on, the
      *       deleted objects will be taken into account
      */
-    public final void fixed(boolean newStatus) {
-        if (fixed == newStatus)
-            return;
-
-        if (newStatus) {
-            for (SubPool<?, B> s : subPools)
-                s.fixed(true);
+    static final void fixed(ArrayList<StoragePool<?, ?>> pools) {
+        for (int i = pools.size() - 1; i >= 0; i--) {
+            StoragePool<?, ?> p = pools.get(i);
 
             // take deletions into account
-            cachedSize = size() - deletedCount;
-
-        } else {
-            if (null != superPool)
-                superPool.fixed(false);
+            p.cachedSize = p.size() - p.deletedCount;
+            p.fixed = true;
         }
-        fixed = newStatus;
+    }
+
+    /**
+     * unset fixed status
+     */
+    static final void unfix(ArrayList<StoragePool<?, ?>> pools) {
+        for (StoragePool<?, ?> p : pools)
+            p.fixed = false;
     }
 
     @Override
@@ -261,7 +316,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     @Override
-    public String superName() {
+    final public String superName() {
         if (null != superPool)
             return superPool.name;
         return null;
@@ -278,7 +333,13 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
         super(32 + poolIndex);
         this.name = name;
         this.superPool = superPool;
-        this.basePool = null == superPool ? (BasePool<B>) this : superPool.basePool;
+        if (null == superPool) {
+            this.typeHierarchyHeight = 0;
+            this.basePool = (BasePool<B>) this;
+        } else {
+            this.typeHierarchyHeight = superPool.typeHierarchyHeight + 1;
+            this.basePool = superPool.basePool;
+        }
         this.knownFields = knownFields;
         dataFields = new ArrayList<>(knownFields.size());
         this.autoFields = autoFields;
@@ -287,7 +348,13 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     /**
      * @return the instance matching argument skill id
      */
-    public abstract T getByID(long index);
+    @SuppressWarnings("unchecked")
+    final public T getByID(long ID) {
+        int index = (int) ID - 1;
+        if (index < 0 || data.length <= index)
+            return null;
+        return (T) data[index];
+    }
 
     @Override
     public final T readSingleField(InStream in) {
@@ -343,9 +410,10 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
         if (fixed)
             return cachedSize;
 
-        int size = staticSize();
-        for (SubPool<?, ?> s : subPools)
-            size += s.size();
+        int size = 0;
+        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
+        while (ts.hasNext())
+            size += ts.next().staticSize();
         return size;
     }
 
@@ -456,13 +524,13 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     @Override
-    final public Iterator<T> typeOrderIterator() {
-        ArrayList<Iterator<? extends T>> is = new ArrayList<>(subPools.size() + 1);
-        is.add(staticInstances());
-        for (SubPool<? extends T, B> s : subPools)
-            is.add(s.typeOrderIterator());
+    final public DynamicDataIterator<T, B> iterator() {
+        return new DynamicDataIterator<T, B>(this);
+    }
 
-        return Iterators.concatenate(is);
+    @Override
+    final public TypeOrderIterator<T, B> typeOrderIterator() {
+        return new TypeOrderIterator<T, B>(this);
     }
 
     @Override
@@ -477,17 +545,31 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
     /**
      * insert new T instances with default values based on the last block info
+     * 
+     * @note defaults to unknown objects to reduce code size
      */
-    abstract void insertInstances();
+    @SuppressWarnings("unchecked")
+    protected void allocateInstances(Block last) {
+        int i = (int) last.bpo;
+        final int high = (int) (i + last.staticCount);
+        while (i < high) {
+            data[i] = (T) (new SkillObject.SubType(this, i + 1));
+            i += 1;
+        }
+    }
 
     protected final void updateAfterCompress(int[] lbpoMap) {
-        blocks.clear();
-        blocks.add(new Block(lbpoMap[typeID - 32], size()));
-        staticData.addAll(newObjects);
+        // update data
+        data = basePool.data;
+
+        // update structural knowledge of data
+        staticDataInstances += newObjectsSize() - deletedCount;
+        deletedCount = 0;
         newObjects.clear();
         newObjects.trimToSize();
-        for (SubPool<?, ?> p : subPools)
-            p.updateAfterCompress(lbpoMap);
+
+        blocks.clear();
+        blocks.add(new Block(lbpoMap[typeID - 32], cachedSize, staticDataInstances));
     }
 
     /**
@@ -545,7 +627,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             // written lbpo
             final int lbpo = (0 == lcount) ? 0 : ((int) newDynamicInstances().next().skillID - 1);
 
-            blocks.addLast(new Block(lbpo, lcount));
+            blocks.add(new Block(lbpo, lcount, newObjects.size()));
+            staticDataInstances += newObjects.size();
 
             // @note: if this does not hold for p; then it will not hold for
             // p.subPools either!
@@ -568,12 +651,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
                 }
             }
         }
-        // notify sub pools
-        for (SubPool<?, B> p : subPools)
-            p.updateAfterPrepareAppend(chunkMap);
 
         // remove new objects, because they are regular objects by now
-        staticData.addAll(newObjects);
         newObjects.clear();
         newObjects.trimToSize();
     }

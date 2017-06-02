@@ -44,7 +44,8 @@ public abstract class SkillState implements SkillFile {
      */
     private Path path;
     /**
-     * a file input stream keeping the handle to a file for potential write operations
+     * a file input stream keeping the handle to a file for potential write
+     * operations
      * 
      * @note this is a consequence of the retarded windows file system
      */
@@ -79,7 +80,8 @@ public abstract class SkillState implements SkillFile {
         }
 
         /**
-         * called at the beginning of a read operation to ensure main thread will wait for it
+         * called at the beginning of a read operation to ensure main thread
+         * will wait for it
          */
         public void beginRead() {
             reducePermits(1);
@@ -114,68 +116,87 @@ public abstract class SkillState implements SkillFile {
 
     @SuppressWarnings("unchecked")
     protected final void finalizePools() {
-        ReadBarrier barrier = new ReadBarrier();
-        // async reads will post their errors in this queue
-        final ConcurrentLinkedQueue<SkillException> readErrors = new ConcurrentLinkedQueue<SkillException>();
+        try {
+            StoragePool.establishNextPools(types);
+            
+            // allocate instances
+            {
+                ReadBarrier barrier = new ReadBarrier();
 
-        for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
-            // @note this loop must happen in type order!
+                for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
 
-            // set owners
-            if (p instanceof BasePool<?>)
-                ((BasePool<?>) p).setOwner(this);
+                    // set owners
+                    if (p instanceof BasePool<?>) {
+                        ((BasePool<?>) p).setOwner(this);
 
-            // add missing field declarations
-            HashSet<String> fieldNames = new HashSet<>();
-            for (de.ust.skill.common.java.api.FieldDeclaration<?> f : p.dataFields)
-                fieldNames.add(f.name());
+                        ((BasePool<?>) p).performAllocations(barrier);
+                    }
 
-            // ensure existence of known fields
-            for (String n : p.knownFields) {
-                if (!fieldNames.contains(n))
-                    p.addKnownField(n, stringType, annotationType);
+                    // add missing field declarations
+                    HashSet<String> fieldNames = new HashSet<>();
+                    for (de.ust.skill.common.java.api.FieldDeclaration<?> f : p.dataFields)
+                        fieldNames.add(f.name());
+
+                    // ensure existence of known fields
+                    for (String n : p.knownFields) {
+                        if (!fieldNames.contains(n))
+                            p.addKnownField(n, stringType, annotationType);
+                    }
+                }
+                barrier.acquire();
             }
 
-            // read known fields
-            for (FieldDeclaration<?, ?> f : p.dataFields)
-                f.finish(barrier, readErrors);
-        }
+            // read field data
+            {
+                ReadBarrier barrier = new ReadBarrier();
+                // async reads will post their errors in this queue
+                final ConcurrentLinkedQueue<SkillException> readErrors = new ConcurrentLinkedQueue<SkillException>();
 
-        // fix types in the Annotation-runtime type, because we need it in offset calculation
-        this.annotationType.fixTypes(this.poolByName());
+                for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
+                    // @note this loop must happen in type order!
 
-        // await async reads
-        try {
-            barrier.acquire();
+                    // read known fields
+                    for (FieldDeclaration<?, ?> f : p.dataFields)
+                        f.finish(barrier, readErrors);
+                }
+
+                // fix types in the Annotation-runtime type, because we need it
+                // in
+                // offset calculation
+                this.annotationType.fixTypes(this.poolByName());
+
+                // await async reads
+                barrier.acquire();
+                for (SkillException e : readErrors) {
+                    e.printStackTrace();
+                }
+                if (!readErrors.isEmpty())
+                    throw readErrors.peek();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        for (SkillException e : readErrors) {
-            e.printStackTrace();
-        }
-        if (!readErrors.isEmpty())
-            throw readErrors.peek();
     }
 
     @Override
     final public StringAccess Strings() {
         return strings;
     }
-    
 
     @Override
     public final boolean contains(SkillObject target) {
-        if (null != target) try {
-        	if(0 < target.skillID)
-        		return target == poolByName().get(target.skillName()).getByID(target.skillID);
-        	else if(0 == target.skillID)
-        		return true; // will evaluate to a null pointer if stored
-        	
-        	return poolByName().get(target.skillName()).newObjects.contains(target);
-        } catch (Exception e){
-        	// out of bounds or similar mean its not one of ours
-        	return false;
-        }
+        if (null != target)
+            try {
+                if (0 < target.skillID)
+                    return target == poolByName().get(target.skillName()).getByID(target.skillID);
+                else if (0 == target.skillID)
+                    return true; // will evaluate to a null pointer if stored
+
+                return poolByName().get(target.skillName()).newObjects.contains(target);
+            } catch (Exception e) {
+                // out of bounds or similar mean its not one of ours
+                return false;
+            }
         return true;
     }
 
@@ -237,7 +258,8 @@ public abstract class SkillState implements SkillFile {
     @Override
     public void check() throws SkillException {
         // TODO type restrictions
-        // TODO make pools check fields, because they can optimize checks per instance and remove redispatching, if no
+        // TODO make pools check fields, because they can optimize checks per
+        // instance and remove redispatching, if no
         // restrictions apply anyway
         for (StoragePool<?, ?> p : types)
             for (FieldDeclaration<?, ?> f : p.dataFields)
@@ -256,7 +278,8 @@ public abstract class SkillState implements SkillFile {
             switch (writeMode) {
             case Write:
                 if (isWindows) {
-                    // we have to write into a temporary file and move the file afterwards
+                    // we have to write into a temporary file and move the file
+                    // afterwards
                     Path target = path;
                     File f = File.createTempFile("write", ".sf");
                     f.createNewFile();

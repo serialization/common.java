@@ -5,13 +5,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.iterators.Iterators;
+import de.ust.skill.common.java.iterators.TypeOrderIterator;
 
 /**
- * The base of a type hierarchy. Contains optimized representations of data compared to sub pools.
+ * The base of a type hierarchy. Contains optimized representations of data
+ * compared to sub pools.
  * 
  * @author Timm Felden
  * @param <T>
@@ -28,13 +31,6 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
     protected T[] newArray(int size) {
         return (T[]) new SkillObject[size];
     }
-
-    /**
-     * instances read from disk
-     * 
-     * @note manual type erasure required for consistency
-     */
-    protected T[] data = newArray(0);
 
     /**
      * the owner is set once by the SkillState.finish method!
@@ -60,69 +56,73 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
 
     }
 
-    @Override
-    final public T getByID(long ID) {
-        int index = (int) ID - 1;
-        if (index < 0 || data.length <= index)
-            return null;
-        return data[index];
-    }
-
     /**
-     * increase size of data array. Invoked by file parser only!
+     * Allocates data and all instances for this pool and all of its sub-pools.
+     * 
+     * @param barrier
+     *            used to synchronize parallel object allocation
+     * 
+     * @note invoked once upon state creation before deserialization of field
+     *       data
      */
-    void resizeData() {
-        data = Arrays.copyOf(data, data.length + (int) blocks.getLast().count);
-    }
+    void performAllocations(final ReadBarrier barrier) {
 
-    /**
-     * Static instances of base pool deal with unknown types only!
-     */
-    @Override
-    public void insertInstances() {
-        final Block last = blocks.getLast();
-        int i = (int) last.bpo;
-        int high = (int) (last.bpo + last.count);
-        while (i < high) {
-            if (null != data[i])
-                return;
-
-            @SuppressWarnings("unchecked")
-            T r = (T) (new SkillObject.SubType(this, i + 1));
-            data[i] = r;
-            staticData.add(r);
-
-            i += 1;
+        // allocate data and link it to sub pools
+        {
+            data = newArray(cachedSize);
+            TypeHierarchyIterator<T, T> subs = new TypeHierarchyIterator<>(this);
+            while (subs.hasNext())
+                subs.next().data = data;
         }
-    }
 
-    @Override
-    public Iterator<T> iterator() {
-        return Iterators.<T> concatenate(Iterators.<T> array(basePool.data), newDynamicInstances());
-
+        // allocate instances
+        {
+            TypeHierarchyIterator<T, T> subs = new TypeHierarchyIterator<>(this);
+            while (subs.hasNext()) {
+                final StoragePool<? extends T, T> s = subs.next();
+                for (Block b : s.blocks) {
+                    barrier.beginRead();
+                    SkillState.pool.execute(() -> {
+                        s.allocateInstances(b);
+                        barrier.release();
+                    });
+                }
+            }
+        }
     }
 
     /**
      * Internal use only!
      */
     public Iterator<T> dataViewIterator(int begin, int end) {
-        return Iterators.<T> array(data, begin, end);
+        return Iterators.<T>array(data, begin, end);
     }
 
     /**
      * compress new instances into the data array and update skillIDs
      */
     final void compress(int[] lbpoMap) {
-        // fix to calculate correct size in acceptable time
-        fixed(true);
 
         // create our part of the lbpo map
-        makeLBPOMap(this, lbpoMap, 0);
+        {
+            int next = 0;
+            TypeHierarchyIterator<T, T> subs = new TypeHierarchyIterator<>(this);
 
-        // from now on, size will take deleted objects into account, thus d may in fact be smaller then data!
+            while (subs.hasNext()) {
+                final StoragePool<? extends T, T> p = subs.next();
+
+                lbpoMap[p.typeID - 32] = next;
+                next += p.staticSize() - p.deletedCount;
+
+                // TODO reset data chunks of fields
+            }
+        }
+
+        // from now on, size will take deleted objects into account, thus d may
+        // in fact be smaller then data!
         T[] d = newArray(size());
         int p = 0;
-        Iterator<T> is = typeOrderIterator();
+        TypeOrderIterator<T, T> is = typeOrderIterator();
         while (is.hasNext()) {
             final T i = is.next();
             if (i.skillID != 0) {
@@ -130,21 +130,14 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
                 i.setSkillID(p);
             }
         }
-        data = d;
-        updateAfterCompress(lbpoMap);
-    }
 
-    /**
-     * creates an lbpo map by recursively adding the local base pool offset to the map and adding all sub pools
-     * afterwards
-     */
-    private final static int makeLBPOMap(StoragePool<?, ?> p, int[] lbpoMap, int next) {
-        lbpoMap[p.typeID - 32] = next;
-        int result = next + p.staticSize() - p.deletedCount;
-        for (SubPool<?, ?> sub : p.subPools) {
-            result = makeLBPOMap(sub, lbpoMap, result);
+        // update after compress for all sub-pools
+        data = d;
+        {
+            TypeHierarchyIterator<T, T> subs = new TypeHierarchyIterator<>(this);
+            while (subs.hasNext())
+                subs.next().updateAfterCompress(lbpoMap);
         }
-        return result;
     }
 
     final void prepareAppend(Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
@@ -176,7 +169,10 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             }
             data = d;
         }
-        updateAfterPrepareAppend(chunkMap);
+        
+        TypeHierarchyIterator<T, T> ts = new TypeHierarchyIterator<>(this);
+        while(ts.hasNext())
+            ts.next().updateAfterPrepareAppend(chunkMap);
     }
 
 }

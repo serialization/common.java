@@ -1,7 +1,6 @@
 package de.ust.skill.common.java.restrictions;
 
 import de.ust.skill.common.java.api.SkillException;
-import de.ust.skill.common.java.internal.SkillObject;
 
 /**
  * A nonnull restricition. It will ensure that field data is non null.

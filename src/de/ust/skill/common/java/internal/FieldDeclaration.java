@@ -233,6 +233,14 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     }
 
     /**
+     * punch a hole into the java type system :)
+     */
+    @SuppressWarnings("unchecked")
+    protected static final <T, U> FieldType<T> cast(FieldType<U> f) {
+        return (FieldType<T>) f;
+    }
+
+    /**
      * punch a hole into the java type system that eases implementation of maps
      * of interfaces
      * 
