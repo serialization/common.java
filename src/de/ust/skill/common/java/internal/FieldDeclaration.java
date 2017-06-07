@@ -11,6 +11,7 @@ import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.fieldDeclarations.IgnoredField;
+import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.FileInputStream;
@@ -161,6 +162,14 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
 
     final Chunk lastChunk() {
         return dataChunks.getLast().c;
+    }
+
+    /**
+     * reset Chunks before writing a file
+     */
+    void resetChunks(int lbpo, int newSize) {
+        dataChunks.clear();
+        dataChunks.add(new ChunkEntry(new BulkChunk(-1, -1, newSize, 1)));
     }
 
     /**

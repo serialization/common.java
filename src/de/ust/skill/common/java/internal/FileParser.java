@@ -434,7 +434,7 @@ public abstract class FileParser<State extends SkillState> {
                     end = in.v64();
 
                     try {
-                        p.addField(ID, t, fieldName, rest).addChunk(new BulkChunk(offset, end, p.cachedSize));
+                        p.addField(ID, t, fieldName, rest).addChunk(new BulkChunk(offset, end, p.cachedSize, p.blocks().size()));
                     } catch (SkillException e) {
                         // transform to parse exception with propper values
                         throw new ParseException(in, blockCounter, null, e.getMessage());

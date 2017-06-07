@@ -640,7 +640,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
 
                     final Chunk c;
                     if (f.noDataChunk()) {
-                        c = new BulkChunk(-1, -1, size());
+                        c = new BulkChunk(-1, -1, size(), blocks.size());
                     } else if (newInstances) {
                         c = new SimpleChunk(-1, -1, lbpo, lcount);
                     } else

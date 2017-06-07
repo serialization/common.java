@@ -7,9 +7,15 @@ package de.ust.skill.common.java.internal.parts;
  * @author Timm Felden
  */
 public class BulkChunk extends Chunk {
+    
+    /**
+     * number of blocks represented by this chunk
+     */
+    public final int blockCount;
 
-    public BulkChunk(long begin, long end, long count) {
+    public BulkChunk(long begin, long end, long count, int blockCount) {
         super(begin, end, count);
+        this.blockCount = blockCount;
     }
 
 }

@@ -82,7 +82,7 @@ final public class StateWriter extends SerializationFunctions {
 
             // update chunks and prepare write data
             f.dataChunks.clear();
-            f.dataChunks.add(new ChunkEntry(new BulkChunk(offset, end, p.size())));
+            f.dataChunks.add(new ChunkEntry(new BulkChunk(offset, end, p.size(), 1)));
             data.add(new Task(f, offset, end));
             offset = end;
         }

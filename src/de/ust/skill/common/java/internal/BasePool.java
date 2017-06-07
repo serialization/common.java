@@ -111,10 +111,11 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             while (subs.hasNext()) {
                 final StoragePool<? extends T, T> p = subs.next();
 
-                lbpoMap[p.typeID - 32] = next;
+                final int lbpo = lbpoMap[p.typeID - 32] = next;
                 next += p.staticSize() - p.deletedCount;
 
-                // TODO reset data chunks of fields
+                for (FieldDeclaration<?, ?> f : p.dataFields)
+                    f.resetChunks(lbpo, p.cachedSize);
             }
         }
 
@@ -169,9 +170,9 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             }
             data = d;
         }
-        
+
         TypeHierarchyIterator<T, T> ts = new TypeHierarchyIterator<>(this);
-        while(ts.hasNext())
+        while (ts.hasNext())
             ts.next().updateAfterPrepareAppend(chunkMap);
     }
 
