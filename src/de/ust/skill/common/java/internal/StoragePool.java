@@ -105,9 +105,25 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
         // walk in reverse and store last reference in L[base]
         for (int i = types.size() - 1; i >= 0; i--) {
             final StoragePool<?, ?> t = types.get(i);
-            final int base = t.basePool.typeID - 32;
-            t.setNextPool(L[base]);
-            L[base] = t;
+
+            // skip base pools, because their next link has been established by
+            // their sub pools already
+            final StoragePool<?, ?> p = t.superPool;
+            if (null == p)
+                continue;
+
+            // ensure that every pool has a last pointer
+            final int id = t.typeID - 32;
+            if (null == L[id])
+                L[id] = t;
+
+            // insert into parent link
+            if (null == p.nextPool) {
+                L[p.typeID - 32] = L[id];
+            } else {
+                L[id].setNextPool(p.nextPool);
+            }
+            p.setNextPool(t);
         }
     }
 
@@ -293,12 +309,19 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      *       deleted objects will be taken into account
      */
     static final void fixed(ArrayList<StoragePool<?, ?>> pools) {
-        for (int i = pools.size() - 1; i >= 0; i--) {
-            StoragePool<?, ?> p = pools.get(i);
+        // set cached size to static size
+        for (StoragePool<?, ?> p : pools) {
 
             // take deletions into account
-            p.cachedSize = p.size() - p.deletedCount;
+            p.cachedSize = p.staticSize() - p.deletedCount;
             p.fixed = true;
+        }
+
+        // bubble up cached sizes to parents
+        for (int i = pools.size() - 1; i >= 0; i--) {
+            StoragePool<?, ?> p = pools.get(i);
+            if (null != p.superPool)
+                p.superPool.cachedSize += p.cachedSize;
         }
     }
 
