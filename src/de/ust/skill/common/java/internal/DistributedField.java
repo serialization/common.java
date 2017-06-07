@@ -43,8 +43,8 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
                 }
             } else {
                 for (Block bi : owner.blocks) {
-                    final int end = (int) (bi.bpo + bi.count);
-                    for (int i = (int) bi.bpo; i < end; i++) {
+                    final int end = bi.bpo + bi.count;
+                    for (int i = bi.bpo; i < end; i++) {
                         data.put(d[i], type.readSingleField(in));
                     }
                 }
@@ -87,8 +87,8 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
                 }
             } else {
                 for (Block bi : owner.blocks) {
-                    final int end = (int) (bi.bpo + bi.count);
-                    for (int i = (int) bi.bpo; i < end; i++) {
+                    final int end = bi.bpo + bi.count;
+                    for (int i = bi.bpo; i < end; i++) {
                         type.writeSingleField(data.get(d[i]), out);
                     }
                 }

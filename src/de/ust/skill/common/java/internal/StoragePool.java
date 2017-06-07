@@ -550,8 +550,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      */
     @SuppressWarnings("unchecked")
     protected void allocateInstances(Block last) {
-        int i = (int) last.bpo;
-        final int high = (int) (i + last.staticCount);
+        int i = last.bpo;
+        final int high = i + last.staticCount;
         while (i < high) {
             data[i] = (T) (new SkillObject.SubType(this, i + 1));
             i += 1;

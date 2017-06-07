@@ -45,8 +45,8 @@ public final class LazyField<T, Obj extends SkillObject> extends DistributedFiel
                     for (Block bi : owner.blocks) {
                         count -= bi.count;
                         if (count >= 0) {
-                            final int last = (int) (bi.bpo + bi.count);
-                            for (int i = (int) bi.bpo; i < last; i++) {
+                            final int last = bi.bpo + bi.count;
+                            for (int i = bi.bpo; i < last; i++) {
                                 data.put(d[i], type.readSingleField(in));
                             }
                         }
