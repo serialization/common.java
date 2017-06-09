@@ -2,9 +2,9 @@ package de.ust.skill.common.java.internal;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
+import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 
@@ -41,7 +41,7 @@ final public class StateWriter extends SerializationFunctions {
         for (final StoragePool<?, ?> p : state.types) {
             HashMap<FieldDeclaration<?, ?>, Future<Long>> vs = new HashMap<>();
             for (final FieldDeclaration<?, ?> f : p.dataFields)
-                vs.put(f, SkillState.pool.submit((Callable<Long>) f::offset));
+                vs.put(f, SkillState.pool.submit(() -> f.obc((BulkChunk) f.lastChunk())));
             offsets.put(p, vs);
         }
 

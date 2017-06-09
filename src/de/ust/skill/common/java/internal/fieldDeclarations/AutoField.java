@@ -1,6 +1,7 @@
 package de.ust.skill.common.java.internal.fieldDeclarations;
 
-import de.ust.skill.common.java.api.SkillException;
+import java.io.IOException;
+
 import de.ust.skill.common.java.internal.FieldDeclaration;
 import de.ust.skill.common.java.internal.FieldType;
 import de.ust.skill.common.java.internal.SkillObject;
@@ -31,12 +32,22 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    public final long offset() {
+    protected long osc(SimpleChunk c) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
     }
 
     @Override
-    public final void write(MappedOutStream out) throws SkillException {
+    protected long obc(BulkChunk c) {
+        throw new NoSuchMethodError("one get the offset of an auto fields!");
+    }
+
+    @Override
+    protected void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
+        throw new NoSuchMethodError("one can not write auto fields!");
+    }
+
+    @Override
+    protected void wbc(BulkChunk c, MappedOutStream out) throws IOException {
         throw new NoSuchMethodError("one can not write auto fields!");
     }
 }

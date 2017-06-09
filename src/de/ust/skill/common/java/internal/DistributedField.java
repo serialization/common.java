@@ -6,10 +6,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 
-import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
-import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.MappedInStream;
@@ -70,8 +68,7 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     // TODO distributed fields need to be compressed as well!
 
     @SuppressWarnings("unchecked")
-    @Override
-    public long offset() {
+    protected final long offset() {
         final Block range = owner.lastBlock();
         // @note order is not important, because we calculate offsets only!!!
         if (range.count == data.size())
@@ -82,29 +79,35 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
                 .filter(e -> range.contains(e.getKey().skillID)).map(e -> e.getValue()).toArray()));
     }
 
-    @Override
-    public void write(MappedOutStream out) {
-        try {
-            final SkillObject[] d = owner.basePool.data;
-            final Chunk last = lastChunk();
-            if (last instanceof SimpleChunk) {
-                final SimpleChunk c = (SimpleChunk) last;
-                int low = (int) c.bpo;
-                int high = (int) (c.bpo + c.count);
-                for (int i = low; i < high; i++) {
-                    type.writeSingleField(data.get(d[i]), out);
-                }
-            } else {
-                for (Block bi : owner.blocks) {
-                    final int end = bi.bpo + bi.count;
-                    for (int i = bi.bpo; i < end; i++) {
-                        type.writeSingleField(data.get(d[i]), out);
-                    }
-                }
-            }
 
-        } catch (IOException e) {
-            throw new SkillException("serialization of field " + name + " failed", e);
+    @Override
+    protected long osc(SimpleChunk c) {
+        return offset();
+    }
+
+    @Override
+    protected long obc(BulkChunk c) {
+        return offset();
+    }
+
+    @Override
+    protected void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
+        final SkillObject[] d = owner.basePool.data;
+        int low = (int) c.bpo;
+        int high = (int) (c.bpo + c.count);
+        for (int i = low; i < high; i++) {
+            type.writeSingleField(data.get(d[i]), out);
+        }
+    }
+
+    @Override
+    protected void wbc(BulkChunk c, MappedOutStream out) throws IOException {
+        final SkillObject[] d = owner.basePool.data;
+        for (Block bi : owner.blocks) {
+            final int end = bi.bpo + bi.count;
+            for (int i = bi.bpo; i < end; i++) {
+                type.writeSingleField(data.get(d[i]), out);
+            }
         }
     }
 

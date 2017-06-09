@@ -5,13 +5,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
+import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 
 /**
@@ -86,7 +86,13 @@ final public class StateAppender extends SerializationFunctions {
             offsets.put(p, new HashMap<>());
 
         for (final FieldDeclaration<?, ?> f : chunkMap.keySet()) {
-            final FutureTask<Long> v = new FutureTask<>((Callable<Long>) f::offset);
+            final FutureTask<Long> v = new FutureTask<>(() -> {
+                Chunk c = f.lastChunk();
+                if (c instanceof BulkChunk)
+                    return f.obc((BulkChunk) c);
+                else
+                    return f.osc((SimpleChunk) c);
+            });
             SkillState.pool.execute(v);
             offsets.get(f.owner).put(f, v);
         }

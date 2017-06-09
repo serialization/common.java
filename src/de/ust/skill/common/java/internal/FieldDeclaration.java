@@ -177,7 +177,13 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * offset calculation as preparation of writing data belonging to the owners
      * last block
      */
-    protected abstract long offset();
+    protected abstract long osc(SimpleChunk c);
+
+    /**
+     * offset calculation as preparation of writing data belonging to the owners
+     * last block
+     */
+    protected abstract long obc(BulkChunk c);
 
     /**
      * write data into a map at the end of a write/append operation
@@ -186,7 +192,16 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      *       is impossible to write to fields in parallel
      * @note only called, if there actually is field data to be written
      */
-    protected abstract void write(MappedOutStream out) throws SkillException, IOException;
+    protected abstract void wsc(SimpleChunk c, MappedOutStream out) throws IOException;
+
+    /**
+     * write data into a map at the end of a write/append operation
+     * 
+     * @note this will always write the last chunk, as, in contrast to read, it
+     *       is impossible to write to fields in parallel
+     * @note only called, if there actually is field data to be written
+     */
+    protected abstract void wbc(BulkChunk c, MappedOutStream out) throws IOException;
 
     /**
      * Coordinates reads and prevents from state corruption using the barrier.

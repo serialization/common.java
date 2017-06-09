@@ -15,6 +15,9 @@ import de.ust.skill.common.jvm.streams.MappedInStream;
  * @author Timm Felden
  * @note implementation abuses a distributed field that can be accessed iff
  *       there are no data chunks to be processed
+ * 
+ * @note offset and write methods will not be overwritten, because forcing has
+ *       to happen even before resetChunks
  */
 public final class LazyField<T, Obj extends SkillObject> extends DistributedField<T, Obj> {
 
@@ -71,14 +74,6 @@ public final class LazyField<T, Obj extends SkillObject> extends DistributedFiel
         synchronized (this) {
             chunkMap.put(target, in);
         }
-    }
-
-    @Override
-    public long offset() {
-        if (null != chunkMap)
-            load();
-
-        return super.offset();
     }
 
     @Override

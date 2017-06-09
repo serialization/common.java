@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.Semaphore;
 
+
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.fieldTypes.ConstantI16;
 import de.ust.skill.common.java.internal.fieldTypes.ConstantI32;
@@ -16,6 +17,9 @@ import de.ust.skill.common.java.internal.fieldTypes.ConstantLengthArray;
 import de.ust.skill.common.java.internal.fieldTypes.ConstantV64;
 import de.ust.skill.common.java.internal.fieldTypes.MapType;
 import de.ust.skill.common.java.internal.fieldTypes.SingleArgumentType;
+import de.ust.skill.common.java.internal.parts.BulkChunk;
+import de.ust.skill.common.java.internal.parts.Chunk;
+import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 import de.ust.skill.common.jvm.streams.MappedOutStream;
 import de.ust.skill.common.jvm.streams.OutStream;
@@ -48,7 +52,12 @@ abstract public class SerializationFunctions {
         @Override
         public void run() {
             try {
-                f.write(outMap);
+                Chunk c = f.lastChunk();
+                if (c instanceof BulkChunk)
+                    f.wbc((BulkChunk) c, outMap);
+                else
+                    f.wsc((SimpleChunk) c, outMap);
+
             } catch (SkillException e) {
                 synchronized (writeErrors) {
                     writeErrors.add(e);
