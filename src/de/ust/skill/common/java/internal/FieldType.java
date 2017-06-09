@@ -16,7 +16,7 @@ import de.ust.skill.common.jvm.streams.OutStream;
  *       of type erasure
  * @author Timm Felden
  */
-abstract public class FieldType<T> implements de.ust.skill.common.java.api.FieldType<T> {
+abstract public class FieldType<T> extends de.ust.skill.common.java.api.FieldType<T> {
 
     final int typeID;
 

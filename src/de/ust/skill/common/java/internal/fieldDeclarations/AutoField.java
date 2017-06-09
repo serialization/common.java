@@ -5,6 +5,9 @@ import de.ust.skill.common.java.internal.FieldDeclaration;
 import de.ust.skill.common.java.internal.FieldType;
 import de.ust.skill.common.java.internal.SkillObject;
 import de.ust.skill.common.java.internal.StoragePool;
+import de.ust.skill.common.java.internal.parts.BulkChunk;
+import de.ust.skill.common.java.internal.parts.SimpleChunk;
+import de.ust.skill.common.jvm.streams.MappedInStream;
 import de.ust.skill.common.jvm.streams.MappedOutStream;
 
 /**
@@ -18,7 +21,12 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    protected final void read(ChunkEntry last) {
+    protected final void rsc(SimpleChunk last, MappedInStream in) {
+        throw new NoSuchMethodError("one can not read auto fields!");
+    }
+
+    @Override
+    protected final void rbc(BulkChunk last, MappedInStream in) {
         throw new NoSuchMethodError("one can not read auto fields!");
     }
 

@@ -2,17 +2,18 @@ package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
+import de.ust.skill.common.java.internal.exceptions.PoolSizeMissmatchError;
 import de.ust.skill.common.java.internal.fieldDeclarations.IgnoredField;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
+import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.FileInputStream;
 import de.ust.skill.common.jvm.streams.MappedInStream;
@@ -80,11 +81,11 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
             for (Obj x : owner)
                 if (!x.isDeleted())
                     for (FieldRestriction<T> r : restrictions)
-                        r.check(x.get(this));
+                        r.check(get(x));
     }
 
     @Override
-    public GeneralAccess<Obj> owner() {
+    public StoragePool<Obj, ? super Obj> owner() {
         return owner;
     }
 
@@ -123,35 +124,21 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         return type.hashCode() ^ name.hashCode();
     }
 
-    /**
-     * Data chunk information, as it is required for parsing of field data.
-     */
-    protected static class ChunkEntry {
-        public final Chunk c;
-        public MappedInStream in;
-
-        ChunkEntry(Chunk c) {
-            this.c = c;
-        }
-    }
-
-    protected final LinkedList<ChunkEntry> dataChunks = new LinkedList<>();
+    protected final ArrayList<Chunk> dataChunks = new ArrayList<>();
 
     public final void addChunk(Chunk chunk) {
-        dataChunks.add(new ChunkEntry(chunk));
+        dataChunks.add(chunk);
     }
 
     /**
-     * Fix offset and create memory map for field data parsing.
+     * Make offsets absolute.
      * 
      * @return the end of this chunk
      */
     final long addOffsetToLastChunk(FileInputStream in, long offset) {
-        Chunk c = dataChunks.getLast().c;
+        final Chunk c = lastChunk();
         c.begin += offset;
         c.end += offset;
-
-        dataChunks.getLast().in = in.map(0L, c.begin, c.end);
 
         return c.end;
     }
@@ -160,8 +147,8 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         return dataChunks.isEmpty();
     }
 
-    final Chunk lastChunk() {
-        return dataChunks.getLast().c;
+    protected final Chunk lastChunk() {
+        return dataChunks.get(dataChunks.size() - 1);
     }
 
     /**
@@ -169,7 +156,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      */
     void resetChunks(int lbpo, int newSize) {
         dataChunks.clear();
-        dataChunks.add(new ChunkEntry(new BulkChunk(-1, -1, newSize, 1)));
+        dataChunks.add(new BulkChunk(-1, -1, newSize, 1));
     }
 
     /**
@@ -177,13 +164,20 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * invoked at the very end of state construction and done massively in
      * parallel.
      */
-    protected abstract void read(ChunkEntry target);
+    protected abstract void rsc(SimpleChunk target, MappedInStream in);
+
+    /**
+     * Read data from a mapped input stream and set it accordingly. This is
+     * invoked at the very end of state construction and done massively in
+     * parallel.
+     */
+    protected abstract void rbc(BulkChunk target, MappedInStream in);
 
     /**
      * offset calculation as preparation of writing data belonging to the owners
      * last block
      */
-    public abstract long offset();
+    protected abstract long offset();
 
     /**
      * write data into a map at the end of a write/append operation
@@ -192,7 +186,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      *       is impossible to write to fields in parallel
      * @note only called, if there actually is field data to be written
      */
-    public abstract void write(MappedOutStream out) throws SkillException, IOException;
+    protected abstract void write(MappedOutStream out) throws SkillException, IOException;
 
     /**
      * Coordinates reads and prevents from state corruption using the barrier.
@@ -203,38 +197,40 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * @param readErrors
      *            errors will be reported in this queue
      */
-    final void finish(ReadBarrier barrier, final ConcurrentLinkedQueue<SkillException> readErrors) {
+    final void finish(final ReadBarrier barrier, final ConcurrentLinkedQueue<SkillException> readErrors,
+            final FileInputStream in) {
         // skip lazy and ignored fields
-        if ((this instanceof LazyField<?, ?> || this instanceof IgnoredField))
+        if (this instanceof IgnoredField)
             return;
 
         int block = 0;
-        for (ChunkEntry chunk : dataChunks) {
+        for (final Chunk c : dataChunks) {
             barrier.beginRead();
             final int blockCounter = block++;
             final FieldDeclaration<T, Obj> f = this;
-            final ChunkEntry ce = chunk;
 
             SkillState.pool.execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        f.read(ce);
                         // check that map was fully consumed and remove it
-                        MappedInStream map = ce.in;
-                        ce.in = null;
-                        if (!map.eof())
-                            readErrors.add(
-                                    new PoolSizeMissmatchError(blockCounter, map.position(), ce.c.begin, ce.c.end, f));
+                        MappedInStream map = in.map(0L, c.begin, c.end);
+                        if (c instanceof BulkChunk)
+                            f.rbc((BulkChunk) c, map);
+                        else
+                            f.rsc((SimpleChunk) c, map);
+
+                        if (!map.eof() && !(f instanceof LazyField<?, ?>))
+                            readErrors.add(new PoolSizeMissmatchError(blockCounter, map.position(), c.begin, c.end, f));
 
                     } catch (BufferUnderflowException e) {
-                        readErrors.add(new PoolSizeMissmatchError(blockCounter, ce.c.begin, ce.c.end, f, e));
+                        readErrors.add(new PoolSizeMissmatchError(blockCounter, c.begin, c.end, f, e));
                     } catch (SkillException t) {
                         readErrors.add(t);
                     } catch (Throwable t) {
                         t.printStackTrace();
                     } finally {
-                        barrier.release(1);
+                        barrier.release();
                     }
                 }
             });

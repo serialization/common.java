@@ -7,7 +7,7 @@ package de.ust.skill.common.java.api;
  * @param <T>
  *            (boxed) runtime type of target objects
  */
-public interface FieldType<T> {
+public abstract class FieldType<T> {
 
     /**
      * @return the ID of this type (respective to the state in which it lives)
@@ -18,5 +18,5 @@ public interface FieldType<T> {
      * @return a human readable and unique representation of this type
      */
     @Override
-    public String toString();
+    public abstract String toString();
 }

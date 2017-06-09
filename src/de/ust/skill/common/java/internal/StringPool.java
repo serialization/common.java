@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import de.ust.skill.common.java.api.StringAccess;
+import de.ust.skill.common.java.internal.exceptions.InvalidPoolIndexException;
 import de.ust.skill.common.jvm.streams.FileInputStream;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 

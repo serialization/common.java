@@ -2,16 +2,18 @@ package de.ust.skill.common.java.internal;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import de.ust.skill.common.java.api.Access;
@@ -34,6 +36,56 @@ public abstract class SkillState implements SkillFile {
      * if we are on windows, then we have to change some implementation details
      */
     public static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+
+    /**
+     * creates a new skill state
+     */
+    @SuppressWarnings("unchecked")
+    protected static <State extends SkillState, Parser extends FileParser> State open(Class<State> state,
+            Class<Parser> parser, int IRSize, Path path, Mode... mode) throws IOException, SkillException {
+        ActualMode actualMode = new ActualMode(mode);
+        try {
+            switch (actualMode.open) {
+            case Create:
+                // initialization order of type information has to match file
+                // parser
+                // and can not be done in place
+                StringPool strings = new StringPool(null);
+                ArrayList<StoragePool<?, ?>> types = new ArrayList<>(IRSize);
+                StringType stringType = new StringType(strings);
+                Annotation annotation = new Annotation(types);
+
+                return (State) state.getConstructors()[0].newInstance(new HashMap<>(), strings, stringType, annotation,
+                        types, FileInputStream.open(path, false), actualMode.close);
+
+            case Read:
+                Parser p = (Parser) parser.getConstructors()[0]
+                        .newInstance(FileInputStream.open(path, actualMode.close == Mode.ReadOnly));
+                return p.read(state, actualMode.close);
+
+            default:
+                throw new IllegalStateException("should never happen");
+            }
+        } catch (SkillException e) {
+            // rethrow all skill exceptions
+            throw e;
+        } catch (InvocationTargetException e) {
+            // unpack invocation target exceptions holding skill exceptions
+            while(e.getCause() instanceof InvocationTargetException){
+                e = (InvocationTargetException) e.getCause();
+            }
+            throw (SkillException)e.getCause();
+        } catch (Exception e) {
+            throw new SkillException(e);
+        }
+    }
+
+    // types by skill name
+    protected final HashMap<String, StoragePool<?, ?>> poolByName;
+
+    public HashMap<String, StoragePool<?, ?>> poolByName() {
+        return poolByName;
+    }
 
     /**
      * write mode this state is operating on
@@ -59,15 +111,17 @@ public abstract class SkillState implements SkillFile {
     /**
      * This pool is used for all asynchronous (de)serialization operations.
      */
-    static ExecutorService pool = Executors.newCachedThreadPool(new ThreadFactory() {
-        @Override
-        public Thread newThread(Runnable r) {
-            final Thread t = new Thread(r);
-            t.setDaemon(true);
-            t.setName("SkillStatePoolThread");
-            return t;
-        }
-    });
+    static ThreadPoolExecutor pool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
+            Runtime.getRuntime().availableProcessors(), 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
+            new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    final Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    t.setName("SkillStatePoolThread");
+                    return t;
+                }
+            });
 
     /**
      * Barrier used to synchronize concurrent read operations.
@@ -104,21 +158,22 @@ public abstract class SkillState implements SkillFile {
      * Path and mode management can be done for arbitrary states.
      */
     protected SkillState(StringPool strings, Path path, Mode mode, ArrayList<StoragePool<?, ?>> types,
-            StringType stringType, Annotation annotationType) {
+            HashMap<String, StoragePool<?, ?>> poolByName, StringType stringType, Annotation annotationType) {
         this.strings = strings;
         this.path = path;
         this.input = strings.getInStream();
         this.writeMode = mode;
         this.types = types;
+        this.poolByName = poolByName;
         this.stringType = stringType;
         this.annotationType = annotationType;
     }
 
     @SuppressWarnings("unchecked")
-    protected final void finalizePools() {
+    protected final void finalizePools(FileInputStream in) {
         try {
             StoragePool.establishNextPools(types);
-            
+
             // allocate instances
             {
                 ReadBarrier barrier = new ReadBarrier();
@@ -127,7 +182,7 @@ public abstract class SkillState implements SkillFile {
 
                     // set owners
                     if (p instanceof BasePool<?>) {
-                        ((BasePool<?>) p).setOwner(this);
+                        ((BasePool<?>) p).owner = this;
 
                         ((BasePool<?>) p).performAllocations(barrier);
                     }
@@ -157,7 +212,7 @@ public abstract class SkillState implements SkillFile {
 
                     // read known fields
                     for (FieldDeclaration<?, ?> f : p.dataFields)
-                        f.finish(barrier, readErrors);
+                        f.finish(barrier, readErrors, in);
                 }
 
                 // fix types in the Annotation-runtime type, because we need it
@@ -335,11 +390,6 @@ public abstract class SkillState implements SkillFile {
         flush();
         this.writeMode = Mode.ReadOnly;
     }
-
-    /**
-     * internal use only
-     */
-    public abstract HashMap<String, StoragePool<?, ?>> poolByName();
 
     // types in type order
     final protected ArrayList<StoragePool<?, ?>> types;

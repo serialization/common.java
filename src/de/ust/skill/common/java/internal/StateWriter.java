@@ -5,8 +5,7 @@ import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-import de.ust.skill.common.java.internal.FieldDeclaration.ChunkEntry;
-import de.ust.skill.common.java.internal.parts.BulkChunk;
+import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 
 final public class StateWriter extends SerializationFunctions {
@@ -80,9 +79,10 @@ final public class StateWriter extends SerializationFunctions {
             long end = offset + vs.get(f).get();
             out.v64(end);
 
-            // update chunks and prepare write data
-            f.dataChunks.clear();
-            f.dataChunks.add(new ChunkEntry(new BulkChunk(offset, end, p.size(), 1)));
+            // update last chunk and prepare write
+            Chunk c = f.lastChunk();
+            c.begin = offset;
+            c.end = end;
             data.add(new Task(f, offset, end));
             offset = end;
         }

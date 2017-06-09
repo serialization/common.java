@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 import de.ust.skill.common.java.api.SkillException;
+import de.ust.skill.common.java.api.SkillFile.Mode;
+import de.ust.skill.common.java.internal.exceptions.InvalidPoolIndexException;
+import de.ust.skill.common.java.internal.exceptions.ParseException;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.fieldTypes.Annotation;
 import de.ust.skill.common.java.internal.fieldTypes.BoolType;
@@ -42,10 +45,8 @@ import de.ust.skill.common.jvm.streams.FileInputStream;
  * TR14§6.
  *
  * @author Timm Felden
- * @param <State>
- *            the specific state used by the parser
  */
-public abstract class FileParser<State extends SkillState> {
+public abstract class FileParser {
     private static final class LFEntry {
         public final StoragePool<?, ?> p;
         public final int count;
@@ -70,7 +71,7 @@ public abstract class FileParser<State extends SkillState> {
     protected final StringPool Strings;
 
     // types
-    protected final ArrayList<StoragePool<?, ?>> types = new ArrayList<>();
+    protected final ArrayList<StoragePool<?, ?>> types;
     protected final HashMap<String, StoragePool<?, ?>> poolByName = new HashMap<>();
     protected final Annotation Annotation;
     protected final StringType StringType;
@@ -83,7 +84,8 @@ public abstract class FileParser<State extends SkillState> {
     protected abstract <T extends B, B extends SkillObject> StoragePool<T, B> newPool(String name,
             StoragePool<? super T, B> superPool, HashSet<TypeRestriction> restrictions);
 
-    protected FileParser(FileInputStream in) {
+    protected FileParser(FileInputStream in, int IRSize) {
+        types = new ArrayList<>(IRSize);
         this.in = in;
         Strings = new StringPool(in);
         StringType = new StringType(Strings);
@@ -333,7 +335,18 @@ public abstract class FileParser<State extends SkillState> {
                 }
 
                 // allocate pool
-                definition = newPool(name, superDef, rest);
+                try {
+                    definition = newPool(name, superDef, rest);
+                    if (definition.superPool != superDef)
+                        throw new ParseException(in, blockCounter, null,
+                                "The file contains a super type %s but %s is specified to be a base type.",
+                                superDef.name, name);
+
+                    poolByName.put(name, definition);
+                } catch (ClassCastException e) {
+                    throw new ParseException(in, blockCounter, e,
+                            "The super type of %s stored in the file does not match the specification!", name);
+                }
             }
             if (blockIDBarrier < definition.typeID)
                 blockIDBarrier = definition.typeID;
@@ -434,7 +447,8 @@ public abstract class FileParser<State extends SkillState> {
                     end = in.v64();
 
                     try {
-                        p.addField(ID, t, fieldName, rest).addChunk(new BulkChunk(offset, end, p.cachedSize, p.blocks().size()));
+                        p.addField(ID, t, fieldName, rest)
+                                .addChunk(new BulkChunk(offset, end, p.cachedSize, p.blocks().size()));
                     } catch (SkillException e) {
                         // transform to parse exception with propper values
                         throw new ParseException(in, blockCounter, null, e.getMessage());
@@ -479,5 +493,24 @@ public abstract class FileParser<State extends SkillState> {
     @SuppressWarnings("unchecked")
     protected static <T extends SkillObject> AutoField<?, T>[] noAutoFields() {
         return (AutoField<?, T>[]) StoragePool.noAutoFields;
+    }
+
+    /**
+     * creates a matching skill state out of this file parser's state
+     */
+    public <State extends SkillState> State read(Class<State> cls, Mode writeMode) {
+        // the generated state has exactly one constructor
+        try {
+            @SuppressWarnings("unchecked")
+            State r = (State) cls.getConstructors()[0].newInstance(poolByName, Strings, StringType, Annotation, types,
+                    in, writeMode);
+
+            r.check();
+            return r;
+        } catch (SkillException e) {
+            throw new ParseException(in, blockCounter, e, "Post serialization check failed!");
+        } catch (Exception e) {
+            throw new ParseException(in, blockCounter, e, "State instantiation failed!");
+        }
     }
 }

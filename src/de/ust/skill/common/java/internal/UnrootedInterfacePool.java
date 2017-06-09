@@ -169,4 +169,9 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     public Annotation getType() {
         return superType;
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

@@ -71,10 +71,10 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     final String name;
 
     // type hierarchy
-    final StoragePool<? super T, B> superPool;
+    public final StoragePool<? super T, B> superPool;
     public final int typeHierarchyHeight;
 
-    protected final BasePool<B> basePool;
+    public final BasePool<B> basePool;
 
     private StoragePool<?, B> nextPool;
 
@@ -125,20 +125,6 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             }
             p.setNextPool(t);
         }
-    }
-
-    /**
-     * used by generated file parsers
-     */
-    public StoragePool<? super T, B> superPool() {
-        return superPool;
-    }
-
-    /**
-     * used by generated file parsers / known fields
-     */
-    public BasePool<B> basePool() {
-        return basePool;
     }
 
     /**
@@ -354,7 +340,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     StoragePool(int poolIndex, String name, StoragePool<? super T, B> superPool, Set<String> knownFields,
             AutoField<?, T>[] autoFields) {
         super(32 + poolIndex);
-        this.name = name;
+        this.name = name.intern();
+
         this.superPool = superPool;
         if (null == superPool) {
             this.typeHierarchyHeight = 0;
@@ -557,8 +544,16 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     @Override
-    public Iterator<FieldDeclaration<?, T>> fields() {
+    public final Iterator<FieldDeclaration<?, T>> fields() {
         return Iterators.<FieldDeclaration<?, T>>concatenate(Iterators.array(autoFields), dataFields.iterator());
+    }
+
+    @Override
+    public final Iterator<FieldDeclaration<?, ? super T>> allFields() {
+        if (null == superPool)
+            return Iterators.<FieldDeclaration<?, ? super T>>concatenate(fields());
+
+        return Iterators.<FieldDeclaration<?, ? super T>>concatenate(superPool.allFields(), fields());
     }
 
     @Override

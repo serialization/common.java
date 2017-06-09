@@ -1,4 +1,4 @@
-package de.ust.skill.common.java.internal;
+package de.ust.skill.common.java.internal.exceptions;
 
 import de.ust.skill.common.java.api.FieldType;
 import de.ust.skill.common.java.api.SkillException;

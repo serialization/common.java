@@ -25,6 +25,10 @@ public interface Access<T extends SkillObject> extends GeneralAccess<T> {
      * @return an iterator over all fields of T
      */
     public Iterator<? extends FieldDeclaration<?>> fields();
+    /**
+     * @return an iterator over all fields of T including fields declared in super types
+     */
+    public Iterator<? extends FieldDeclaration<?>> allFields();
 
     /**
      * @return a new T instance with default field values

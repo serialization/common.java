@@ -166,4 +166,9 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     private final <V, U> U cast(V x) {
         return (U) x;
     }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 }

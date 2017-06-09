@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.LinkedList;
 import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.api.SkillException;
@@ -31,15 +31,44 @@ abstract public class SerializationFunctions {
     /**
      * Data structure used for parallel serialization scheduling
      */
-    protected static final class Task {
+    protected static final class Task implements Runnable {
         public final FieldDeclaration<?, ?> f;
         public final long begin;
         public final long end;
+        MappedOutStream outMap;
+        LinkedList<SkillException> writeErrors;
+        Semaphore barrier;
 
         Task(FieldDeclaration<?, ?> f, long begin, long end) {
             this.f = f;
             this.begin = begin;
             this.end = end;
+        }
+
+        @Override
+        public void run() {
+            try {
+                f.write(outMap);
+            } catch (SkillException e) {
+                synchronized (writeErrors) {
+                    writeErrors.add(e);
+                }
+            } catch (IOException e) {
+                synchronized (writeErrors) {
+                    writeErrors.add(new SkillException("failed to write field " + f.toString(), e));
+                }
+            } catch (Throwable e) {
+                synchronized (writeErrors) {
+                    writeErrors.add(new SkillException("unexpected failure while writing field " + f.toString(), e));
+                }
+            } finally {
+                // ensure that writer can terminate, errors will be
+                // printed to command line anyway, and we wont
+                // be able to recover, because errors can only happen if
+                // the skill implementation itself is
+                // broken
+                barrier.release();
+            }
         }
     }
 
@@ -194,39 +223,18 @@ abstract public class SerializationFunctions {
     protected final static void writeFieldData(SkillState state, FileOutputStream out, ArrayList<Task> data, int offset)
             throws IOException, InterruptedException {
 
+        // @note use semaphore instead of data.par, because map is not
+        // thread-safe
         final Semaphore barrier = new Semaphore(0);
         // async reads will post their errors in this queue
-        final ConcurrentLinkedQueue<SkillException> writeErrors = new ConcurrentLinkedQueue<SkillException>();
+        final LinkedList<SkillException> writeErrors = new LinkedList<SkillException>();
 
         MappedOutStream writeMap = out.mapBlock(offset);
         for (Task t : data) {
-            final FieldDeclaration<?, ?> f = t.f;
-            final MappedOutStream outMap = writeMap.clone((int) t.begin, (int) t.end);
-            // @note use semaphore instead of data.par, because map is not
-            // thread-safe
-            SkillState.pool.execute(new Runnable() {
-
-                @Override
-                public void run() {
-                    try {
-                        f.write(outMap);
-                    } catch (SkillException e) {
-                        writeErrors.add(e);
-                    } catch (IOException e) {
-                        writeErrors.add(new SkillException("failed to write field " + f.toString(), e));
-                    } catch (Throwable e) {
-                        writeErrors
-                                .add(new SkillException("unexpected failure while writing field " + f.toString(), e));
-                    } finally {
-                        // ensure that writer can terminate, errors will be
-                        // printed to command line anyway, and we wont
-                        // be able to recover, because errors can only happen if
-                        // the skill implementation itself is
-                        // broken
-                        barrier.release(1);
-                    }
-                }
-            });
+            t.outMap = writeMap.clone((int) t.begin, (int) t.end);
+            t.writeErrors = writeErrors;
+            t.barrier = barrier;
+            SkillState.pool.execute(t);
         }
         barrier.acquire(data.size());
         writeMap.close();

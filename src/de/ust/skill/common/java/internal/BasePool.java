@@ -9,7 +9,6 @@ import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.Chunk;
-import de.ust.skill.common.java.iterators.Iterators;
 import de.ust.skill.common.java.iterators.TypeOrderIterator;
 
 /**
@@ -42,18 +41,8 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
     }
 
     @Override
-    public SkillState owner() {
+    public final SkillState owner() {
         return owner;
-    }
-
-    /**
-     * can only be invoked once by the skill state constructor!
-     */
-    public void setOwner(SkillState owner) {
-        assert null == this.owner : "owner can only be set once";
-        assert null != owner : "owner can not be null";
-        this.owner = owner;
-
     }
 
     /**
@@ -89,13 +78,6 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
                 }
             }
         }
-    }
-
-    /**
-     * Internal use only!
-     */
-    public Iterator<T> dataViewIterator(int begin, int end) {
-        return Iterators.<T>array(data, begin, end);
     }
 
     /**
@@ -175,5 +157,4 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
         while (ts.hasNext())
             ts.next().updateAfterPrepareAppend(chunkMap);
     }
-
 }

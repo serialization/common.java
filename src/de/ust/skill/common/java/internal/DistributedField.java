@@ -1,20 +1,23 @@
 package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.parts.Block;
+import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
+import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.MappedInStream;
 import de.ust.skill.common.jvm.streams.MappedOutStream;
 
 /**
- * The fields data is distributed into an array (for now its a hash map) holding its instances.
+ * The fields data is distributed into an array (for now its a hash map) holding
+ * its instances.
  */
 public class DistributedField<T, Obj extends SkillObject> extends FieldDeclaration<T, Obj> {
 
@@ -27,35 +30,41 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     protected HashMap<SkillObject, T> data = new HashMap<>(); // Array[T]()
     protected HashMap<SkillObject, T> newData = new HashMap<>();
 
+    /**
+     * Check consistency of restrictions on this field.
+     */
     @Override
-    public void read(ChunkEntry ce) {
-        final MappedInStream in = ce.in;
-        final Chunk last = ce.c;
-        final SkillObject[] d = owner.basePool.data;
-        final long firstPosition = in.position();
-        try {
-            if (last instanceof SimpleChunk) {
-                SimpleChunk c = (SimpleChunk) last;
-                int low = (int) c.bpo;
-                int high = (int) (c.bpo + c.count);
-                for (int i = low; i < high; i++) {
-                    data.put(d[i], type.readSingleField(in));
-                }
-            } else {
-                for (Block bi : owner.blocks) {
-                    final int end = bi.bpo + bi.count;
-                    for (int i = bi.bpo; i < end; i++) {
-                        data.put(d[i], type.readSingleField(in));
-                    }
-                }
-            }
-        } catch (BufferUnderflowException e) {
-            throw new PoolSizeMissmatchError(dataChunks.size() - 1, last.begin, last.end, this, e);
+    void check() {
+        for (FieldRestriction<T> r : restrictions) {
+            for (T x : data.values())
+                r.check(x);
+            for (T x : newData.values())
+                r.check(x);
         }
-        final long lastPosition = in.position();
-        if (lastPosition - firstPosition != last.end - last.begin)
-            throw new PoolSizeMissmatchError(dataChunks.size() - 1, in.position(), last.begin, last.end, this);
+    }
 
+    @Override
+    protected void rsc(SimpleChunk c, MappedInStream in) {
+        final SkillObject[] d = owner.basePool.data;
+        int i = (int) c.bpo;
+        for (final int h = i + (int) c.count; i != h; i++) {
+            data.put(d[i], type.readSingleField(in));
+        }
+    }
+
+    @Override
+    protected void rbc(BulkChunk c, MappedInStream in) {
+        final SkillObject[] d = owner.basePool.data;
+        ArrayList<Block> blocks = owner.blocks();
+        int blockIndex = 0;
+        final int endBlock = c.blockCount;
+        while (blockIndex < endBlock) {
+            Block b = blocks.get(blockIndex++);
+            int i = b.bpo;
+            for (final int h = i + b.count; i != h; i++) {
+                data.put(d[i], type.readSingleField(in));
+            }
+        }
     }
 
     // TODO distributed fields need to be compressed as well!
@@ -100,7 +109,7 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     }
 
     @Override
-    public T getR(SkillObject ref) {
+    public T get(SkillObject ref) {
         if (-1 == ref.skillID)
             return newData.get(ref);
 
@@ -108,7 +117,7 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     }
 
     @Override
-    public void setR(SkillObject ref, T value) {
+    public void set(SkillObject ref, T value) {
         if (-1 == ref.skillID)
             newData.put(ref, value);
         else

@@ -30,10 +30,10 @@ public interface FieldDeclaration<T> {
     /**
      * Generic getter for an object.
      */
-    public T getR(SkillObject ref);
+    public T get(SkillObject ref);
 
     /**
      * Generic setter for an object.
      */
-    public void setR(SkillObject ref, T value);
+    public void set(SkillObject ref, T value);
 }
