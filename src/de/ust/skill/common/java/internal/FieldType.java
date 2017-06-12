@@ -56,10 +56,15 @@ abstract public class FieldType<T> extends de.ust.skill.common.java.api.FieldTyp
     public abstract long calculateOffset(Collection<T> xs);
 
     /**
+     * Calculate the amount of disk space required to store x.
+     */
+    public abstract long singleOffset(T x);
+
+    /**
      * Puts one T into the stream.
      *
-     * @note this function has to be implemented by FieldTypes because of limits of the Java type system (and any other
-     *       sane type system)
+     * @note this function has to be implemented by FieldTypes because of limits
+     *       of the Java type system (and any other sane type system)
      * @note intended for internal usage only!
      */
     public abstract void writeSingleField(T data, OutStream out) throws IOException;

@@ -28,6 +28,11 @@ public final class I16 extends IntegerType<Short> {
     }
 
     @Override
+    public long singleOffset(Short x) {
+        return 2L;
+    }
+
+    @Override
     public void writeSingleField(Short target, OutStream out) throws IOException {
         out.i16(target);
     }

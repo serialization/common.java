@@ -5,11 +5,11 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.api.SkillException;
-import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.exceptions.PoolSizeMissmatchError;
+import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.fieldDeclarations.IgnoredField;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
@@ -53,7 +53,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * index as used in the file
      * 
      * @note index is > 0, if the field is an actual data field
-     * @note index = 0, if the field is SKilLID
+     * @note index = 0, if the field is SKilLID (if supported by generator; deprecated)
      * @note index is <= 0, if the field is an auto field (or SKilLID)
      */
     final int index;
@@ -89,12 +89,28 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         return owner;
     }
 
+    /**
+     * regular field constructor
+     */
+    protected FieldDeclaration(FieldType<T> type, String name, StoragePool<Obj, ? super Obj> owner) {
+        this.type = type;
+        this.name = name.intern(); // we will switch on names, thus we need to
+                                   // intern them
+        this.owner = owner;
+        owner.dataFields.add(this);
+        this.index = owner.dataFields.size();
+    }
+
+    /**
+     * auto field constructor
+     */
     protected FieldDeclaration(FieldType<T> type, String name, int index, StoragePool<Obj, ? super Obj> owner) {
         this.type = type;
         this.name = name.intern(); // we will switch on names, thus we need to
                                    // intern them
-        this.index = index;
         this.owner = owner;
+        this.index = index;
+        owner.autoFields[-index] = (AutoField<?, Obj>) this;
     }
 
     @Override
@@ -154,9 +170,9 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     /**
      * reset Chunks before writing a file
      */
-    void resetChunks(int lbpo, int newSize) {
+    final void resetChunks(int lbpo, int newSize) {
         dataChunks.clear();
-        dataChunks.add(new BulkChunk(-1, -1, newSize, 1));
+        dataChunks.add(new SimpleChunk(-1, -1, lbpo, newSize));
     }
 
     /**
@@ -211,22 +227,22 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      *            reader thread (per block)
      * @param readErrors
      *            errors will be reported in this queue
+     * @return number of jobs started
      */
-    final void finish(final ReadBarrier barrier, final ConcurrentLinkedQueue<SkillException> readErrors,
-            final FileInputStream in) {
+    final int finish(final Semaphore barrier, final ArrayList<SkillException> readErrors, final FileInputStream in) {
         // skip lazy and ignored fields
         if (this instanceof IgnoredField)
-            return;
+            return 0;
 
         int block = 0;
         for (final Chunk c : dataChunks) {
-            barrier.beginRead();
             final int blockCounter = block++;
             final FieldDeclaration<T, Obj> f = this;
 
             SkillState.pool.execute(new Runnable() {
                 @Override
                 public void run() {
+                    SkillException ex = null;
                     try {
                         // check that map was fully consumed and remove it
                         MappedInStream map = in.map(0L, c.begin, c.end);
@@ -236,20 +252,25 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
                             f.rsc((SimpleChunk) c, map);
 
                         if (!map.eof() && !(f instanceof LazyField<?, ?>))
-                            readErrors.add(new PoolSizeMissmatchError(blockCounter, map.position(), c.begin, c.end, f));
+                            ex = new PoolSizeMissmatchError(blockCounter, map.position(), c.begin, c.end, f);
 
                     } catch (BufferUnderflowException e) {
-                        readErrors.add(new PoolSizeMissmatchError(blockCounter, c.begin, c.end, f, e));
+                        ex = new PoolSizeMissmatchError(blockCounter, c.begin, c.end, f, e);
                     } catch (SkillException t) {
-                        readErrors.add(t);
+                        ex = t;
                     } catch (Throwable t) {
                         t.printStackTrace();
                     } finally {
                         barrier.release();
+                        if (null != ex)
+                            synchronized (readErrors) {
+                                readErrors.add(ex);
+                            }
                     }
                 }
             });
         }
+        return block;
     }
 
     /**

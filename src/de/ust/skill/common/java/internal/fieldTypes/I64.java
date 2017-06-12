@@ -28,6 +28,11 @@ public final class I64 extends IntegerType<Long> {
     }
 
     @Override
+    public long singleOffset(Long x) {
+        return 8L;
+    }
+
+    @Override
     public void writeSingleField(Long target, OutStream out) throws IOException {
         out.i64(target);
     }

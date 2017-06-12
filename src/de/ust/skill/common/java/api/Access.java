@@ -1,6 +1,7 @@
 package de.ust.skill.common.java.api;
 
 import java.util.Iterator;
+import java.util.stream.Stream;
 
 import de.ust.skill.common.java.internal.SkillObject;
 
@@ -10,6 +11,11 @@ import de.ust.skill.common.java.internal.SkillObject;
  * @author Timm Felden
  */
 public interface Access<T extends SkillObject> extends GeneralAccess<T> {
+    
+    /**
+     * @return a stream over all T's managed by this access
+     */
+    public Stream<T> stream();
 
     /**
      * @return the skill file owning this access

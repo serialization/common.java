@@ -16,7 +16,8 @@ import de.ust.skill.common.jvm.streams.MappedOutStream;
  * 
  * @author Timm Felden
  */
-public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclaration<T, Obj> {
+public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclaration<T, Obj>
+        implements KnownField<T, Obj> {
     protected AutoField(FieldType<T> type, String name, int index, StoragePool<Obj, ? super Obj> owner) {
         super(type, name, index, owner);
     }
@@ -32,22 +33,22 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    protected long osc(SimpleChunk c) {
+    protected final long osc(SimpleChunk c) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
     }
 
     @Override
-    protected long obc(BulkChunk c) {
+    protected final long obc(BulkChunk c) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
     }
 
     @Override
-    protected void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
+    protected final void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
         throw new NoSuchMethodError("one can not write auto fields!");
     }
 
     @Override
-    protected void wbc(BulkChunk c, MappedOutStream out) throws IOException {
+    protected final void wbc(BulkChunk c, MappedOutStream out) throws IOException {
         throw new NoSuchMethodError("one can not write auto fields!");
     }
 }

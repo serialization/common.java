@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
@@ -71,10 +70,10 @@ public abstract class SkillState implements SkillFile {
             throw e;
         } catch (InvocationTargetException e) {
             // unpack invocation target exceptions holding skill exceptions
-            while(e.getCause() instanceof InvocationTargetException){
+            while (e.getCause() instanceof InvocationTargetException) {
                 e = (InvocationTargetException) e.getCause();
             }
-            throw (SkillException)e.getCause();
+            throw (SkillException) e.getCause();
         } catch (Exception e) {
             throw new SkillException(e);
         }
@@ -123,26 +122,6 @@ public abstract class SkillState implements SkillFile {
                 }
             });
 
-    /**
-     * Barrier used to synchronize concurrent read operations.
-     * 
-     * @author Timm Felden
-     */
-    static class ReadBarrier extends Semaphore {
-        public ReadBarrier() {
-            super(1);
-        }
-
-        /**
-         * called at the beginning of a read operation to ensure main thread
-         * will wait for it
-         */
-        public void beginRead() {
-            reducePermits(1);
-        }
-
-    }
-
     final StringPool strings;
 
     /**
@@ -176,7 +155,8 @@ public abstract class SkillState implements SkillFile {
 
             // allocate instances
             {
-                ReadBarrier barrier = new ReadBarrier();
+                final Semaphore barrier = new Semaphore(0, false);
+                int reads = 0;
 
                 for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
 
@@ -184,7 +164,7 @@ public abstract class SkillState implements SkillFile {
                     if (p instanceof BasePool<?>) {
                         ((BasePool<?>) p).owner = this;
 
-                        ((BasePool<?>) p).performAllocations(barrier);
+                        reads += ((BasePool<?>) p).performAllocations(barrier);
                     }
 
                     // add missing field declarations
@@ -198,35 +178,35 @@ public abstract class SkillState implements SkillFile {
                             p.addKnownField(n, stringType, annotationType);
                     }
                 }
-                barrier.acquire();
+                barrier.acquire(reads);
             }
 
             // read field data
             {
-                ReadBarrier barrier = new ReadBarrier();
+                final Semaphore barrier = new Semaphore(0, false);
+                int reads = 0;
                 // async reads will post their errors in this queue
-                final ConcurrentLinkedQueue<SkillException> readErrors = new ConcurrentLinkedQueue<SkillException>();
+                final ArrayList<SkillException> readErrors = new ArrayList<SkillException>();
 
                 for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
                     // @note this loop must happen in type order!
 
                     // read known fields
                     for (FieldDeclaration<?, ?> f : p.dataFields)
-                        f.finish(barrier, readErrors, in);
+                        reads += f.finish(barrier, readErrors, in);
                 }
 
                 // fix types in the Annotation-runtime type, because we need it
-                // in
-                // offset calculation
+                // in offset calculation
                 this.annotationType.fixTypes(this.poolByName());
 
                 // await async reads
-                barrier.acquire();
+                barrier.acquire(reads);
                 for (SkillException e : readErrors) {
                     e.printStackTrace();
                 }
                 if (!readErrors.isEmpty())
-                    throw readErrors.peek();
+                    throw readErrors.get(0);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

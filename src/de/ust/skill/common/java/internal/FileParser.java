@@ -447,8 +447,13 @@ public abstract class FileParser {
                     end = in.v64();
 
                     try {
-                        p.addField(ID, t, fieldName, rest)
-                                .addChunk(new BulkChunk(offset, end, p.cachedSize, p.blocks().size()));
+                        // try to allocate simple chunks, because working on
+                        // them is cheaper
+                        FieldDeclaration<?, ?> f = p.addField(t, fieldName);
+                        for (FieldRestriction<?> r : rest)
+                            f.addRestriction(r);
+                        f.addChunk(1 == p.blocks().size() ? new SimpleChunk(offset, end, lastBlock.bpo, lastBlock.count)
+                                : new BulkChunk(offset, end, p.cachedSize, p.blocks().size()));
                     } catch (SkillException e) {
                         // transform to parse exception with propper values
                         throw new ParseException(in, blockCounter, null, e.getMessage());

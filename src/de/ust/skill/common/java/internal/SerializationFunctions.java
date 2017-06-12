@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.Semaphore;
 
-
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.fieldTypes.ConstantI16;
 import de.ust.skill.common.java.internal.fieldTypes.ConstantI32;
@@ -53,10 +52,10 @@ abstract public class SerializationFunctions {
         public void run() {
             try {
                 Chunk c = f.lastChunk();
-                if (c instanceof BulkChunk)
-                    f.wbc((BulkChunk) c, outMap);
-                else
+                if (c instanceof SimpleChunk)
                     f.wsc((SimpleChunk) c, outMap);
+                else
+                    f.wbc((BulkChunk) c, outMap);
 
             } catch (SkillException e) {
                 synchronized (writeErrors) {

@@ -35,6 +35,12 @@ public abstract class ConstantIntegerType<T> extends FieldType<T> {
     }
 
     @Override
+    final public long singleOffset(T x) {
+        // nothing to do
+        return 0;
+    }
+
+    @Override
     final public void writeSingleField(T data, OutStream out) throws IOException {
         // nothing to do
     }

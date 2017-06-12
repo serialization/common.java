@@ -19,8 +19,8 @@ import de.ust.skill.common.jvm.streams.MappedOutStream;
  */
 public class DistributedField<T, Obj extends SkillObject> extends FieldDeclaration<T, Obj> {
 
-    public DistributedField(FieldType<T> type, String name, int index, StoragePool<Obj, ? super Obj> owner) {
-        super(type, name, index, owner);
+    public DistributedField(FieldType<T> type, String name, StoragePool<Obj, ? super Obj> owner) {
+        super(type, name, owner);
     }
 
     // data held as in storage pools

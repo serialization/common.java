@@ -21,8 +21,8 @@ import de.ust.skill.common.jvm.streams.MappedInStream;
  */
 public final class LazyField<T, Obj extends SkillObject> extends DistributedField<T, Obj> {
 
-    public LazyField(FieldType<T> type, String name, int index, StoragePool<Obj, ? super Obj> owner) {
-        super(type, name, index, owner);
+    public LazyField(FieldType<T> type, String name, StoragePool<Obj, ? super Obj> owner) {
+        super(type, name, owner);
     }
 
     // is loaded <-> chunkMap == null
@@ -53,13 +53,6 @@ public final class LazyField<T, Obj extends SkillObject> extends DistributedFiel
         // check only, if is loaded
         if (null == chunkMap)
             super.check();
-    }
-
-    @Override
-    void resetChunks(int lbpo, int newSize) {
-        if (null != chunkMap)
-            throw new Error();
-        super.resetChunks(lbpo, newSize);
     }
 
     @Override

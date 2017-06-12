@@ -35,6 +35,14 @@ public abstract class SingleArgumentType<T extends Collection<Base>, Base> exten
     }
 
     @Override
+    public long singleOffset(T x) {
+        if (null == x)
+            return 1L;
+
+        return V64.singleV64Offset(x.size()) + groundType.calculateOffset(x);
+    }
+
+    @Override
     public void writeSingleField(T elements, OutStream out) throws IOException {
         if (null == elements) {
             out.i8((byte) 0);

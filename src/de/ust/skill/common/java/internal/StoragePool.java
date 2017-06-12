@@ -4,11 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import de.ust.skill.common.java.api.Access;
 import de.ust.skill.common.java.api.SkillException;
@@ -23,7 +22,6 @@ import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.java.iterators.DynamicNewInstancesIterator;
 import de.ust.skill.common.java.iterators.Iterators;
 import de.ust.skill.common.java.iterators.TypeOrderIterator;
-import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
@@ -40,8 +38,7 @@ import de.ust.skill.common.jvm.streams.OutStream;
  *       skill files are mixed. Such usage will likely break at least one of the
  *       files.
  */
-abstract public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T>
-        implements Access<T>, ReferenceType {
+public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T> implements Access<T>, ReferenceType {
 
     /**
      * Builder for new instances of the pool.
@@ -136,7 +133,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * names of known fields, the actual field information is given in the
      * generated addKnownFiled method.
      */
-    public final Set<String> knownFields;
+    public final String[] knownFields;
+    public static final String[] noKnownFields = new String[0];
 
     /**
      * all fields that are declared as auto, including skillID
@@ -337,7 +335,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      *       an argument to the constructor. The cast will never fail anyway.
      */
     @SuppressWarnings("unchecked")
-    StoragePool(int poolIndex, String name, StoragePool<? super T, B> superPool, Set<String> knownFields,
+    protected StoragePool(int poolIndex, String name, StoragePool<? super T, B> superPool, String[] knownFields,
             AutoField<?, T>[] autoFields) {
         super(32 + poolIndex);
         this.name = name.intern();
@@ -351,7 +349,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             this.basePool = superPool.basePool;
         }
         this.knownFields = knownFields;
-        dataFields = new ArrayList<>(knownFields.size());
+        dataFields = new ArrayList<>(knownFields.length);
         this.autoFields = autoFields;
     }
 
@@ -361,14 +359,17 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     @SuppressWarnings("unchecked")
     final public T getByID(long ID) {
         int index = (int) ID - 1;
-        if (index < 0 || data.length <= index)
+        if (index < 0 | data.length <= index)
             return null;
         return (T) data[index];
     }
 
     @Override
     public final T readSingleField(InStream in) {
-        return getByID(in.v64());
+        int index = (int) in.v64() - 1;
+        if (index < 0 | data.length <= index)
+            return null;
+        return (T) data[index];
     }
 
     @Override
@@ -408,8 +409,35 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     }
 
     @Override
+    public final long singleOffset(T x) {
+        if (null == x)
+            return 1L;
+
+        long v = x.skillID;
+        if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
+            return 1;
+        } else if (0L == (v & 0xFFFFFFFFFFFFC000L)) {
+            return 2;
+        } else if (0L == (v & 0xFFFFFFFFFFE00000L)) {
+            return 3;
+        } else if (0L == (v & 0xFFFFFFFFF0000000L)) {
+            return 4;
+        } else if (0L == (v & 0xFFFFFFF800000000L)) {
+            return 5;
+        } else if (0L == (v & 0xFFFFFC0000000000L)) {
+            return 6;
+        } else if (0L == (v & 0xFFFE000000000000L)) {
+            return 7;
+        } else if (0L == (v & 0xFF00000000000000L)) {
+            return 8;
+        } else {
+            return 9;
+        }
+    }
+
+    @Override
     public final void writeSingleField(T ref, OutStream out) throws IOException {
-        out.v64(null == ref ? 0 : ref.skillID);
+        out.v64(null == ref ? 0L : ref.skillID);
     }
 
     /**
@@ -426,20 +454,14 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             size += ts.next().staticSize();
         return size;
     }
-
+    
     @Override
-    public boolean isEmpty() {
-        return size() == 0;
+    final public Stream<T> stream() {
+        return StreamSupport.stream(spliterator(), false);
     }
 
-    @Override
-    public boolean contains(Object o) {
-        throw new Error("TODO");
-    }
-
-    @Override
-    public Object[] toArray() {
-        final Object[] rval = new Object[size()];
+    public T[] toArray(T[] a) {
+        final T[] rval = Arrays.copyOf(a, size());
         Iterator<T> is = iterator();
         for (int i = 0; i < rval.length; i++) {
             rval[i] = is.next();
@@ -447,18 +469,11 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
         return rval;
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <U> U[] toArray(U[] a) {
-        final U[] rval = Arrays.copyOf(a, size());
-        Iterator<T> is = iterator();
-        for (int i = 0; i < rval.length; i++) {
-            rval[i] = (U) is.next();
-        }
-        return rval;
-    }
-
-    @Override
+    /**
+     * Add an existing instance as a new objects.
+     * 
+     * @note Do not use objects managed by other skill files.
+     */
     public final boolean add(T e) {
         if (fixed)
             throw new IllegalStateException("can not fix a pool that contains new objects");
@@ -480,52 +495,6 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             target.skillID = 0;
             deletedCount++;
         }
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        if (o instanceof SkillObject) {
-            owner().delete((SkillObject) o);
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        for (Object i : c)
-            if (!contains(i))
-                return false;
-        return true;
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> c) {
-        boolean changed = false;
-        for (T i : c)
-            changed |= add(i);
-        return changed;
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        boolean changed = false;
-        for (Object i : c)
-            changed |= remove(i);
-        return changed;
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        // TODO provide an implementation that works for single state usage
-        // scenario
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void clear() {
-        // TODO there are more efficient implementations then that
-        removeAll(this);
     }
 
     @Override
@@ -593,13 +562,8 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
     /**
      * internal use only! adds an unknown field
      */
-    public <R> FieldDeclaration<R, T> addField(int ID, FieldType<R> type, String name,
-            HashSet<FieldRestriction<?>> restrictions) {
-        FieldDeclaration<R, T> f = new LazyField<R, T>(type, name, ID, this);
-        for (FieldRestriction<?> r : restrictions)
-            f.addRestriction(r);
-        dataFields.add(f);
-        return f;
+    public <R> FieldDeclaration<R, T> addField(FieldType<R> type, String name) {
+        return new LazyField<R, T>(type, name, this);
     }
 
     /**
@@ -614,14 +578,17 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
      * used internally for type forest construction
      */
     public StoragePool<? extends T, B> makeSubPool(int index, String name) {
-        return new SubPool<>(index, name, this, Collections.emptySet(), noAutoFields());
+        return new StoragePool<>(index, name, this, noKnownFields, noAutoFields());
     }
 
     /**
      * called after a prepare append operation to write empty the new objects
      * buffer and to set blocks correctly
      */
-    protected final void updateAfterPrepareAppend(Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+    protected final void updateAfterPrepareAppend(int lbpoMap[], Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+        // update data as it may have changed
+        this.data = basePool.data;
+
         final boolean newInstances = newDynamicInstances().hasNext();
         final boolean newPool = blocks.isEmpty();
         final boolean newField;
@@ -643,7 +610,7 @@ abstract public class StoragePool<T extends B, B extends SkillObject> extends Fi
             final int lcount = newDynamicInstancesSize();
             // //@ note this is the index into the data array and NOT the
             // written lbpo
-            final int lbpo = (0 == lcount) ? 0 : ((int) newDynamicInstances().next().skillID - 1);
+            final int lbpo = (0 == lcount) ? 0 : lbpoMap[typeID - 32];
 
             blocks.add(new Block(lbpo, lcount, newObjects.size()));
             staticDataInstances += newObjects.size();

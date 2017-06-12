@@ -1,6 +1,5 @@
 package de.ust.skill.common.java.api;
 
-import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -10,7 +9,7 @@ import java.util.Iterator;
  *
  * @note This type is only required because Javas type system is rather weak.
  */
-public interface GeneralAccess<T> extends Collection<T> {
+public interface GeneralAccess<T> extends Iterable<T> {
 
     /**
      * @return the skill name of the type
@@ -24,4 +23,8 @@ public interface GeneralAccess<T> extends Collection<T> {
      */
     Iterator<T> typeOrderIterator();
 
+    /**
+     * @return the number of objects returned by the default iterator
+     */
+    public int size();
 }

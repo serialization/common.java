@@ -28,6 +28,11 @@ public final class F32 extends FloatType<Float> {
     }
 
     @Override
+    public long singleOffset(Float x) {
+        return 4L;
+    }
+    
+    @Override
     public void writeSingleField(Float data, OutStream out) throws IOException {
         out.f32(data);
     }

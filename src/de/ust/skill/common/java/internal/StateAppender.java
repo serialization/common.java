@@ -48,8 +48,7 @@ final public class StateAppender extends SerializationFunctions {
         final Map<FieldDeclaration<?, ?>, Chunk> chunkMap = Collections.synchronizedMap(new HashMap<>());
         state.types.stream().parallel().forEach(p -> {
             if (p instanceof BasePool<?>) {
-                makeLBPOMap(p, lbpoMap, 0);
-                ((BasePool<?>) p).prepareAppend(chunkMap);
+                ((BasePool<?>) p).prepareAppend(lbpoMap, chunkMap);
             }
         });
 
@@ -122,12 +121,15 @@ final public class StateAppender extends SerializationFunctions {
                         out.i8((byte) 0);
                     } else {
                         out.v64(p.superPool.typeID - 31);
-                        if (0 != count)
-                            out.v64(lbpoMap[p.typeID - 32]);
+                        if (0 != count) {
+                            // we used absolute BPOs to ease overall
+                            // implementation
+                            out.v64(lbpoMap[p.typeID - 32] - lbpoMap[p.basePool.typeID - 32]);
+                        }
 
                     }
                 } else if (null != p.superName() && 0 != count) {
-                    out.v64(lbpoMap[p.typeID - 32]);
+                    out.v64(lbpoMap[p.typeID - 32] - lbpoMap[p.basePool.typeID - 32]);
                 }
 
                 if (newPool && 0 == count) {
@@ -163,15 +165,5 @@ final public class StateAppender extends SerializationFunctions {
         }
 
         writeFieldData(state, out, data, (int) offset);
-    }
-
-    /**
-     * create lbpo map using size of new objects
-     */
-    private final static void makeLBPOMap(StoragePool<?, ?> base, int[] lbpoMap, int next) {
-        for (StoragePool<?, ?> p : new TypeHierarchyIterator<>(base)) {
-            lbpoMap[p.typeID - 32] = next;
-            next += p.newObjects.size();
-        }
     }
 }

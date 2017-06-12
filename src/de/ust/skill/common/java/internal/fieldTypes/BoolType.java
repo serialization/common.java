@@ -29,6 +29,11 @@ public final class BoolType extends FieldType<Boolean> {
     }
 
     @Override
+    public long singleOffset(Boolean x) {
+        return 1L;
+    }
+
+    @Override
     public void writeSingleField(Boolean data, OutStream out) throws IOException {
         out.bool(data);
     }

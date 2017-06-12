@@ -35,6 +35,11 @@ public final class ConstantLengthArray<T> extends SingleArgumentType<ArrayList<T
     }
 
     @Override
+    public long singleOffset(ArrayList<T> xs) {
+        return groundType.calculateOffset(xs);
+    }
+
+    @Override
     public void writeSingleField(ArrayList<T> elements, OutStream out) throws IOException {
         for (T e : elements)
             groundType.writeSingleField(e, out);

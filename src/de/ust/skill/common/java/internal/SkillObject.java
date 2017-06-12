@@ -61,10 +61,6 @@ public abstract class SkillObject implements Serializable {
         return skillID;
     }
 
-    final void setSkillID(long skillID) {
-        this.skillID = skillID;
-    }
-
     /**
      * reflective setter
      *

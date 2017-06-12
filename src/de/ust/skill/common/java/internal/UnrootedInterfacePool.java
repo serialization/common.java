@@ -54,75 +54,12 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     }
 
     @Override
-    public boolean isEmpty() {
-        return 0 == size();
-    }
-
-    @Override
-    public boolean contains(Object o) {
-        for (StoragePool<T, ?> p : realizations) {
-            if (p.contains(o))
-                return true;
-        }
-        return false;
-    }
-
-    @Override
     public Iterator<T> iterator() {
         ArrayList<Iterator<? extends T>> iters = new ArrayList<>(realizations.length);
         for (StoragePool<T, ?> p : realizations) {
             iters.add(p.iterator());
         }
         return Iterators.concatenate(iters);
-    }
-
-    @Override
-    public Object[] toArray() {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public <T> T[] toArray(T[] a) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public boolean add(T e) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> xs) {
-        for (Object o : xs) {
-            if (!contains(o))
-                return false;
-        }
-        return true;
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends T> c) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        throw new NoSuchMethodError("TODO");
-    }
-
-    @Override
-    public void clear() {
-        throw new NoSuchMethodError("TODO");
     }
 
     public String name() {
@@ -139,17 +76,22 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
 
     @Override
     public T readSingleField(InStream in) {
-        return (T) getType().readSingleField(in);
+        return (T) superType.readSingleField(in);
     }
 
     @Override
     public long calculateOffset(Collection<T> xs) {
-        return getType().calculateOffset(cast(xs));
+        return superType.calculateOffset(cast(xs));
+    }
+
+    @Override
+    public final long singleOffset(T x) {
+        return superType.singleOffset((SkillObject) x);
     }
 
     @Override
     public void writeSingleField(T data, OutStream out) throws IOException {
-        getType().writeSingleField(cast(data), out);
+        superType.writeSingleField((SkillObject) data, out);
     }
 
     /**

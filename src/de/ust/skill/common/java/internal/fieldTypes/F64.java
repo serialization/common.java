@@ -28,9 +28,15 @@ public final class F64 extends FloatType<Double> {
     }
 
     @Override
+    public long singleOffset(Double x) {
+        return 8L;
+    }
+
+    @Override
     public void writeSingleField(Double target, OutStream out) throws IOException {
         out.f64(target);
     }
+
     @Override
     public String toString() {
         return "f64";

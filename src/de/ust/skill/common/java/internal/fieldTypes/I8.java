@@ -28,6 +28,11 @@ public final class I8 extends IntegerType<Byte> {
     }
 
     @Override
+    public long singleOffset(Byte x) {
+        return 1L;
+    }
+
+    @Override
     public void writeSingleField(Byte target, OutStream out) throws IOException {
         out.i8(target);
     }

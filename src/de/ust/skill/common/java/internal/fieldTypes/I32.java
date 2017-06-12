@@ -28,6 +28,11 @@ public final class I32 extends IntegerType<Integer> {
     }
 
     @Override
+    public long singleOffset(Integer x) {
+        return 4L;
+    }
+
+    @Override
     public void writeSingleField(Integer target, OutStream out) throws IOException {
         out.i32(target);
     }

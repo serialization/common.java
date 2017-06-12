@@ -3,9 +3,8 @@ package de.ust.skill.common.java.internal;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.Semaphore;
 
-import de.ust.skill.common.java.internal.SkillState.ReadBarrier;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.Chunk;
@@ -36,7 +35,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
      */
     protected SkillState owner = null;
 
-    public BasePool(int poolIndex, String name, Set<String> knownFields, AutoField<?, T>[] autoFields) {
+    public BasePool(int poolIndex, String name, String[] knownFields, AutoField<?, T>[] autoFields) {
         super(poolIndex, name, null, knownFields, autoFields);
     }
 
@@ -54,7 +53,8 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
      * @note invoked once upon state creation before deserialization of field
      *       data
      */
-    void performAllocations(final ReadBarrier barrier) {
+    final int performAllocations(final Semaphore barrier) {
+        int reads = 0;
 
         // allocate data and link it to sub pools
         {
@@ -70,7 +70,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             while (subs.hasNext()) {
                 final StoragePool<? extends T, T> s = subs.next();
                 for (Block b : s.blocks) {
-                    barrier.beginRead();
+                    reads++;
                     SkillState.pool.execute(() -> {
                         s.allocateInstances(b);
                         barrier.release();
@@ -78,6 +78,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
                 }
             }
         }
+        return reads;
     }
 
     /**
@@ -110,7 +111,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             final T i = is.next();
             if (i.skillID != 0) {
                 d[p++] = i;
-                i.setSkillID(p);
+                i.skillID = p;
             }
         }
 
@@ -123,7 +124,17 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
         }
     }
 
-    final void prepareAppend(Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+    final void prepareAppend(int lbpoMap[], Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+
+        // update LBPO map
+        {
+            int next = data.length;
+            for (StoragePool<?, ?> p : new TypeHierarchyIterator<>(this)) {
+                lbpoMap[p.typeID - 32] = next;
+                next += p.newObjects.size();
+            }
+        }
+
         boolean newInstances = newDynamicInstances().hasNext();
 
         // check if we have to append at all
@@ -148,13 +159,13 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             while (is.hasNext()) {
                 final T instance = is.next();
                 d[i++] = instance;
-                instance.setSkillID(i);
+                instance.skillID = i;
             }
             data = d;
         }
 
         TypeHierarchyIterator<T, T> ts = new TypeHierarchyIterator<>(this);
         while (ts.hasNext())
-            ts.next().updateAfterPrepareAppend(chunkMap);
+            ts.next().updateAfterPrepareAppend(lbpoMap, chunkMap);
     }
 }
