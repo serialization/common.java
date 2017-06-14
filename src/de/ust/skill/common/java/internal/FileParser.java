@@ -3,7 +3,6 @@ package de.ust.skill.common.java.internal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 
 import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.api.SkillFile.Mode;
@@ -124,12 +123,12 @@ public abstract class FileParser {
     }
 
     // deferred pool resize requests
-    private final LinkedList<StoragePool<?, ?>> resizeQueue = new LinkedList<>();
+    private final ArrayList<StoragePool<?, ?>> resizeQueue = new ArrayList<>();
     // pool ⇒ local field count
     private final ArrayList<LFEntry> localFields = new ArrayList<>();
 
     // field data updates: pool x fieldID
-    private final LinkedList<DataEntry> fieldDataQueue = new LinkedList<>();
+    private final ArrayList<DataEntry> fieldDataQueue = new ArrayList<>();
 
     private final static class DataEntry {
         public DataEntry(StoragePool<?, ?> owner, int fieldID) {

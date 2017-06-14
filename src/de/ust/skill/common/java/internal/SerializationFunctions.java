@@ -52,9 +52,10 @@ abstract public class SerializationFunctions {
         public void run() {
             try {
                 Chunk c = f.lastChunk();
-                if (c instanceof SimpleChunk)
-                    f.wsc((SimpleChunk) c, outMap);
-                else
+                if (c instanceof SimpleChunk) {
+                    int i = (int) ((SimpleChunk) c).bpo;
+                    f.wsc(i, i + (int) c.count, outMap);
+                } else
                     f.wbc((BulkChunk) c, outMap);
 
             } catch (SkillException e) {
@@ -144,10 +145,6 @@ abstract public class SerializationFunctions {
         stringIDs = state.stringType.resetIDs();
     }
 
-    protected final void string(String v, OutStream out) throws IOException {
-        out.v64(stringIDs.get(v));
-    }
-
     /**
      * TODO serialization of restrictions
      */
@@ -228,12 +225,9 @@ abstract public class SerializationFunctions {
         }
     }
 
-    protected final static void writeFieldData(SkillState state, FileOutputStream out, ArrayList<Task> data, int offset)
-            throws IOException, InterruptedException {
+    protected final static void writeFieldData(SkillState state, FileOutputStream out, ArrayList<Task> data, int offset,
+            final Semaphore barrier) throws IOException, InterruptedException {
 
-        // @note use semaphore instead of data.par, because map is not
-        // thread-safe
-        final Semaphore barrier = new Semaphore(0);
         // async reads will post their errors in this queue
         final LinkedList<SkillException> writeErrors = new LinkedList<SkillException>();
 

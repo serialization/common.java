@@ -1,10 +1,6 @@
-package de.ust.skill.common.java.iterators;
+package de.ust.skill.common.java.internal;
 
 import java.util.Iterator;
-
-import de.ust.skill.common.java.internal.SkillObject;
-import de.ust.skill.common.java.internal.StoragePool;
-import de.ust.skill.common.java.internal.TypeHierarchyIterator;
 
 /**
  * Iterates efficiently over dynamic new instances of a pool.
@@ -13,7 +9,7 @@ import de.ust.skill.common.java.internal.TypeHierarchyIterator;
  *
  * @author Timm Felden
  */
-public class DynamicNewInstancesIterator<T extends B, B extends SkillObject> implements Iterator<T> {
+public final class DynamicNewInstancesIterator<T extends B, B extends SkillObject> implements Iterator<T> {
 
     final TypeHierarchyIterator<T, B> ts;
 
@@ -22,12 +18,12 @@ public class DynamicNewInstancesIterator<T extends B, B extends SkillObject> imp
 
     public DynamicNewInstancesIterator(StoragePool<T, B> storagePool) {
         ts = new TypeHierarchyIterator<>(storagePool);
-        last = storagePool.newObjectsSize();
+        last = storagePool.newObjects.size();
 
         while (0 == last && ts.hasNext()) {
             ts.next();
             if (ts.hasNext())
-                last = ts.get().newObjectsSize();
+                last = ts.get().newObjects.size();
             else
                 return;
         }
@@ -47,7 +43,7 @@ public class DynamicNewInstancesIterator<T extends B, B extends SkillObject> imp
             do {
                 ts.next();
                 if (ts.hasNext())
-                    last = ts.get().newObjectsSize();
+                    last = ts.get().newObjects.size();
                 else
                     return rval;
             } while (0 == last && ts.hasNext());

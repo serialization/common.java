@@ -21,12 +21,12 @@ public class StaticDataIterator<T> implements Iterator<T> {
 
     public StaticDataIterator(StoragePool<T, ?> storagePool) {
         p = storagePool;
-        lastBlock = storagePool.blocks().size();
+        lastBlock = storagePool.blocks.size();
         // @note other members are zero-allocated
 
         // find first valid position
         while (index == last && secondIndex < lastBlock) {
-            Block b = p.blocks().get(secondIndex);
+            Block b = p.blocks.get(secondIndex);
             index = b.bpo;
             last = index + b.staticCount;
             secondIndex++;
@@ -35,7 +35,7 @@ public class StaticDataIterator<T> implements Iterator<T> {
         if (index == last && secondIndex == lastBlock) {
             secondIndex++;
             index = 0;
-            last = p.newObjectsSize();
+            last = p.newObjects.size();
         }
     }
 
@@ -61,7 +61,7 @@ public class StaticDataIterator<T> implements Iterator<T> {
                 if (index == last && secondIndex == lastBlock) {
                     secondIndex++;
                     index = 0;
-                    last = p.newObjectsSize();
+                    last = p.newObjects.size();
                 }
             }
             return r;

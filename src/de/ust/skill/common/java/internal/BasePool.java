@@ -1,14 +1,12 @@
 package de.ust.skill.common.java.internal;
 
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.Chunk;
-import de.ust.skill.common.java.iterators.TypeOrderIterator;
 
 /**
  * The base of a type hierarchy. Contains optimized representations of data
@@ -71,9 +69,12 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
                 final StoragePool<? extends T, T> s = subs.next();
                 for (Block b : s.blocks) {
                     reads++;
-                    SkillState.pool.execute(() -> {
-                        s.allocateInstances(b);
-                        barrier.release();
+                    SkillState.pool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            s.allocateInstances(b);
+                            barrier.release();
+                        }
                     });
                 }
             }
@@ -124,7 +125,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
         }
     }
 
-    final void prepareAppend(int lbpoMap[], Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+    final void prepareAppend(int lbpoMap[], HashMap<FieldDeclaration<?, ?>, Chunk> chunkMap) {
 
         // update LBPO map
         {
@@ -141,7 +142,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
         if (!newInstances && !blocks.isEmpty() && !dataFields.isEmpty()) {
             boolean done = true;
             for (FieldDeclaration<?, T> f : dataFields) {
-                if (f.noDataChunk()) {
+                if (0 == f.dataChunks.size()) {
                     done = false;
                     break;
                 }
@@ -155,7 +156,7 @@ public class BasePool<T extends SkillObject> extends StoragePool<T, T> {
             final T[] d = Arrays.copyOf(data, size());
             int i = data.length;
 
-            final Iterator<T> is = newDynamicInstances();
+            final DynamicNewInstancesIterator<T, T> is = newDynamicInstances();
             while (is.hasNext()) {
                 final T instance = is.next();
                 d[i++] = instance;

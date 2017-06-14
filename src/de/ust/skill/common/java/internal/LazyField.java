@@ -34,8 +34,11 @@ public final class LazyField<T, Obj extends SkillObject> extends DistributedFiel
             if (p.getKey().count > 0) {
                 if (p.getKey() instanceof BulkChunk)
                     super.rbc((BulkChunk) p.getKey(), p.getValue());
-                else
-                    super.rsc((SimpleChunk) p.getKey(), p.getValue());
+                else {
+                    Chunk c = p.getKey();
+                    // @note: abuse of intermediate chunk 
+                    super.rsc((int) c.begin, (int) c.end, p.getValue());
+                }
             }
         }
 
@@ -56,9 +59,9 @@ public final class LazyField<T, Obj extends SkillObject> extends DistributedFiel
     }
 
     @Override
-    protected final void rsc(SimpleChunk target, MappedInStream in) {
+    protected final void rsc(int i, int h, MappedInStream in) {
         synchronized (this) {
-            chunkMap.put(target, in);
+            chunkMap.put(new SimpleChunk(i, h, 1, 1), in);
         }
     }
 

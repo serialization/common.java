@@ -21,8 +21,9 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @Override
     public HashMap<K, V> readSingleField(InStream in) {
-        HashMap<K, V> rval = new HashMap<>();
-        for (int i = (int) in.v64(); i != 0; i--)
+        int i = (int) in.v64();
+        HashMap<K, V> rval = new HashMap<>(1 + (i * 3) / 2);
+        while (i-- != 0)
             rval.put(keyType.readSingleField(in), valueType.readSingleField(in));
         return rval;
     }
@@ -31,9 +32,13 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
     public long calculateOffset(Collection<HashMap<K, V>> xs) {
         long result = 0L;
         for (HashMap<K, V> x : xs) {
-            result += V64.singleV64Offset(x.size());
-            result += keyType.calculateOffset(x.keySet());
-            result += valueType.calculateOffset(x.values());
+            int size = x.size();
+            if (0 == size)
+                result++;
+            else {
+                result += V64.singleV64Offset(size) + keyType.calculateOffset(x.keySet())
+                        + valueType.calculateOffset(x.values());
+            }
         }
 
         return result;
@@ -41,7 +46,8 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @Override
     public long singleOffset(HashMap<K, V> x) {
-        if (null == x)
+        int size = null == x ? 0 : x.size();
+        if (0 == size)
             return 1L;
 
         return V64.singleV64Offset(x.size()) + keyType.calculateOffset(x.keySet())
@@ -50,11 +56,12 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @Override
     public void writeSingleField(HashMap<K, V> data, OutStream out) throws IOException {
-        if (null == data || data.isEmpty()) {
+        int size = null == data ? 0 : data.size();
+        if (0 == size) {
             out.i8((byte) 0);
             return;
         }
-        out.v64(data.size());
+        out.v64(size);
         for (Entry<K, V> e : data.entrySet()) {
             keyType.writeSingleField(e.getKey(), out);
             valueType.writeSingleField(e.getValue(), out);

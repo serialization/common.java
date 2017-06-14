@@ -25,11 +25,11 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
     public DynamicDataIterator(StoragePool<T, B> storagePool) {
         p = storagePool;
         endHeight = p.typeHierarchyHeight;
-        lastBlock = p.blocks().size();
+        lastBlock = p.blocks.size();
         // other fields are zero-allocated
 
         while (index == last && secondIndex < lastBlock) {
-            Block b = p.blocks().get(secondIndex);
+            Block b = p.blocks.get(secondIndex);
             index = b.bpo;
             last = index + b.count;
             secondIndex++;
@@ -38,9 +38,9 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
         if (index == last && secondIndex == lastBlock) {
             secondIndex++;
             while (null != p) {
-                if (p.newObjectsSize() != 0) {
+                if (p.newObjects.size() != 0) {
                     index = 0;
-                    last = p.newObjectsSize();
+                    last = p.newObjects.size();
                     break;
                 }
                 nextP();
@@ -61,7 +61,7 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
             index++;
             if (index == last) {
                 while (index == last && secondIndex < lastBlock) {
-                    Block b = p.blocks().get(secondIndex);
+                    Block b = p.blocks.get(secondIndex);
                     index = b.bpo;
                     last = index + b.count;
                     secondIndex++;
@@ -70,9 +70,9 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
                 if (index == last && secondIndex == lastBlock) {
                     secondIndex++;
                     while (null != p) {
-                        if (p.newObjectsSize() != 0) {
+                        if (p.newObjects.size() != 0) {
                             index = 0;
-                            last = p.newObjectsSize();
+                            last = p.newObjects.size();
                             break;
                         }
                         nextP();
@@ -89,9 +89,9 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
                     if (null == p)
                         break;
 
-                    if (p.newObjectsSize() != 0) {
+                    if (p.newObjects.size() != 0) {
                         index = 0;
-                        last = p.newObjectsSize();
+                        last = p.newObjects.size();
                         break;
                     }
                 } while (true);
@@ -102,7 +102,7 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
 
     private void nextP() {
         @SuppressWarnings("unchecked")
-        final StoragePool<? extends T, B> n = (StoragePool<? extends T, B>) p.nextPool();
+        final StoragePool<? extends T, B> n = (StoragePool<? extends T, B>) p.nextPool;
         if (null != n && endHeight < n.typeHierarchyHeight)
             p = n;
         else

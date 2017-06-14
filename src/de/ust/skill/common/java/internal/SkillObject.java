@@ -1,7 +1,6 @@
 package de.ust.skill.common.java.internal;
 
 import java.io.Serializable;
-import java.util.Iterator;
 
 import de.ust.skill.common.java.api.FieldDeclaration;
 import de.ust.skill.common.java.api.SkillFile;
@@ -97,16 +96,15 @@ public abstract class SkillObject implements Serializable {
      */
     public final String prettyString(SkillFile sf) {
         StringBuilder sb = new StringBuilder("Age(this: ").append(this);
-        StoragePool<?, ?> p = ((SkillState) sf).poolByName().get(skillName());
-        printFs(p.allFields(), sb);
+        StoragePool<?, ?> p = ((SkillState) sf).poolByName.get(skillName());
+        printFs(p.fields(), sb);
         return sb.append(")").toString();
     }
 
     // provides required extra type quantification
-    private final <T extends SkillObject> void printFs(
-            Iterator<de.ust.skill.common.java.internal.FieldDeclaration<?, ? super T>> fs, StringBuilder sb) {
-        while (fs.hasNext()) {
-            FieldDeclaration<?> f = fs.next();
+    private final <T extends SkillObject> void printFs(FieldIterator fieldIterator, StringBuilder sb) {
+        while (fieldIterator.hasNext()) {
+            FieldDeclaration<?> f = fieldIterator.next();
             sb.append(", ").append(f.name()).append(": ").append(f.get(this));
         }
     }

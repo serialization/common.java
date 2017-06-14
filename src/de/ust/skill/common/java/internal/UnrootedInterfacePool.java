@@ -1,13 +1,10 @@
 package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 
 import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.internal.fieldTypes.Annotation;
-import de.ust.skill.common.java.iterators.Iterators;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
@@ -37,6 +34,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
      * @note realizations must be in type order
      * @note realizations must be of type StoragePool<? extends T, ?>
      */
+    @SuppressWarnings("unchecked")
     public UnrootedInterfacePool(String name, Annotation superPool, StoragePool<?, ?>... realizations) {
         super(superPool.typeID());
         this.name = name;
@@ -54,24 +52,13 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     }
 
     @Override
-    public Iterator<T> iterator() {
-        ArrayList<Iterator<? extends T>> iters = new ArrayList<>(realizations.length);
-        for (StoragePool<T, ?> p : realizations) {
-            iters.add(p.iterator());
-        }
-        return Iterators.concatenate(iters);
+    final public InterfaceIterator<T> iterator() {
+        return new InterfaceIterator<T>(realizations);
     }
 
-    public String name() {
+    @Override
+    final public String name() {
         return name;
-    }
-
-    public Iterator<T> typeOrderIterator() {
-        ArrayList<Iterator<? extends T>> iters = new ArrayList<>(realizations.length);
-        for (StoragePool<T, ?> p : realizations) {
-            iters.add(p.typeOrderIterator());
-        }
-        return Iterators.concatenate(iters);
     }
 
     @Override
@@ -97,14 +84,8 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     /**
      * hide cast that is required because interfaces do not inherit from classes
      */
-    private final <V, U> Collection<U> cast(Collection<V> xs) {
-        return (Collection<U>) xs;
-    }
-
-    /**
-     * hide cast that is required because interfaces do not inherit from classes
-     */
-    private final <V, U> U cast(V x) {
+    @SuppressWarnings("unchecked")
+    private static final <V, U> U cast(V x) {
         return (U) x;
     }
 

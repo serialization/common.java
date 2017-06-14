@@ -27,7 +27,7 @@ public class TypeHierarchyIterator<T extends B, B extends SkillObject>
     public StoragePool<? extends T, B> next() {
         final StoragePool<? extends T, B> r = p;
         @SuppressWarnings("unchecked")
-        final StoragePool<? extends T, B> n = (StoragePool<? extends T, B>) p.nextPool();
+        final StoragePool<? extends T, B> n = (StoragePool<? extends T, B>) p.nextPool;
         if (null != n && end < n.typeHierarchyHeight)
             p = n;
         else

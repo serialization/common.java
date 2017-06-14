@@ -7,7 +7,6 @@ import de.ust.skill.common.java.internal.FieldType;
 import de.ust.skill.common.java.internal.SkillObject;
 import de.ust.skill.common.java.internal.StoragePool;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
-import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.jvm.streams.MappedInStream;
 import de.ust.skill.common.jvm.streams.MappedOutStream;
 
@@ -23,7 +22,7 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    protected final void rsc(SimpleChunk last, MappedInStream in) {
+    protected void rsc(int i, final int h, MappedInStream in) {
         throw new NoSuchMethodError("one can not read auto fields!");
     }
 
@@ -33,22 +32,22 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    protected final long osc(SimpleChunk c) {
+    protected final void obc(BulkChunk c) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
     }
 
     @Override
-    protected final long obc(BulkChunk c) {
+    protected void osc(int i, int end) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
-    }
-
-    @Override
-    protected final void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
-        throw new NoSuchMethodError("one can not write auto fields!");
     }
 
     @Override
     protected final void wbc(BulkChunk c, MappedOutStream out) throws IOException {
+        throw new NoSuchMethodError("one can not write auto fields!");
+    }
+
+    @Override
+    protected void wsc(int i, int end, MappedOutStream out) throws IOException {
         throw new NoSuchMethodError("one can not write auto fields!");
     }
 }

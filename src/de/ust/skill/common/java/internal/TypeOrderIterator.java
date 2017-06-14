@@ -1,11 +1,6 @@
-package de.ust.skill.common.java.iterators;
+package de.ust.skill.common.java.internal;
 
 import java.util.Iterator;
-
-import de.ust.skill.common.java.internal.SkillObject;
-import de.ust.skill.common.java.internal.StaticDataIterator;
-import de.ust.skill.common.java.internal.StoragePool;
-import de.ust.skill.common.java.internal.TypeHierarchyIterator;
 
 /**
  * Iterates efficiently over dynamic instances of a pool in type order.

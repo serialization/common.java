@@ -18,6 +18,13 @@ public interface Access<T extends SkillObject> extends GeneralAccess<T> {
     public Stream<T> stream();
 
     /**
+     * @return a type ordered Container iterator over all instances of T
+     * @note do not invoke this function, if you do not know what "type order"
+     *       means
+     */
+    Iterator<T> typeOrderIterator();
+
+    /**
      * @return the skill file owning this access
      */
     public SkillFile owner();
@@ -28,13 +35,9 @@ public interface Access<T extends SkillObject> extends GeneralAccess<T> {
     public String superName();
 
     /**
-     * @return an iterator over all fields of T
-     */
-    public Iterator<? extends FieldDeclaration<?>> fields();
-    /**
      * @return an iterator over all fields of T including fields declared in super types
      */
-    public Iterator<? extends FieldDeclaration<?>> allFields();
+    public Iterator<? extends FieldDeclaration<?>> fields();
 
     /**
      * @return a new T instance with default field values

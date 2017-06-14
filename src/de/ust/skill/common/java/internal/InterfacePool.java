@@ -1,13 +1,10 @@
 package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 
 import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.api.SkillFile;
-import de.ust.skill.common.java.iterators.Iterators;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
@@ -31,6 +28,7 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
      * 
      * @note realizations must be in type order
      */
+    @SafeVarargs
     public InterfacePool(String name, StoragePool<?, B> superPool, StoragePool<? extends T, B>... realizations) {
         super(superPool.typeID);
         this.name = name;
@@ -48,12 +46,8 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     }
 
     @Override
-    final public Iterator<T> iterator() {
-        ArrayList<Iterator<? extends T>> iters = new ArrayList<>(realizations.length);
-        for (StoragePool<? extends T, B> p : realizations) {
-            iters.add(p.iterator());
-        }
-        return Iterators.concatenate(iters);
+    final public InterfaceIterator<T> iterator() {
+        return new InterfaceIterator<>(realizations);
     }
 
     final public SkillFile owner() {
@@ -68,14 +62,7 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
         return superPool.name;
     }
 
-    public Iterator<T> typeOrderIterator() {
-        ArrayList<Iterator<? extends T>> iters = new ArrayList<>(realizations.length);
-        for (StoragePool<? extends T, B> p : realizations) {
-            iters.add(p.typeOrderIterator());
-        }
-        return Iterators.concatenate(iters);
-    }
-
+    @SuppressWarnings("unchecked")
     @Override
     public T readSingleField(InStream in) {
         return (T) superPool.readSingleField(in);
@@ -121,14 +108,8 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     /**
      * hide cast that is required because interfaces do not inherit from classes
      */
-    private final <V, U> Collection<U> cast(Collection<V> xs) {
-        return (Collection<U>) xs;
-    }
-
-    /**
-     * hide cast that is required because interfaces do not inherit from classes
-     */
-    private final <V, U> U cast(V x) {
+    @SuppressWarnings("unchecked")
+    private static final <V, U> U cast(V x) {
         return (U) x;
     }
 

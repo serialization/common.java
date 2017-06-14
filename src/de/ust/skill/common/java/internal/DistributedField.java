@@ -2,13 +2,10 @@ package de.ust.skill.common.java.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
-import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.java.restrictions.FieldRestriction;
 import de.ust.skill.common.jvm.streams.MappedInStream;
 import de.ust.skill.common.jvm.streams.MappedOutStream;
@@ -24,8 +21,8 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     }
 
     // data held as in storage pools
-    // @note see paper notes for O(1) implementation
-    protected HashMap<SkillObject, T> data = new HashMap<>(); // Array[T]()
+    // @note C++-style implementation is not possible on JVM
+    protected HashMap<SkillObject, T> data = new HashMap<>();
     protected HashMap<SkillObject, T> newData = new HashMap<>();
 
     /**
@@ -42,10 +39,9 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     }
 
     @Override
-    protected void rsc(SimpleChunk c, MappedInStream in) {
+    protected void rsc(int i, final int h, MappedInStream in) {
         final SkillObject[] d = owner.basePool.data;
-        int i = (int) c.bpo;
-        for (final int h = i + (int) c.count; i != h; i++) {
+        for (; i != h; i++) {
             data.put(d[i], type.readSingleField(in));
         }
     }
@@ -67,7 +63,6 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
 
     // TODO distributed fields need to be compressed as well!
 
-    @SuppressWarnings("unchecked")
     protected final long offset() {
         final Block range = owner.lastBlock();
         // @note order is not important, because we calculate offsets only!!!
@@ -75,27 +70,27 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
             return type.calculateOffset(data.values());
 
         // we have to filter the right values
-        return type.calculateOffset((Collection<T>) Arrays.asList(data.entrySet().stream()
-                .filter(e -> range.contains(e.getKey().skillID)).map(e -> e.getValue()).toArray()));
-    }
-
-
-    @Override
-    protected long osc(SimpleChunk c) {
-        return offset();
+        long rval = 0;
+        for (HashMap.Entry<SkillObject, T> e : data.entrySet())
+            if (range.contains(e.getKey().skillID))
+                rval += type.singleOffset(e.getValue());
+        return rval;
     }
 
     @Override
-    protected long obc(BulkChunk c) {
-        return offset();
+    protected void osc(int i, int h) {
+        offset = offset();
     }
 
     @Override
-    protected void wsc(SimpleChunk c, MappedOutStream out) throws IOException {
+    protected void obc(BulkChunk c) {
+        offset = offset();
+    }
+
+    @Override
+    protected void wsc(int i, final int h, MappedOutStream out) throws IOException {
         final SkillObject[] d = owner.basePool.data;
-        int low = (int) c.bpo;
-        int high = (int) (c.bpo + c.count);
-        for (int i = low; i < high; i++) {
+        for (; i < h; i++) {
             type.writeSingleField(data.get(d[i]), out);
         }
     }
@@ -104,8 +99,8 @@ public class DistributedField<T, Obj extends SkillObject> extends FieldDeclarati
     protected void wbc(BulkChunk c, MappedOutStream out) throws IOException {
         final SkillObject[] d = owner.basePool.data;
         for (Block bi : owner.blocks) {
-            final int end = bi.bpo + bi.count;
-            for (int i = bi.bpo; i < end; i++) {
+            int i = bi.bpo;
+            for (final int end = i + bi.count; i < end; i++) {
                 type.writeSingleField(data.get(d[i]), out);
             }
         }

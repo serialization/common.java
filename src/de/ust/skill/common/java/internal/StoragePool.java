@@ -4,8 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -19,9 +18,6 @@ import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
-import de.ust.skill.common.java.iterators.DynamicNewInstancesIterator;
-import de.ust.skill.common.java.iterators.Iterators;
-import de.ust.skill.common.java.iterators.TypeOrderIterator;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
@@ -47,7 +43,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
      * @todo revisit implementation after the pool is completely implemented.
      *       Having an instance as constructor argument is questionable.
      */
-    protected static abstract class Builder<T> {
+    protected static abstract class Builder<T extends SkillObject> {
         protected StoragePool<T, ? super T> pool;
         protected T instance;
 
@@ -73,7 +69,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
 
     public final BasePool<B> basePool;
 
-    private StoragePool<?, B> nextPool;
+    StoragePool<?, B> nextPool;
 
     /**
      * solves type equation
@@ -164,19 +160,16 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
     }
 
     /**
-     * @return an iterator over all auto fields
-     * @note O(T)
-     */
-    Iterator<FieldDeclaration<?, T>> allAutoFields() {
-        return Iterators.array(autoFields);
-    }
-
-    /**
      * all fields that hold actual data
      * 
      * @note stores fields at index "f.index-1"
      */
     protected final ArrayList<FieldDeclaration<?, T>> dataFields;
+
+    @Override
+    public FieldIterator fields() {
+        return new FieldIterator(this);
+    }
 
     /**
      * The block layout of instances of this pool.
@@ -203,13 +196,6 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
      * retrieved using the fieldTypes map.
      */
     final ArrayList<T> newObjects = new ArrayList<>();
-
-    /**
-     * @return number of new object
-     */
-    public final int newObjectsSize() {
-        return newObjects.size();
-    }
 
     /**
      * retrieve a new object
@@ -257,8 +243,8 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         return staticDataInstances + newObjects.size();
     }
 
-    final Iterator<T> staticInstances() {
-        return Iterators.<T>concatenate(new StaticDataIterator<>(this), newObjects.iterator());
+    final StaticDataIterator<T> staticInstances() {
+        return new StaticDataIterator<>(this);
     }
 
     /**
@@ -364,6 +350,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         return (T) data[index];
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public final T readSingleField(InStream in) {
         int index = (int) in.v64() - 1;
@@ -454,7 +441,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
             size += ts.next().staticSize();
         return size;
     }
-    
+
     @Override
     final public Stream<T> stream() {
         return StreamSupport.stream(spliterator(), false);
@@ -462,7 +449,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
 
     public T[] toArray(T[] a) {
         final T[] rval = Arrays.copyOf(a, size());
-        Iterator<T> is = iterator();
+        DynamicDataIterator<T, B> is = iterator();
         for (int i = 0; i < rval.length; i++) {
             rval[i] = is.next();
         }
@@ -512,18 +499,20 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         return new TypeOrderIterator<T, B>(this);
     }
 
-    @Override
-    public final Iterator<FieldDeclaration<?, T>> fields() {
-        return Iterators.<FieldDeclaration<?, T>>concatenate(Iterators.array(autoFields), dataFields.iterator());
-    }
-
-    @Override
-    public final Iterator<FieldDeclaration<?, ? super T>> allFields() {
-        if (null == superPool)
-            return Iterators.<FieldDeclaration<?, ? super T>>concatenate(fields());
-
-        return Iterators.<FieldDeclaration<?, ? super T>>concatenate(superPool.allFields(), fields());
-    }
+    // @Override
+    // public final Iterator<FieldDeclaration<?, T>> fields() {
+    // return Iterators.<FieldDeclaration<?,
+    // T>>concatenate(Iterators.array(autoFields), dataFields.iterator());
+    // }
+    //
+    // @Override
+    // public final Iterator<FieldDeclaration<?, ? super T>> allFields() {
+    // if (null == superPool)
+    // return Iterators.<FieldDeclaration<?, ? super T>>concatenate(fields());
+    //
+    // return Iterators.<FieldDeclaration<?, ? super
+    // T>>concatenate(superPool.allFields(), fields());
+    // }
 
     @Override
     public T make() throws SkillException {
@@ -550,7 +539,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         data = basePool.data;
 
         // update structural knowledge of data
-        staticDataInstances += newObjectsSize() - deletedCount;
+        staticDataInstances += newObjects.size() - deletedCount;
         deletedCount = 0;
         newObjects.clear();
         newObjects.trimToSize();
@@ -585,7 +574,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
      * called after a prepare append operation to write empty the new objects
      * buffer and to set blocks correctly
      */
-    protected final void updateAfterPrepareAppend(int lbpoMap[], Map<FieldDeclaration<?, ?>, Chunk> chunkMap) {
+    protected final void updateAfterPrepareAppend(int lbpoMap[], HashMap<FieldDeclaration<?, ?>, Chunk> chunkMap) {
         // update data as it may have changed
         this.data = basePool.data;
 
@@ -595,7 +584,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         {
             boolean exists = false;
             for (FieldDeclaration<?, T> f : dataFields) {
-                if (f.noDataChunk()) {
+                if (0 == f.dataChunks.size()) {
                     exists = true;
                     break;
                 }
@@ -613,6 +602,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
             final int lbpo = (0 == lcount) ? 0 : lbpoMap[typeID - 32];
 
             blocks.add(new Block(lbpo, lcount, newObjects.size()));
+            final int blockCount = blocks.size();
             staticDataInstances += newObjects.size();
 
             // @note: if this does not hold for p; then it will not hold for
@@ -624,15 +614,17 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
                         continue;
 
                     final Chunk c;
-                    if (f.noDataChunk()) {
-                        c = new BulkChunk(-1, -1, size(), blocks.size());
+                    if (0 == f.dataChunks.size() && 1 != blockCount) {
+                        c = new BulkChunk(-1, -1, cachedSize, blockCount);
                     } else if (newInstances) {
                         c = new SimpleChunk(-1, -1, lbpo, lcount);
                     } else
                         continue;
 
                     f.addChunk(c);
-                    chunkMap.put(f, c);
+                    synchronized (chunkMap) {
+                        chunkMap.put(f, c);
+                    }
                 }
             }
         }

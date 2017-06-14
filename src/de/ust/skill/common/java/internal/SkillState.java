@@ -2,7 +2,6 @@ package de.ust.skill.common.java.internal;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,54 +35,11 @@ public abstract class SkillState implements SkillFile {
      */
     public static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 
-    /**
-     * creates a new skill state
-     */
-    @SuppressWarnings("unchecked")
-    protected static <State extends SkillState, Parser extends FileParser> State open(Class<State> state,
-            Class<Parser> parser, int IRSize, Path path, Mode... mode) throws IOException, SkillException {
-        ActualMode actualMode = new ActualMode(mode);
-        try {
-            switch (actualMode.open) {
-            case Create:
-                // initialization order of type information has to match file
-                // parser
-                // and can not be done in place
-                StringPool strings = new StringPool(null);
-                ArrayList<StoragePool<?, ?>> types = new ArrayList<>(IRSize);
-                StringType stringType = new StringType(strings);
-                Annotation annotation = new Annotation(types);
-
-                return (State) state.getConstructors()[0].newInstance(new HashMap<>(), strings, stringType, annotation,
-                        types, FileInputStream.open(path, false), actualMode.close);
-
-            case Read:
-                Parser p = (Parser) parser.getConstructors()[0]
-                        .newInstance(FileInputStream.open(path, actualMode.close == Mode.ReadOnly));
-                return p.read(state, actualMode.close);
-
-            default:
-                throw new IllegalStateException("should never happen");
-            }
-        } catch (SkillException e) {
-            // rethrow all skill exceptions
-            throw e;
-        } catch (InvocationTargetException e) {
-            // unpack invocation target exceptions holding skill exceptions
-            while (e.getCause() instanceof InvocationTargetException) {
-                e = (InvocationTargetException) e.getCause();
-            }
-            throw (SkillException) e.getCause();
-        } catch (Exception e) {
-            throw new SkillException(e);
-        }
-    }
-
     // types by skill name
     protected final HashMap<String, StoragePool<?, ?>> poolByName;
 
-    public HashMap<String, StoragePool<?, ?>> poolByName() {
-        return poolByName;
+    public StoragePool<?, ?> pool(String name) {
+        return poolByName.get(name);
     }
 
     /**
@@ -154,10 +110,11 @@ public abstract class SkillState implements SkillFile {
             StoragePool.establishNextPools(types);
 
             // allocate instances
+            final Semaphore barrier = new Semaphore(0, false);
             {
-                final Semaphore barrier = new Semaphore(0, false);
                 int reads = 0;
 
+                HashSet<String> fieldNames = new HashSet<>();
                 for (StoragePool<?, ?> p : (ArrayList<StoragePool<?, ?>>) allTypes()) {
 
                     // set owners
@@ -168,7 +125,7 @@ public abstract class SkillState implements SkillFile {
                     }
 
                     // add missing field declarations
-                    HashSet<String> fieldNames = new HashSet<>();
+                    fieldNames.clear();
                     for (de.ust.skill.common.java.api.FieldDeclaration<?> f : p.dataFields)
                         fieldNames.add(f.name());
 
@@ -183,7 +140,6 @@ public abstract class SkillState implements SkillFile {
 
             // read field data
             {
-                final Semaphore barrier = new Semaphore(0, false);
                 int reads = 0;
                 // async reads will post their errors in this queue
                 final ArrayList<SkillException> readErrors = new ArrayList<SkillException>();
@@ -198,7 +154,7 @@ public abstract class SkillState implements SkillFile {
 
                 // fix types in the Annotation-runtime type, because we need it
                 // in offset calculation
-                this.annotationType.fixTypes(this.poolByName());
+                this.annotationType.fixTypes(poolByName);
 
                 // await async reads
                 barrier.acquire(reads);
@@ -223,11 +179,11 @@ public abstract class SkillState implements SkillFile {
         if (null != target)
             try {
                 if (0 < target.skillID)
-                    return target == poolByName().get(target.skillName()).getByID(target.skillID);
+                    return target == poolByName.get(target.skillName()).getByID(target.skillID);
                 else if (0 == target.skillID)
                     return true; // will evaluate to a null pointer if stored
 
-                return poolByName().get(target.skillName()).newObjects.contains(target);
+                return poolByName.get(target.skillName()).newObjects.contains(target);
             } catch (Exception e) {
                 // out of bounds or similar mean its not one of ours
                 return false;
@@ -239,7 +195,7 @@ public abstract class SkillState implements SkillFile {
     final public void delete(SkillObject target) {
         if (null != target) {
             dirty |= target.skillID > 0;
-            poolByName().get(target.skillName()).delete(target);
+            poolByName.get(target.skillName()).delete(target);
         }
     }
 

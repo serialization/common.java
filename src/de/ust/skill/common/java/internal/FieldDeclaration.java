@@ -25,7 +25,7 @@ import de.ust.skill.common.jvm.streams.MappedOutStream;
  * @author Timm Felden
  */
 abstract public class FieldDeclaration<T, Obj extends SkillObject>
-        implements de.ust.skill.common.java.api.FieldDeclaration<T> {
+        extends de.ust.skill.common.java.api.FieldDeclaration<T> {
 
     /**
      * @note types may change during file parsing. this may seem like a hack,
@@ -53,8 +53,11 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * index as used in the file
      * 
      * @note index is > 0, if the field is an actual data field
-     * @note index = 0, if the field is SKilLID (if supported by generator; deprecated)
+     * @note index = 0, if the field is SKilLID (if supported by generator;
+     *       deprecated)
      * @note index is <= 0, if the field is an auto field (or SKilLID)
+     * 
+     * @note fieldIDs should be file-global, so that remaining HashMaps with field keys can be replaced
      */
     final int index;
 
@@ -159,10 +162,6 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         return c.end;
     }
 
-    final boolean noDataChunk() {
-        return dataChunks.isEmpty();
-    }
-
     protected final Chunk lastChunk() {
         return dataChunks.get(dataChunks.size() - 1);
     }
@@ -180,7 +179,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * invoked at the very end of state construction and done massively in
      * parallel.
      */
-    protected abstract void rsc(SimpleChunk target, MappedInStream in);
+    protected abstract void rsc(int i, final int end, MappedInStream in);
 
     /**
      * Read data from a mapped input stream and set it accordingly. This is
@@ -190,16 +189,22 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     protected abstract void rbc(BulkChunk target, MappedInStream in);
 
     /**
-     * offset calculation as preparation of writing data belonging to the owners
-     * last block
+     * offset cache; calculated by osc/obc; reset is done by the caller
+     * (simplifies obc)
      */
-    protected abstract long osc(SimpleChunk c);
+    protected long offset;
 
     /**
      * offset calculation as preparation of writing data belonging to the owners
      * last block
      */
-    protected abstract long obc(BulkChunk c);
+    protected abstract void osc(int i, final int end);
+
+    /**
+     * offset calculation as preparation of writing data belonging to the owners
+     * last block
+     */
+    protected abstract void obc(BulkChunk c);
 
     /**
      * write data into a map at the end of a write/append operation
@@ -208,7 +213,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      *       is impossible to write to fields in parallel
      * @note only called, if there actually is field data to be written
      */
-    protected abstract void wsc(SimpleChunk c, MappedOutStream out) throws IOException;
+    protected abstract void wsc(int i, final int end, MappedOutStream out) throws IOException;
 
     /**
      * write data into a map at the end of a write/append operation
@@ -248,8 +253,10 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
                         MappedInStream map = in.map(0L, c.begin, c.end);
                         if (c instanceof BulkChunk)
                             f.rbc((BulkChunk) c, map);
-                        else
-                            f.rsc((SimpleChunk) c, map);
+                        else {
+                            int i = (int) ((SimpleChunk) c).bpo;
+                            f.rsc(i, i + (int) c.count, map);
+                        }
 
                         if (!map.eof() && !(f instanceof LazyField<?, ?>))
                             ex = new PoolSizeMissmatchError(blockCounter, map.position(), c.begin, c.end, f);

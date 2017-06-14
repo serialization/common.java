@@ -1,14 +1,32 @@
 package de.ust.skill.common.java.internal;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 
 final public class StateWriter extends SerializationFunctions {
+    private static final class OT implements Runnable {
+        private final FieldDeclaration<?, ?> f;
+        private final Semaphore barrier;
+
+        OT(FieldDeclaration<?, ?> f, Semaphore barrier) {
+            this.f = f;
+            this.barrier = barrier;
+        }
+
+        @Override
+        public void run() {
+            f.offset = 0;
+            SimpleChunk c = (SimpleChunk) f.lastChunk();
+            int i = (int) c.bpo;
+            f.osc(i, i + (int) c.count);
+            barrier.release();
+        };
+
+    }
 
     public StateWriter(SkillState state, FileOutputStream out) throws Exception {
         super(state);
@@ -21,11 +39,23 @@ final public class StateWriter extends SerializationFunctions {
         // index → bpo
         // @note pools.par would not be possible if it were an actual map:)
         final int[] lbpoMap = new int[state.types.size()];
-        state.types.stream().parallel().forEach(p -> {
-            if (p instanceof BasePool<?>) {
-                ((BasePool<?>) p).compress(lbpoMap);
+        final Semaphore barrier = new Semaphore(0, false);
+        {
+            int bases = 0;
+            for (StoragePool<?, ?> p : state.types) {
+                if (p instanceof BasePool<?>) {
+                    bases++;
+                    SkillState.pool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            ((BasePool<?>) p).compress(lbpoMap);
+                            barrier.release();
+                        }
+                    });
+                }
             }
-        });
+            barrier.acquire(bases);
+        }
 
         /**
          * **************** PHASE 3: WRITE * ****************
@@ -37,18 +67,21 @@ final public class StateWriter extends SerializationFunctions {
         out.v64(state.types.size());
 
         // calculate offsets
-        HashMap<StoragePool<?, ?>, HashMap<FieldDeclaration<?, ?>, Future<Long>>> offsets = new HashMap<>();
-        for (final StoragePool<?, ?> p : state.types) {
-            HashMap<FieldDeclaration<?, ?>, Future<Long>> vs = new HashMap<>();
-            for (final FieldDeclaration<?, ?> f : p.dataFields)
-                vs.put(f, SkillState.pool.submit(() -> f.osc((SimpleChunk) f.lastChunk())));
-            offsets.put(p, vs);
+        int fieldCount = 0;
+        {
+            for (final StoragePool<?, ?> p : state.types) {
+                for (FieldDeclaration<?, ?> f : p.dataFields) {
+                    fieldCount++;
+                    SkillState.pool.execute(new OT(f, barrier));
+                }
+            }
+            barrier.acquire(fieldCount);
         }
 
         // write types
-        ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>();
+        ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(fieldCount);
         for (StoragePool<?, ?> p : state.types) {
-            string(p.name, out);
+            out.v64(stringIDs.get(p.name));
             long LCount = p.lastBlock().count;
             out.v64(LCount);
             restrictions(p, out);
@@ -65,18 +98,16 @@ final public class StateWriter extends SerializationFunctions {
         }
 
         // write fields
-        ArrayList<Task> data = new ArrayList<>();
+        ArrayList<Task> data = new ArrayList<>(fieldCount);
         long offset = 0L;
         for (FieldDeclaration<?, ?> f : fieldQueue) {
-            StoragePool<?, ?> p = f.owner;
-            HashMap<FieldDeclaration<?, ?>, Future<Long>> vs = offsets.get(p);
 
             // write info
             out.v64(f.index);
-            string(f.name, out);
+            out.v64(stringIDs.get(f.name));
             writeType(f.type, out);
             restrictions(f, out);
-            long end = offset + vs.get(f).get();
+            long end = offset + f.offset;
             out.v64(end);
 
             // update last chunk and prepare write
@@ -87,6 +118,6 @@ final public class StateWriter extends SerializationFunctions {
             offset = end;
         }
 
-        writeFieldData(state, out, data, (int) offset);
+        writeFieldData(state, out, data, (int) offset, barrier);
     }
 }

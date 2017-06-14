@@ -9,17 +9,17 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class ConstantLengthArray<T> extends SingleArgumentType<ArrayList<T>, T> {
-    public final long length;
+    public final int length;
 
     public ConstantLengthArray(long length, FieldType<T> groundType) {
         super(15, groundType);
-        this.length = length;
+        this.length = (int) length;
     }
 
     @Override
     public ArrayList<T> readSingleField(InStream in) {
-        ArrayList<T> rval = new ArrayList<>();
-        for (int i = (int) length; i != 0; i--)
+        ArrayList<T> rval = new ArrayList<T>(length);
+        for (int i = length; i-- != 0;)
             rval.add(groundType.readSingleField(in));
         return rval;
     }

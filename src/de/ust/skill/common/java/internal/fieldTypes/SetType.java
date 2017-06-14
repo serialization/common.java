@@ -13,8 +13,9 @@ public final class SetType<T> extends SingleArgumentType<HashSet<T>, T> {
 
     @Override
     public HashSet<T> readSingleField(InStream in) {
-        HashSet<T> rval = new HashSet<>();
-        for (int i = (int) in.v64(); i != 0; i--)
+        int i = (int) in.v64();
+        HashSet<T> rval = new HashSet<>(1 + (i * 3) / 2);
+        while (i-- != 0)
             rval.add(groundType.readSingleField(in));
         return rval;
     }
