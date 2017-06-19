@@ -85,6 +85,23 @@ public final class V64 extends IntegerType<Long> {
     /**
      * helper method used by other offset calculations
      */
+    public final static long singleV64Offset(int v) {
+        if (0 == (v & 0xFFFFFF80)) {
+            return 1;
+        } else if (0 == (v & 0xFFFFC000)) {
+            return 2;
+        } else if (0 == (v & 0xFFE00000)) {
+            return 3;
+        } else if (0 == (v & 0xF0000000)) {
+            return 4;
+        } else {
+            return 5;
+        }
+    }
+
+    /**
+     * helper method used by other offset calculations
+     */
     public final static long singleV64Offset(long v) {
         if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
             return 1;
