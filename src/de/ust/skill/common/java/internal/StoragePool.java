@@ -14,6 +14,7 @@ import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.fieldTypes.Annotation;
 import de.ust.skill.common.java.internal.fieldTypes.ReferenceType;
 import de.ust.skill.common.java.internal.fieldTypes.StringType;
+import de.ust.skill.common.java.internal.fieldTypes.V64;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
@@ -362,35 +363,12 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
     @Override
     public final long calculateOffset(Collection<T> xs) {
         // shortcut small compressed types
-        if (basePool.data.length < 128)
+        if (data.length < 128)
             return xs.size();
 
         long result = 0L;
         for (T x : xs) {
-            if (null == x)
-                result += 1;
-            else {
-                long v = x.skillID;
-                if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
-                    result += 1;
-                } else if (0L == (v & 0xFFFFFFFFFFFFC000L)) {
-                    result += 2;
-                } else if (0L == (v & 0xFFFFFFFFFFE00000L)) {
-                    result += 3;
-                } else if (0L == (v & 0xFFFFFFFFF0000000L)) {
-                    result += 4;
-                } else if (0L == (v & 0xFFFFFFF800000000L)) {
-                    result += 5;
-                } else if (0L == (v & 0xFFFFFC0000000000L)) {
-                    result += 6;
-                } else if (0L == (v & 0xFFFE000000000000L)) {
-                    result += 7;
-                } else if (0L == (v & 0xFF00000000000000L)) {
-                    result += 8;
-                } else {
-                    result += 9;
-                }
-            }
+            result += null == x ? 1 : V64.singleV64Offset(x.skillID);
         }
         return result;
     }

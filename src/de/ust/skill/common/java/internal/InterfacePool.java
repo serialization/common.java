@@ -5,6 +5,7 @@ import java.util.Collection;
 
 import de.ust.skill.common.java.api.GeneralAccess;
 import de.ust.skill.common.java.api.SkillFile;
+import de.ust.skill.common.java.internal.fieldTypes.V64;
 import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
@@ -65,52 +66,34 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     @SuppressWarnings("unchecked")
     @Override
     public T readSingleField(InStream in) {
-        return (T) superPool.readSingleField(in);
+        int index = (int) in.v64() - 1;
+        B[] data = superPool.data;
+        if (index < 0 | data.length <= index)
+            return null;
+        return (T) data[index];
     }
 
     @Override
     public long calculateOffset(Collection<T> xs) {
-        return superPool.calculateOffset(cast(xs));
+        // shortcut small compressed types
+        if (superPool.data.length < 128)
+            return xs.size();
+
+        long result = 0L;
+        for (T x : xs) {
+            result += null == x ? 1 : V64.singleV64Offset(((SkillObject) x).skillID);
+        }
+        return result;
     }
 
     @Override
     public final long singleOffset(T x) {
-        if (null == x)
-            return 1L;
-
-        long v = ((SkillObject) x).skillID;
-        if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
-            return 1;
-        } else if (0L == (v & 0xFFFFFFFFFFFFC000L)) {
-            return 2;
-        } else if (0L == (v & 0xFFFFFFFFFFE00000L)) {
-            return 3;
-        } else if (0L == (v & 0xFFFFFFFFF0000000L)) {
-            return 4;
-        } else if (0L == (v & 0xFFFFFFF800000000L)) {
-            return 5;
-        } else if (0L == (v & 0xFFFFFC0000000000L)) {
-            return 6;
-        } else if (0L == (v & 0xFFFE000000000000L)) {
-            return 7;
-        } else if (0L == (v & 0xFF00000000000000L)) {
-            return 8;
-        } else {
-            return 9;
-        }
+        return null == x ? 1 : V64.singleV64Offset(((SkillObject) x).skillID);
     }
 
     @Override
     public void writeSingleField(T data, OutStream out) throws IOException {
-        superPool.writeSingleField(cast(data), out);
-    }
-
-    /**
-     * hide cast that is required because interfaces do not inherit from classes
-     */
-    @SuppressWarnings("unchecked")
-    private static final <V, U> U cast(V x) {
-        return (U) x;
+        out.v64(null == data ? 0L : ((SkillObject) data).skillID);
     }
 
     @Override
