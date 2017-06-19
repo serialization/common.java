@@ -9,7 +9,7 @@ import de.ust.skill.common.java.internal.parts.Block;
  *
  * @author Timm Felden
  */
-public class StaticDataIterator<T> implements Iterator<T> {
+public class StaticDataIterator<T extends SkillObject> implements Iterator<T> {
 
     // ! target pool
     final StoragePool<T, ?> p;
