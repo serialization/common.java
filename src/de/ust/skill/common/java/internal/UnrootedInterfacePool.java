@@ -61,6 +61,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
         return name;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public T readSingleField(InStream in) {
         return (T) superType.readSingleField(in);
