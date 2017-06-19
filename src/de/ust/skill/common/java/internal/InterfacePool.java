@@ -21,7 +21,7 @@ import de.ust.skill.common.jvm.streams.OutStream;
 final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> implements GeneralAccess<T> {
 
     final private String name;
-    final private StoragePool<? extends SkillObject, B> superPool;
+    final public StoragePool<? extends SkillObject, B> superPool;
     final private StoragePool<? extends T, B>[] realizations;
 
     /**
@@ -93,7 +93,10 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
 
     @Override
     public void writeSingleField(T data, OutStream out) throws IOException {
-        out.v64(null == data ? 0L : ((SkillObject) data).skillID);
+        if (null == data)
+            out.i8((byte) 0);
+        else
+            out.v64(((SkillObject) data).skillID);
     }
 
     @Override

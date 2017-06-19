@@ -402,7 +402,10 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
 
     @Override
     public final void writeSingleField(T ref, OutStream out) throws IOException {
-        out.v64(null == ref ? 0L : ref.skillID);
+        if (null == ref)
+            out.i8((byte) 0);
+        else
+            out.v64(ref.skillID);
     }
 
     /**
