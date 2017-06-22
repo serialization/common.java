@@ -21,7 +21,7 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @Override
     public HashMap<K, V> readSingleField(InStream in) {
-        int i = (int) in.v64();
+        int i = in.v32();
         HashMap<K, V> rval = new HashMap<>(1 + (i * 3) / 2);
         while (i-- != 0)
             rval.put(keyType.readSingleField(in), valueType.readSingleField(in));

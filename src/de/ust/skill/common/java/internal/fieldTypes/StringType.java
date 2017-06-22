@@ -27,7 +27,7 @@ public final class StringType extends FieldType<String> implements ReferenceType
 
     @Override
     public String readSingleField(InStream in) {
-        return strings.get(in.v64());
+        return strings.get(in.v32());
     }
 
     @Override

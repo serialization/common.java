@@ -42,8 +42,8 @@ public final class Annotation extends FieldType<SkillObject>implements Reference
 
     @Override
     public SkillObject readSingleField(InStream in) {
-        final int t = (int) in.v64();
-        final long f = in.v64();
+        final int t = in.v32();
+        final int f = in.v32();
         if (0 == t)
             return null;
         return types.get(t - 1).getByID(f);

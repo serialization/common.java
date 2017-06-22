@@ -66,7 +66,7 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     @SuppressWarnings("unchecked")
     @Override
     public T readSingleField(InStream in) {
-        int index = (int) in.v64() - 1;
+        int index = in.v32() - 1;
         B[] data = superPool.data;
         if (index < 0 | data.length <= index)
             return null;

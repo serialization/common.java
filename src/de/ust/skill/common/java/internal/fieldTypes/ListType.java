@@ -14,7 +14,7 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     @Override
     public LinkedList<T> readSingleField(InStream in) {
         LinkedList<T> rval = new LinkedList<>();
-        for (int i = (int) in.v64(); i != 0; i--)
+        for (int i = in.v32(); i != 0; i--)
             rval.add(groundType.readSingleField(in));
         return rval;
     }

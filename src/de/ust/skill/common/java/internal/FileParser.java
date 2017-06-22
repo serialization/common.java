@@ -99,7 +99,7 @@ public abstract class FileParser {
 
     final protected void stringBlock() throws ParseException {
         try {
-            int count = (int) in.v64();
+            int count = in.v32();
 
             if (0 != count) {
                 // read offsets
@@ -148,7 +148,7 @@ public abstract class FileParser {
      * field declaration.
      */
     FieldType<?> fieldType() {
-        final int typeID = (int) in.v64();
+        final int typeID = in.v32();
         switch (typeID) {
         case 0:
             return new ConstantI8(in.i8());
@@ -181,7 +181,7 @@ public abstract class FileParser {
         case 14:
             return StringType;
         case 15:
-            return new ConstantLengthArray<>(in.v64(), fieldType());
+            return new ConstantLengthArray<>(in.v32(), fieldType());
         case 17:
             return new VariableLengthArray<>(fieldType());
         case 18:
@@ -201,8 +201,8 @@ public abstract class FileParser {
     private HashSet<TypeRestriction> typeRestrictions() {
         final HashSet<TypeRestriction> rval = new HashSet<>();
         // parse count many entries
-        for (int i = (int) in.v64(); i != 0; i--) {
-            final int id = (int) in.v64();
+        for (int i = in.v32(); i != 0; i--) {
+            final int id = in.v32();
             switch (id) {
             case 0:
                 // Unique
@@ -224,8 +224,8 @@ public abstract class FileParser {
 
     private HashSet<FieldRestriction<?>> fieldRestrictions(FieldType<?> t) {
         HashSet<FieldRestriction<?>> rval = new HashSet<FieldRestriction<?>>();
-        for (int count = (int) in.v64(); count != 0; count--) {
-            final int id = (int) in.v64();
+        for (int count = in.v32(); count != 0; count--) {
+            final int id = in.v32();
             switch (id) {
 
             case 0: {
@@ -241,7 +241,7 @@ public abstract class FileParser {
                 // default
                 if (t instanceof ReferenceType) {
                     // TODO typeId -> ref
-                    in.v64();
+                    in.v32();
                 } else {
                     // TODO other values
                     t.readSingleField(in);
@@ -259,9 +259,9 @@ public abstract class FileParser {
             }
 
             case 5: {
-                // TODO cod0ing
+                // TODO coding
                 // string.get
-                in.v64();
+                in.v32();
                 break;
             }
 
@@ -271,9 +271,9 @@ public abstract class FileParser {
             }
 
             case 9: {
-                for (int c = (int) in.v64(); c != 0; c--) {
+                for (int c = in.v32(); c != 0; c--) {
                     // type IDs
-                    in.v64();
+                    in.v32();
                 }
                 break;
             }
@@ -295,7 +295,7 @@ public abstract class FileParser {
         // read type part
         final String name;
         try {
-            final String n = Strings.get(in.v64());
+            final String n = Strings.get(in.v32());
             name = n;
         } catch (InvalidPoolIndexException e) {
             throw new ParseException(in, blockCounter, e, "corrupted type header");
@@ -310,7 +310,7 @@ public abstract class FileParser {
 
         // try to parse the type definition
         try {
-            int count = (int) in.v64();
+            int count = in.v32();
 
             StoragePool<T, B> definition = null;
             if (poolByName.containsKey(name)) {
@@ -321,7 +321,7 @@ public abstract class FileParser {
                 // super
                 final StoragePool<? super T, B> superDef;
                 {
-                    final int superID = (int) in.v64();
+                    final int superID = in.v32();
                     if (0 == superID)
                         superDef = null;
                     else if (superID > types.size())
@@ -393,7 +393,7 @@ public abstract class FileParser {
         offset = 0L;
 
         // parse type
-        for (int count = (int) in.v64(); count != 0; count--)
+        for (int count = in.v32(); count != 0; count--)
             typeDefinition();
 
         // resize pools by updating cachedSize and staticCount
@@ -430,14 +430,14 @@ public abstract class FileParser {
             final Block lastBlock = p.blocks.get(p.blocks.size() - 1);
 
             for (int fieldCounter = lfe.count; fieldCounter != 0; fieldCounter--) {
-                final int ID = (int) in.v64();
+                final int ID = in.v32();
                 if (ID > legalFieldIDBarrier || ID <= 0)
                     throw new ParseException(in, blockCounter, null, "Found an illegal field ID: %d", ID);
 
                 final long end;
                 if (ID == legalFieldIDBarrier) {
                     // new field
-                    final String fieldName = Strings.get(in.v64());
+                    final String fieldName = Strings.get(in.v32());
                     if (null == fieldName)
                         throw new ParseException(in, blockCounter, null, "corrupted file: nullptr in fieldname");
 

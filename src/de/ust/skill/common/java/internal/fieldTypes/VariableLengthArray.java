@@ -13,7 +13,7 @@ public final class VariableLengthArray<T> extends SingleArgumentType<ArrayList<T
 
     @Override
     public ArrayList<T> readSingleField(InStream in) {
-        int i = (int) in.v64();
+        int i = in.v32();
         ArrayList<T> rval = new ArrayList<>(i);
         while (i-- != 0)
             rval.add(groundType.readSingleField(in));

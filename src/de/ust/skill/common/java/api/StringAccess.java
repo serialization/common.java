@@ -15,5 +15,5 @@ public interface StringAccess extends Collection<String> {
     /**
      * get String by its Skill ID
      */
-    public String get(long index);
+    public String get(int index);
 }

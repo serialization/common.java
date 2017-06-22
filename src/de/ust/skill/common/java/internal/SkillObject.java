@@ -30,7 +30,7 @@ public abstract class SkillObject implements Serializable {
      * The constructor is protected to ensure that users do not break states
      * accidentally
      */
-    protected SkillObject(long skillID) {
+    protected SkillObject(int skillID) {
         this.skillID = skillID;
     }
 
@@ -44,7 +44,7 @@ public abstract class SkillObject implements Serializable {
      * 0 for deleted objects<br>
      * everything else is the ID of an object inside of a file
      */
-    transient protected long skillID;
+    transient protected int skillID;
 
     /**
      * @return whether the object has been deleted
@@ -56,7 +56,7 @@ public abstract class SkillObject implements Serializable {
     /**
      * Do not rely on skill ID if you do not know exactly what you are doing.
      */
-    public final long getSkillID() {
+    public final int getSkillID() {
         return skillID;
     }
 
@@ -117,7 +117,7 @@ public abstract class SkillObject implements Serializable {
 
         transient private final StoragePool<?, ?> τPool;
 
-        SubType(StoragePool<?, ?> τPool, long skillID) {
+        SubType(StoragePool<?, ?> τPool, int skillID) {
             super(skillID);
             this.τPool = τPool;
         }

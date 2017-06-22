@@ -72,13 +72,13 @@ public class StringPool implements StringAccess {
     }
 
     @Override
-    public String get(long index) {
+    public String get(int index) {
         if (0L == index)
             return null;
 
         String result;
         try {
-            result = idMap.get((int) index);
+            result = idMap.get(index);
         } catch (IndexOutOfBoundsException e) {
             throw new InvalidPoolIndexException(index, stringPositions.size(), "string", e);
         }
@@ -91,7 +91,7 @@ public class StringPool implements StringAccess {
         // @note this is correct, because string pool is the only one who can do
         // parallel operations on input!
         synchronized (this) {
-            Position off = stringPositions.get((int) index);
+            Position off = stringPositions.get(index);
             input.push(off.absoluteOffset);
             byte[] chars = input.bytes(off.length);
             input.pop();
@@ -102,7 +102,7 @@ public class StringPool implements StringAccess {
                 // as if that would ever happen
                 e.printStackTrace();
             }
-            idMap.set((int) index, result);
+            idMap.set(index, result);
             knownStrings.add(result);
         }
         return result;

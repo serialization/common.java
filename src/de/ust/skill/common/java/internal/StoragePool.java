@@ -344,8 +344,8 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
      * @return the instance matching argument skill id
      */
     @SuppressWarnings("unchecked")
-    final public T getByID(long ID) {
-        int index = (int) ID - 1;
+    final public T getByID(int ID) {
+        int index = ID - 1;
         if (index < 0 | data.length <= index)
             return null;
         return (T) data[index];
@@ -354,7 +354,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
     @SuppressWarnings("unchecked")
     @Override
     public final T readSingleField(InStream in) {
-        int index = (int) in.v64() - 1;
+        int index = in.v32() - 1;
         if (index < 0 | data.length <= index)
             return null;
         return (T) data[index];
@@ -378,25 +378,17 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         if (null == x)
             return 1L;
 
-        long v = x.skillID;
-        if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
+        int v = x.skillID;
+        if (0 == (v & 0xFFFFFF80)) {
             return 1;
-        } else if (0L == (v & 0xFFFFFFFFFFFFC000L)) {
+        } else if (0 == (v & 0xFFFFC000)) {
             return 2;
-        } else if (0L == (v & 0xFFFFFFFFFFE00000L)) {
+        } else if (0 == (v & 0xFFE00000)) {
             return 3;
-        } else if (0L == (v & 0xFFFFFFFFF0000000L)) {
+        } else if (0 == (v & 0xF0000000)) {
             return 4;
-        } else if (0L == (v & 0xFFFFFFF800000000L)) {
-            return 5;
-        } else if (0L == (v & 0xFFFFFC0000000000L)) {
-            return 6;
-        } else if (0L == (v & 0xFFFE000000000000L)) {
-            return 7;
-        } else if (0L == (v & 0xFF00000000000000L)) {
-            return 8;
         } else {
-            return 9;
+            return 5;
         }
     }
 
