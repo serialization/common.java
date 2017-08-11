@@ -6,7 +6,9 @@ import java.util.Iterator;
  * Iterates efficiently over dynamic instances of a pool in type order.
  *
  * @author Timm Felden
+ * @note cast required to work around weakened type system by javac 1.8.131
  */
+@SuppressWarnings("unchecked")
 public class TypeOrderIterator<T extends B, B extends SkillObject> implements Iterator<T> {
 
     final TypeHierarchyIterator<T, B> ts;
@@ -15,7 +17,6 @@ public class TypeOrderIterator<T extends B, B extends SkillObject> implements It
     public TypeOrderIterator(StoragePool<T, B> storagePool) {
         ts = new TypeHierarchyIterator<T, B>(storagePool);
         while (ts.hasNext()) {
-            @SuppressWarnings("unchecked")
             StoragePool<T, B> t = (StoragePool<T, B>) ts.next();
             if (0 != t.staticSize()) {
                 is = new StaticDataIterator<T>(t);
@@ -34,7 +35,6 @@ public class TypeOrderIterator<T extends B, B extends SkillObject> implements It
         T result = is.next();
         if (!is.hasNext()) {
             while (ts.hasNext()) {
-                @SuppressWarnings("unchecked")
                 StoragePool<T, B> t = (StoragePool<T, B>) ts.next();
                 if (0 != t.staticSize()) {
                     is = new StaticDataIterator<T>(t);

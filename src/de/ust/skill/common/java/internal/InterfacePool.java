@@ -16,13 +16,16 @@ import de.ust.skill.common.jvm.streams.OutStream;
  * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we
  *       cannot inherit from Access<T>
  *
+ * @note typing in this implementation is intentionally incorrect, because java
+ *       does not permit interfaces to inherit from classes
+ *       
  * @author Timm Felden
  */
 final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> implements GeneralAccess<T> {
 
     final private String name;
     final public StoragePool<? extends SkillObject, B> superPool;
-    final private StoragePool<? extends T, B>[] realizations;
+    final private StoragePool<? extends B, B>[] realizations;
 
     /**
      * Construct an interface pool.
@@ -30,7 +33,7 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
      * @note realizations must be in type order
      */
     @SafeVarargs
-    public InterfacePool(String name, StoragePool<?, B> superPool, StoragePool<? extends T, B>... realizations) {
+    public InterfacePool(String name, StoragePool<?, B> superPool, StoragePool<? extends B, B>... realizations) {
         super(superPool.typeID);
         this.name = name;
         this.superPool = superPool;
@@ -40,15 +43,19 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
     @Override
     public int size() {
         int rval = 0;
-        for (StoragePool<? extends T, B> p : realizations) {
+        for (StoragePool<? extends B, B> p : realizations) {
             rval += p.size();
         }
         return rval;
     }
 
+    /***
+     * @note cast required to work around weakened type system by javac 1.8.131
+     */
+    @SuppressWarnings("unchecked")
     @Override
     final public InterfaceIterator<T> iterator() {
-        return new InterfaceIterator<>(realizations);
+        return new InterfaceIterator<T>((StoragePool<SkillObject, SkillObject>[]) realizations);
     }
 
     final public SkillFile owner() {

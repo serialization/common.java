@@ -16,6 +16,9 @@ import de.ust.skill.common.jvm.streams.OutStream;
  * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we
  *       cannot inherit from Access<T>
  *
+ * @note typing in this implementation is intentionally incorrect, because java
+ *       does not permit interfaces to inherit from classes
+ * 
  * @author Timm Felden
  */
 final public class UnrootedInterfacePool<T> extends FieldType<T> implements GeneralAccess<T> {
@@ -26,7 +29,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
      * @note the Java type system seems to be to weak to prove the correct type
      *       [? extends T, ?]
      */
-    final private StoragePool<T, ?>[] realizations;
+    final private StoragePool<SkillObject, SkillObject>[] realizations;
 
     /**
      * Construct an interface pool.
@@ -39,13 +42,13 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
         super(superPool.typeID());
         this.name = name;
         this.superType = superPool;
-        this.realizations = (StoragePool<T, ?>[]) realizations;
+        this.realizations = (StoragePool<SkillObject, SkillObject>[]) realizations;
     }
 
     @Override
     public int size() {
         int rval = 0;
-        for (StoragePool<T, ?> p : realizations) {
+        for (StoragePool<SkillObject, SkillObject> p : realizations) {
             rval += p.size();
         }
         return rval;

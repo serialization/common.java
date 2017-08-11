@@ -244,8 +244,13 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         return staticDataInstances + newObjects.size();
     }
 
+    /***
+     * @note cast required to work around weakened type system by javac 1.8.131
+     */
+    @SuppressWarnings("unchecked")
     final StaticDataIterator<T> staticInstances() {
-        return new StaticDataIterator<>(this);
+        return (StaticDataIterator<T>) new StaticDataIterator<SkillObject>(
+                (StoragePool<SkillObject, SkillObject>) this);
     }
 
     /**

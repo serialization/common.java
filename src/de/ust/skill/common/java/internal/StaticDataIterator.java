@@ -12,14 +12,14 @@ import de.ust.skill.common.java.internal.parts.Block;
 public class StaticDataIterator<T extends SkillObject> implements Iterator<T> {
 
     // ! target pool
-    final StoragePool<T, ? extends T> p;
+    final StoragePool<T, ? super T> p;
 
     int secondIndex;
     final int lastBlock;
     int index;
     int last;
 
-    public StaticDataIterator(StoragePool<T, ? extends T> storagePool) {
+    public StaticDataIterator(StoragePool<T, ? super T> storagePool) {
         p = storagePool;
         lastBlock = storagePool.blocks.size();
         // @note other members are zero-allocated
