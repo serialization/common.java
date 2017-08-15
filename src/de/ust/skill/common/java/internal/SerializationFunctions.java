@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.api.SkillException;
@@ -125,6 +126,36 @@ abstract public class SerializationFunctions {
                     }
                     break;
 
+                case 20:
+                    MapType<?, ?> type = (MapType<?, ?>) f.type;
+                    // simple maps
+                    boolean k, v;
+                    if ((k = (type.keyType.typeID == 14)) | (v = (type.valueType.typeID == 14))) {
+
+                        for (SkillObject i : p) {
+                            HashMap<?, ?> xs = (HashMap<?, ?>) i.get(f);
+                            if (null != xs) {
+                                if (k)
+                                    for (String s : (Set<String>) xs.keySet())
+                                        strings.add(s);
+                                if (v)
+                                    for (String s : (Collection<String>) xs.values())
+                                        strings.add(s);
+                            }
+                        }
+                    }
+                    // @note overlap is intended
+                    // nested maps
+                    if (type.valueType.typeID == 20) {
+                        MapType<?, ?> nested = (MapType<?, ?>) type.valueType;
+                        if (nested.keyType.typeID == 14 || type.valueType.typeID == 14 || type.valueType.typeID == 20) {
+                            for (SkillObject i : p) {
+                                collectNestedStrings(strings, nested, (HashMap<?, ?>) i.get(f));
+                            }
+                        }
+                    }
+                    break;
+
                 default:
                     // nothing important
                 }
@@ -143,6 +174,22 @@ abstract public class SerializationFunctions {
         state.check();
 
         stringIDs = state.stringType.resetIDs();
+    }
+
+    private static void collectNestedStrings(StringPool strings, MapType<?, ?> type, HashMap<?, ?> xs) {
+        if (null != xs) {
+            if (type.keyType.typeID == 14)
+                for (String s : (Set<String>) xs.keySet())
+                    strings.add(s);
+
+            if (type.valueType.typeID == 14)
+                for (String s : (Collection<String>) xs.values())
+                    strings.add(s);
+
+            if (type.valueType.typeID == 20)
+                for (HashMap<?, ?> s : (Collection<HashMap<?, ?>>) xs.values())
+                    collectNestedStrings(strings, (MapType<?, ?>) type.valueType, s);
+        }
     }
 
     /**
