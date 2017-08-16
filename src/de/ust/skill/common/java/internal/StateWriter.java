@@ -3,6 +3,7 @@ package de.ust.skill.common.java.internal;
 import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
+import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
@@ -19,11 +20,18 @@ final public class StateWriter extends SerializationFunctions {
 
         @Override
         public void run() {
-            f.offset = 0;
-            SimpleChunk c = (SimpleChunk) f.lastChunk();
-            int i = (int) c.bpo;
-            f.osc(i, i + (int) c.count);
-            barrier.release();
+            try {
+                f.offset = 0;
+                SimpleChunk c = (SimpleChunk) f.lastChunk();
+                int i = (int) c.bpo;
+                f.osc(i, i + (int) c.count);
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+                System.err.println("Offset calculation failed, resulting file will be corrupted.");
+                f.offset = Long.MIN_VALUE;
+            } finally {
+                barrier.release();
+            }
         };
 
     }
@@ -101,6 +109,8 @@ final public class StateWriter extends SerializationFunctions {
         ArrayList<Task> data = new ArrayList<>(fieldCount);
         long offset = 0L;
         for (FieldDeclaration<?, ?> f : fieldQueue) {
+            if (f.offset < 0)
+                throw new SkillException("aborting write because offset calculation failed");
 
             // write info
             out.v64(f.index);
