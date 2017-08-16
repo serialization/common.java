@@ -148,7 +148,7 @@ abstract public class SerializationFunctions {
                     // nested maps
                     if (type.valueType.typeID == 20) {
                         MapType<?, ?> nested = (MapType<?, ?>) type.valueType;
-                        if (nested.keyType.typeID == 14 || type.valueType.typeID == 14 || type.valueType.typeID == 20) {
+                        if (nested.keyType.typeID == 14 || nested.valueType.typeID == 14 || nested.valueType.typeID == 20) {
                             for (SkillObject i : p) {
                                 collectNestedStrings(strings, nested, (HashMap<?, ?>) i.get(f));
                             }
