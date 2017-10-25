@@ -44,6 +44,7 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
         return result;
     }
 
+    @SuppressWarnings("null")
     @Override
     public long singleOffset(HashMap<K, V> x) {
         int size = null == x ? 0 : x.size();
@@ -54,9 +55,10 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
                 + valueType.calculateOffset(x.values());
     }
 
+    @SuppressWarnings("null")
     @Override
     public void writeSingleField(HashMap<K, V> data, OutStream out) throws IOException {
-        int size = null == data ? 0 : data.size();
+        int size = (null == data) ? 0 : data.size();
         if (0 == size) {
             out.i8((byte) 0);
             return;

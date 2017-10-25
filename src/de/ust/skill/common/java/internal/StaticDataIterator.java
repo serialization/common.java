@@ -65,11 +65,11 @@ public class StaticDataIterator<T extends SkillObject> implements Iterator<T> {
                 }
             }
             return r;
-        } else {
-            T r = p.newObject(index);
-            index++;
-            return r;
         }
+
+        T r = p.newObject(index);
+        index++;
+        return r;
     }
 
 }

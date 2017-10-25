@@ -80,24 +80,24 @@ public final class DynamicDataIterator<T extends B, B extends SkillObject> imple
                 }
             }
             return r;
-        } else {
-            T r = p.newObject(index);
-            index++;
-            if (index == last) {
-                do {
-                    nextP();
-                    if (null == p)
-                        break;
-
-                    if (p.newObjects.size() != 0) {
-                        index = 0;
-                        last = p.newObjects.size();
-                        break;
-                    }
-                } while (true);
-            }
-            return r;
         }
+
+        T r = p.newObject(index);
+        index++;
+        if (index == last) {
+            do {
+                nextP();
+                if (null == p)
+                    break;
+
+                if (p.newObjects.size() != 0) {
+                    index = 0;
+                    last = p.newObjects.size();
+                    break;
+                }
+            } while (true);
+        }
+        return r;
     }
 
     private void nextP() {

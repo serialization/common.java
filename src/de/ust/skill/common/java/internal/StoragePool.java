@@ -477,21 +477,6 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
         return new TypeOrderIterator<T, B>(this);
     }
 
-    // @Override
-    // public final Iterator<FieldDeclaration<?, T>> fields() {
-    // return Iterators.<FieldDeclaration<?,
-    // T>>concatenate(Iterators.array(autoFields), dataFields.iterator());
-    // }
-    //
-    // @Override
-    // public final Iterator<FieldDeclaration<?, ? super T>> allFields() {
-    // if (null == superPool)
-    // return Iterators.<FieldDeclaration<?, ? super T>>concatenate(fields());
-    //
-    // return Iterators.<FieldDeclaration<?, ? super
-    // T>>concatenate(superPool.allFields(), fields());
-    // }
-
     @Override
     public T make() throws SkillException {
         throw new SkillException("We prevent reflective creation of new instances, because it is bad style!");

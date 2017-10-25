@@ -339,7 +339,7 @@ public abstract class FileParser {
                     if (definition.superPool != superDef)
                         throw new ParseException(in, blockCounter, null,
                                 "The file contains a super type %s but %s is specified to be a base type.",
-                                superDef.name, name);
+                                superDef == null ? "<none>" : superDef.name, name);
 
                     poolByName.put(name, definition);
                 } catch (ClassCastException e) {

@@ -3,7 +3,6 @@ package de.ust.skill.common.java.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.internal.parts.BulkChunk;
@@ -18,8 +17,7 @@ import de.ust.skill.common.jvm.streams.FileOutputStream;
  */
 final public class StateAppender extends SerializationFunctions {
 
-    public StateAppender(SkillState state, FileOutputStream out)
-            throws IOException, InterruptedException, ExecutionException {
+    public StateAppender(SkillState state, FileOutputStream out) throws IOException, InterruptedException {
         super(state);
 
         // save the index of the first new pool
