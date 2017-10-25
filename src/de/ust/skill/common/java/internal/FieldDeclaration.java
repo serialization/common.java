@@ -57,7 +57,8 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      *       deprecated)
      * @note index is <= 0, if the field is an auto field (or SKilLID)
      * 
-     * @note fieldIDs should be file-global, so that remaining HashMaps with field keys can be replaced
+     * @note fieldIDs should be file-global, so that remaining HashMaps with
+     *       field keys can be replaced
      */
     final int index;
 
@@ -266,7 +267,7 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
                     } catch (SkillException t) {
                         ex = t;
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        ex = new SkillException("internal error: unexpected foreign exception", t);
                     } finally {
                         barrier.release();
                         if (null != ex)
