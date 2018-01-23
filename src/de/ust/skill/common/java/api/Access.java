@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.stream.Stream;
 
 import de.ust.skill.common.java.internal.SkillObject;
+import de.ust.skill.common.java.internal.StaticDataIterator;
 
 /**
  * Access to class type <T>.
@@ -22,7 +23,12 @@ public interface Access<T extends SkillObject> extends GeneralAccess<T> {
      * @note do not invoke this function, if you do not know what "type order"
      *       means
      */
-    Iterator<T> typeOrderIterator();
+    public Iterator<T> typeOrderIterator();
+    
+    /**
+     * @return an iterator over all instances of the type represented by this access not including instances of subtypes
+     */
+    public StaticDataIterator<T> staticInstances();
 
     /**
      * @return the skill file owning this access
