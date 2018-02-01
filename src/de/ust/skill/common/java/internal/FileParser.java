@@ -210,6 +210,8 @@ public abstract class FileParser {
                 // Singleton
             case 2:
                 // Monotone
+                break;
+                
             default:
                 if (id <= 5 || 1 == (id % 2))
                     throw new ParseException(in, blockCounter, null,
