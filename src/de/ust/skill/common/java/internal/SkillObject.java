@@ -97,7 +97,7 @@ public abstract class SkillObject implements Serializable {
     public final String prettyString(SkillFile sf) {
         StringBuilder sb = new StringBuilder("Age(this: ").append(this);
         StoragePool<?, ?> p = ((SkillState) sf).poolByName.get(skillName());
-        printFs(p.fields(), sb);
+        printFs(p.allFields(), sb);
         return sb.append(")").toString();
     }
 

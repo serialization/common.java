@@ -168,7 +168,12 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
     protected final ArrayList<FieldDeclaration<?, T>> dataFields;
 
     @Override
-    public FieldIterator fields() {
+    public StaticFieldIterator fields() {
+        return new StaticFieldIterator(this);
+    }
+
+    @Override
+    public FieldIterator allFields() {
         return new FieldIterator(this);
     }
 

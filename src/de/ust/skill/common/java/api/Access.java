@@ -3,8 +3,10 @@ package de.ust.skill.common.java.api;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
+import de.ust.skill.common.java.internal.FieldIterator;
 import de.ust.skill.common.java.internal.SkillObject;
 import de.ust.skill.common.java.internal.StaticDataIterator;
+import de.ust.skill.common.java.internal.StaticFieldIterator;
 
 /**
  * Access to class type <T>.
@@ -41,9 +43,14 @@ public interface Access<T extends SkillObject> extends GeneralAccess<T> {
     public String superName();
 
     /**
+     * @return an iterator over fields declared by T
+     */
+    public StaticFieldIterator fields();
+
+    /**
      * @return an iterator over all fields of T including fields declared in super types
      */
-    public Iterator<? extends FieldDeclaration<?>> fields();
+    public FieldIterator allFields();
 
     /**
      * @return a new T instance with default field values
