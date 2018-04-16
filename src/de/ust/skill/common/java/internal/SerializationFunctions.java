@@ -150,7 +150,7 @@ abstract public class SerializationFunctions {
                         MapType<?, ?> nested = (MapType<?, ?>) type.valueType;
                         if (nested.keyType.typeID == 14 || nested.valueType.typeID == 14 || nested.valueType.typeID == 20) {
                             for (SkillObject i : p) {
-                                collectNestedStrings(strings, nested, (HashMap<?, ?>) i.get(f));
+                                collectNestedStrings(strings, type, (HashMap<?, ?>) i.get(f));
                             }
                         }
                     }
