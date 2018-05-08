@@ -28,8 +28,12 @@ public final class Block {
         this.staticCount = staticCount;
     }
 
+    /**
+     * @return true, iff the object with the argument skillID is inside this
+     *         block
+     */
     public boolean contains(long skillID) {
-        return bpo <= skillID && skillID < bpo + count;
+        return bpo < skillID && skillID <= bpo + count;
     }
 
 }
