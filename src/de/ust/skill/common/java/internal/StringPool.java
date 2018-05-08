@@ -111,16 +111,14 @@ public class StringPool implements StringAccess {
     public void prepareAndWrite(FileOutputStream out, StateWriter ws) throws IOException {
         HashMap<String, Integer> serializationIDs = ws.stringIDs;
 
+        // ensure that lazy strings exist
         ensureStrings();
+        
+        // throw away id map, as it is no longer valid
+        idMap.clear();
+        idMap.add(null);
 
         // create inverse map
-        for (int i = 1; i < idMap.size(); i++) {
-            serializationIDs.put(idMap.get(i), i);
-        }
-
-        // instert new strings to the map;
-        // this is the place where duplications with lazy strings will be
-        // detected and eliminated
         for (String s : knownStrings) {
             if (!serializationIDs.containsKey(s)) {
                 serializationIDs.put(s, idMap.size());
