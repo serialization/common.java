@@ -110,9 +110,6 @@ public class StringPool implements StringAccess {
 
     public void prepareAndWrite(FileOutputStream out, StateWriter ws) throws IOException {
         HashMap<String, Integer> serializationIDs = ws.stringIDs;
-
-        // ensure that lazy strings exist
-        ensureStrings();
         
         // throw away id map, as it is no longer valid
         idMap.clear();
@@ -150,28 +147,11 @@ public class StringPool implements StringAccess {
     }
 
     /**
-     * read remaining strings
-     * 
-     * @throws IOException
-     */
-    private final void ensureStrings() throws IOException {
-        if (null != input) {
-            for (int i = 1; i < stringPositions.size(); i++) {
-                get(i);
-            }
-            input.close();
-            input = null;
-        }
-    }
-
-    /**
      * prepares serialization of the string pool and appends new Strings to the
      * output stream.
      */
     public void prepareAndAppend(FileOutputStream out, StateAppender as) throws IOException {
         final HashMap<String, Integer> serializationIDs = as.stringIDs;
-
-        ensureStrings();
 
         // create inverse map
         for (int i = 1; i < idMap.size(); i++) {
