@@ -247,6 +247,21 @@ public abstract class SkillState implements SkillFile {
     }
 
     @Override
+    public final void loadLazyData() {
+        // ensure that strings are loaded
+        int id = strings.idMap.size();
+        while (--id != 0) {
+            strings.get(0);
+        }
+
+        // ensure that lazy fields have been loaded
+        for (StoragePool<?, ?> p : types)
+            for (FieldDeclaration<?, ?> f : p.dataFields)
+                if (f instanceof LazyField<?, ?>)
+                    ((LazyField<?, ?>) f).ensureLoaded();
+    }
+
+    @Override
     public void check() throws SkillException {
         // TODO type restrictions
         // TODO make pools check fields, because they can optimize checks per

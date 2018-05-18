@@ -120,6 +120,11 @@ public interface SkillFile {
      * @note not fully implemented
      */
     public abstract void changeMode(Mode writeMode);
+    
+    /**
+     * Force all lazy string and field data to be loaded from disk.
+     */
+    public abstract void loadLazyData();
 
     /**
      * Checks consistency of the current state of the file.

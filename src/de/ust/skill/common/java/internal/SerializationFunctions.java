@@ -108,7 +108,8 @@ abstract public class SerializationFunctions {
                 // string
                 case 14:
                     for (SkillObject i : p)
-                        strings.add((String) i.get(f));
+                        if (!i.isDeleted())
+                            strings.add((String) i.get(f));
                     break;
 
                 // container<string>
@@ -117,12 +118,13 @@ abstract public class SerializationFunctions {
                 case 18:
                 case 19:
                     if (((SingleArgumentType<?, ?>) (f.type)).groundType.typeID == 14) {
-                        for (SkillObject i : p) {
-                            @SuppressWarnings("unchecked")
-                            Collection<String> xs = (Collection<String>) i.get(f);
-                            for (String s : xs)
-                                strings.add(s);
-                        }
+                        for (SkillObject i : p)
+                            if (!i.isDeleted()) {
+                                @SuppressWarnings("unchecked")
+                                Collection<String> xs = (Collection<String>) i.get(f);
+                                for (String s : xs)
+                                    strings.add(s);
+                            }
                     }
                     break;
 
@@ -132,26 +134,29 @@ abstract public class SerializationFunctions {
                     boolean k, v;
                     if ((k = (type.keyType.typeID == 14)) | (v = (type.valueType.typeID == 14))) {
 
-                        for (SkillObject i : p) {
-                            HashMap<?, ?> xs = (HashMap<?, ?>) i.get(f);
-                            if (null != xs) {
-                                if (k)
-                                    for (String s : (Set<String>) xs.keySet())
-                                        strings.add(s);
-                                if (v)
-                                    for (String s : (Collection<String>) xs.values())
-                                        strings.add(s);
+                        for (SkillObject i : p)
+                            if (!i.isDeleted()) {
+                                HashMap<?, ?> xs = (HashMap<?, ?>) i.get(f);
+                                if (null != xs) {
+                                    if (k)
+                                        for (String s : (Set<String>) xs.keySet())
+                                            strings.add(s);
+                                    if (v)
+                                        for (String s : (Collection<String>) xs.values())
+                                            strings.add(s);
+                                }
                             }
-                        }
                     }
                     // @note overlap is intended
                     // nested maps
                     if (type.valueType.typeID == 20) {
                         MapType<?, ?> nested = (MapType<?, ?>) type.valueType;
-                        if (nested.keyType.typeID == 14 || nested.valueType.typeID == 14 || nested.valueType.typeID == 20) {
-                            for (SkillObject i : p) {
-                                collectNestedStrings(strings, type, (HashMap<?, ?>) i.get(f));
-                            }
+                        if (nested.keyType.typeID == 14 || nested.valueType.typeID == 14
+                                || nested.valueType.typeID == 20) {
+                            for (SkillObject i : p)
+                                if (!i.isDeleted()) {
+                                    collectNestedStrings(strings, type, (HashMap<?, ?>) i.get(f));
+                                }
                         }
                     }
                     break;
