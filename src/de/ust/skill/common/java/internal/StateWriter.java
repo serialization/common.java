@@ -1,6 +1,7 @@
 package de.ust.skill.common.java.internal;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 
 import de.ust.skill.common.java.api.SkillException;
@@ -88,6 +89,7 @@ final public class StateWriter extends SerializationFunctions {
 
         // write types
         ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(fieldCount);
+        final HashMap<String, Integer> stringIDs = state.strings.stringIDs;
         for (StoragePool<?, ?> p : state.types) {
             out.v64(stringIDs.get(p.name));
             long LCount = p.lastBlock().count;

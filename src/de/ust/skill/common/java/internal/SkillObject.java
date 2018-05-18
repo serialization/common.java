@@ -13,7 +13,6 @@ import de.ust.skill.common.java.api.SkillFile;
  * @note This type definition is in internal, because we have to protect
  *       setSkillID from the user
  */
-// TODO create a builder for skill objects
 public abstract class SkillObject implements Serializable {
 
     /**

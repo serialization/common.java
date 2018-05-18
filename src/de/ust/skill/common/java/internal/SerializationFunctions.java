@@ -83,7 +83,6 @@ abstract public class SerializationFunctions {
     }
 
     protected final SkillState state;
-    protected final HashMap<String, Integer> stringIDs;
 
     public SerializationFunctions(SkillState state) {
         this.state = state;
@@ -178,7 +177,7 @@ abstract public class SerializationFunctions {
          */
         state.check();
 
-        stringIDs = state.stringType.resetIDs();
+        state.strings.resetIDs();
     }
 
     private static void collectNestedStrings(StringPool strings, MapType<?, ?> type, HashMap<?, ?> xs) {
@@ -305,7 +304,7 @@ abstract public class SerializationFunctions {
          * **************** PHASE 4: CLEANING * ****************
          */
         // release data structures
-        state.stringType.clearIDs();
+        state.strings.resetIDs();
         StoragePool.unfix(state.types);
     }
 }

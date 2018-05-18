@@ -19,7 +19,6 @@ import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.api.SkillFile;
 import de.ust.skill.common.java.api.StringAccess;
 import de.ust.skill.common.java.internal.fieldTypes.Annotation;
-import de.ust.skill.common.java.internal.fieldTypes.StringType;
 import de.ust.skill.common.jvm.streams.FileInputStream;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
 
@@ -79,11 +78,6 @@ public abstract class SkillState implements SkillFile {
             });
 
     final StringPool strings;
-
-    /**
-     * Types required for reflective IO
-     */
-    final StringType stringType;
     /**
      * Types required for reflective IO
      */
@@ -93,14 +87,13 @@ public abstract class SkillState implements SkillFile {
      * Path and mode management can be done for arbitrary states.
      */
     protected SkillState(StringPool strings, Path path, Mode mode, ArrayList<StoragePool<?, ?>> types,
-            HashMap<String, StoragePool<?, ?>> poolByName, StringType stringType, Annotation annotationType) {
+            HashMap<String, StoragePool<?, ?>> poolByName, Annotation annotationType) {
         this.strings = strings;
         this.path = path;
         this.input = strings.getInStream();
         this.writeMode = mode;
         this.types = types;
         this.poolByName = poolByName;
-        this.stringType = stringType;
         this.annotationType = annotationType;
     }
 
@@ -132,7 +125,7 @@ public abstract class SkillState implements SkillFile {
                     // ensure existence of known fields
                     for (String n : p.knownFields) {
                         if (!fieldNames.contains(n))
-                            p.addKnownField(n, stringType, annotationType);
+                            p.addKnownField(n, strings, annotationType);
                     }
                 }
                 barrier.acquire(reads);

@@ -27,7 +27,6 @@ import de.ust.skill.common.java.internal.fieldTypes.ListType;
 import de.ust.skill.common.java.internal.fieldTypes.MapType;
 import de.ust.skill.common.java.internal.fieldTypes.ReferenceType;
 import de.ust.skill.common.java.internal.fieldTypes.SetType;
-import de.ust.skill.common.java.internal.fieldTypes.StringType;
 import de.ust.skill.common.java.internal.fieldTypes.V64;
 import de.ust.skill.common.java.internal.fieldTypes.VariableLengthArray;
 import de.ust.skill.common.java.internal.parts.Block;
@@ -73,7 +72,6 @@ public abstract class FileParser {
     protected final ArrayList<StoragePool<?, ?>> types;
     protected final HashMap<String, StoragePool<?, ?>> poolByName = new HashMap<>();
     protected final Annotation Annotation;
-    protected final StringType StringType;
 
     /**
      * creates a new storage pool of matching name
@@ -87,7 +85,6 @@ public abstract class FileParser {
         types = new ArrayList<>(IRSize);
         this.in = in;
         Strings = new StringPool(in);
-        StringType = new StringType(Strings);
         Annotation = new Annotation(types);
 
         // parse blocks
@@ -179,7 +176,7 @@ public abstract class FileParser {
         case 13:
             return F64.get();
         case 14:
-            return StringType;
+            return Strings;
         case 15:
             return new ConstantLengthArray<>(in.v32(), fieldType());
         case 17:
@@ -508,7 +505,7 @@ public abstract class FileParser {
         // the generated state has exactly one constructor
         try {
             @SuppressWarnings("unchecked")
-            State r = (State) cls.getConstructors()[0].newInstance(poolByName, Strings, StringType, Annotation, types,
+            State r = (State) cls.getConstructors()[0].newInstance(poolByName, Strings, Annotation, types,
                     in, writeMode);
 
             r.check();

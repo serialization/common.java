@@ -92,6 +92,7 @@ final public class StateAppender extends SerializationFunctions {
             for (final FieldDeclaration<?, ?> f : chunkMap.keySet()) {
                 fieldCount++;
                 SkillState.pool.execute(new Runnable() {
+                    @Override
                     public void run() {
                         f.offset = 0;
                         Chunk c = f.lastChunk();
@@ -112,6 +113,7 @@ final public class StateAppender extends SerializationFunctions {
 
         // write headers
         final ArrayList<ArrayList<FieldDeclaration<?, ?>>> fieldQueue = new ArrayList<>(fieldCount);
+        final HashMap<String, Integer> stringIDs = state.strings.stringIDs;
         for (StoragePool<?, ?> p : rPools) {
             // generic append
             final boolean newPool = p.typeID - 32 >= newPoolIndex;

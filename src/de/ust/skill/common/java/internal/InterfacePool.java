@@ -62,6 +62,7 @@ final public class InterfacePool<T, B extends SkillObject> extends FieldType<T> 
         return superPool.owner();
     }
 
+    @Override
     final public String name() {
         return name;
     }

@@ -13,7 +13,6 @@ import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.fieldTypes.Annotation;
 import de.ust.skill.common.java.internal.fieldTypes.ReferenceType;
-import de.ust.skill.common.java.internal.fieldTypes.StringType;
 import de.ust.skill.common.java.internal.fieldTypes.V64;
 import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
@@ -528,7 +527,7 @@ public class StoragePool<T extends B, B extends SkillObject> extends FieldType<T
      * used internally for state allocation
      */
     @SuppressWarnings("static-method")
-    public void addKnownField(String name, StringType string, Annotation annotation) {
+    public void addKnownField(String name, StringPool string, Annotation annotation) {
         throw new Error("Arbitrary storage pools know no fields!");
     }
 

@@ -12,8 +12,12 @@ import java.util.Iterator;
 
 import de.ust.skill.common.java.api.StringAccess;
 import de.ust.skill.common.java.internal.exceptions.InvalidPoolIndexException;
+import de.ust.skill.common.java.internal.fieldTypes.ReferenceType;
+import de.ust.skill.common.java.internal.fieldTypes.V64;
 import de.ust.skill.common.jvm.streams.FileInputStream;
 import de.ust.skill.common.jvm.streams.FileOutputStream;
+import de.ust.skill.common.jvm.streams.InStream;
+import de.ust.skill.common.jvm.streams.OutStream;
 
 /**
  * @author Timm Felden
@@ -23,7 +27,7 @@ import de.ust.skill.common.jvm.streams.FileOutputStream;
  *       a necessary behavior, if add should be an O(1) operation and Strings
  *       are loaded from file lazily.
  */
-public class StringPool implements StringAccess {
+public class StringPool extends FieldType<String> implements ReferenceType, StringAccess {
     private FileInputStream input;
 
     /**
@@ -56,14 +60,65 @@ public class StringPool implements StringAccess {
     final ArrayList<String> idMap;
 
     /**
+     * Get ID for a string
+     */
+    final HashMap<String, Integer> stringIDs = new HashMap<>();
+
+    /**
      * DO NOT CALL IF YOU ARE NOT GENERATED OR INTERNAL CODE!
      */
     public StringPool(FileInputStream input) {
+        super(14);
         this.input = input;
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1L, -1));
         idMap = new ArrayList<>();
         idMap.add(null);
+    }
+
+    @Override
+    public String readSingleField(InStream in) {
+        return get(in.v32());
+    }
+
+    @Override
+    public long calculateOffset(Collection<String> xs) {
+        // shortcut for small string pools
+        if (stringIDs.size() < 128)
+            return xs.size();
+
+        long result = 0L;
+        for (String s : xs) {
+            result += null == s ? 1 : V64.singleV64Offset(stringIDs.get(s));
+        }
+
+        return result;
+    }
+
+    @Override
+    public long singleOffset(String name) {
+        return null == name ? 1 : V64.singleV64Offset(stringIDs.get(name));
+    }
+
+    @Override
+    public void writeSingleField(String v, OutStream out) throws IOException {
+        if (null == v)
+            out.i8((byte) 0);
+        else
+            out.v64(stringIDs.get(v));
+
+    }
+
+    /**
+     * invoked at begin and end of serialization
+     */
+    void resetIDs() {
+        stringIDs.clear();
+    }
+
+    @Override
+    public String toString() {
+        return "string";
     }
 
     @Override
@@ -109,31 +164,31 @@ public class StringPool implements StringAccess {
     }
 
     public void prepareAndWrite(FileOutputStream out, StateWriter ws) throws IOException {
-        HashMap<String, Integer> serializationIDs = ws.stringIDs;
-        
+
         // throw away id map, as it is no longer valid
         idMap.clear();
         idMap.add(null);
 
         // create inverse map
         for (String s : knownStrings) {
-            if (!serializationIDs.containsKey(s)) {
-                serializationIDs.put(s, idMap.size());
+            if (!stringIDs.containsKey(s)) {
+                stringIDs.put(s, idMap.size());
                 idMap.add(s);
             }
         }
 
         // count
         // @note idMap access performance hack
-        out.v64(idMap.size() - 1);
+        final int count = idMap.size() - 1;
+        out.v64(count);
 
         // @note idMap access performance hack
-        if (1 != idMap.size()) {
+        if (0 != count) {
             final Charset utf8 = Charset.forName("UTF-8");
             // offsets
             ByteBuffer end = ByteBuffer.allocate(4 * (idMap.size() - 1));
             int off = 0;
-            for (int i = 1; i < idMap.size(); i++) {
+            for (int i = 1; i <= count; i++) {
                 off += idMap.get(i).getBytes(utf8).length;
                 end.putInt(off);
             }
@@ -141,7 +196,7 @@ public class StringPool implements StringAccess {
             out.put(end);
 
             // data
-            for (int i = 1; i < idMap.size(); i++)
+            for (int i = 1; i <= count; i++)
                 out.put(idMap.get(i).getBytes(utf8));
         }
     }
@@ -151,11 +206,10 @@ public class StringPool implements StringAccess {
      * output stream.
      */
     public void prepareAndAppend(FileOutputStream out, StateAppender as) throws IOException {
-        final HashMap<String, Integer> serializationIDs = as.stringIDs;
 
         // create inverse map
         for (int i = 1; i < idMap.size(); i++) {
-            serializationIDs.put(idMap.get(i), i);
+            stringIDs.put(idMap.get(i), i);
         }
 
         ArrayList<byte[]> todo = new ArrayList<byte[]>();
@@ -167,8 +221,8 @@ public class StringPool implements StringAccess {
         // output file
         final Charset utf8 = Charset.forName("UTF-8");
         for (String s : knownStrings) {
-            if (!serializationIDs.containsKey(s)) {
-                serializationIDs.put(s, idMap.size());
+            if (!stringIDs.containsKey(s)) {
+                stringIDs.put(s, idMap.size());
                 idMap.add(s);
                 todo.add(s.getBytes(utf8));
             }
