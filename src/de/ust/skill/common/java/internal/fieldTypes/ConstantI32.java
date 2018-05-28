@@ -1,10 +1,16 @@
 package de.ust.skill.common.java.internal.fieldTypes;
 
 public final class ConstantI32 extends ConstantIntegerType<Integer> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 2;
+
     public final int value;
 
     public ConstantI32(int value) {
-        super(2);
+        super(typeID);
         this.value = value;
     }
 

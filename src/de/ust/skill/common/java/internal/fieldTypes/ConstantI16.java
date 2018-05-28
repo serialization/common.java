@@ -1,10 +1,16 @@
 package de.ust.skill.common.java.internal.fieldTypes;
 
 public final class ConstantI16 extends ConstantIntegerType<Short> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 1;
+
     public final short value;
 
     public ConstantI16(short value) {
-        super(1);
+        super(typeID);
         this.value = value;
     }
 

@@ -10,11 +10,17 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 20;
+
     public final FieldType<K> keyType;
     public final FieldType<V> valueType;
 
     public MapType(FieldType<K> keyType, FieldType<V> valueType) {
-        super(20);
+        super(typeID);
         this.keyType = keyType;
         this.valueType = valueType;
     }

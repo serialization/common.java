@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class I16 extends IntegerType<Short> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 8;
+
     private final static I16 instance = new I16();
 
     public static I16 get() {
@@ -14,7 +20,7 @@ public final class I16 extends IntegerType<Short> {
     }
 
     private I16() {
-        super(8);
+        super(typeID);
     }
 
     @Override

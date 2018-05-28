@@ -9,10 +9,16 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class ConstantLengthArray<T> extends SingleArgumentType<ArrayList<T>, T> {
+    
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 15;
+    
     public final int length;
 
     public ConstantLengthArray(long length, FieldType<T> groundType) {
-        super(15, groundType);
+        super(typeID, groundType);
         this.length = (int) length;
     }
 

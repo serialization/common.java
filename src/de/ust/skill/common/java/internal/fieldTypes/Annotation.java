@@ -18,6 +18,11 @@ import de.ust.skill.common.jvm.streams.OutStream;
  * @author Timm Felden
  */
 public final class Annotation extends FieldType<SkillObject>implements ReferenceType {
+    
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 5;
 
     private final ArrayList<StoragePool<?, ?>> types;
     private HashMap<String, StoragePool<?, ?>> typeByName = null;
@@ -30,7 +35,7 @@ public final class Annotation extends FieldType<SkillObject>implements Reference
      * @note can not take a state as argument, because it may not exist yet
      */
     public Annotation(ArrayList<StoragePool<?, ?>> types) {
-        super(5);
+        super(typeID);
         this.types = types;
         assert types != null;
     }
@@ -59,8 +64,7 @@ public final class Annotation extends FieldType<SkillObject>implements Reference
                 if (ref instanceof NamedType)
                     result += V64.singleV64Offset(((NamedType) ref).τPool().typeID() - 31);
                 else
-                    result += V64.singleV64Offset(
-                            typeByName.get(ref.skillName()).typeID() - 31);
+                    result += V64.singleV64Offset(typeByName.get(ref.skillName()).typeID() - 31);
 
                 result += V64.singleV64Offset(ref.getSkillID());
             }
@@ -72,6 +76,7 @@ public final class Annotation extends FieldType<SkillObject>implements Reference
     /**
      * used for simple offset calculation
      */
+    @Override
     public long singleOffset(SkillObject ref) {
         if (null == ref)
             return 2L;

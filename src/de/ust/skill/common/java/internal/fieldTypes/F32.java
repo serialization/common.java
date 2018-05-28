@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class F32 extends FloatType<Float> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 12;
+
     private final static F32 instance = new F32();
 
     public static F32 get() {
@@ -14,7 +20,7 @@ public final class F32 extends FloatType<Float> {
     }
 
     private F32() {
-        super(12);
+        super(typeID);
     }
 
     @Override
@@ -31,7 +37,7 @@ public final class F32 extends FloatType<Float> {
     public long singleOffset(Float x) {
         return 4L;
     }
-    
+
     @Override
     public void writeSingleField(Float data, OutStream out) throws IOException {
         out.f32(data);

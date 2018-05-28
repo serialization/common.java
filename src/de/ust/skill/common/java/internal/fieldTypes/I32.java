@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class I32 extends IntegerType<Integer> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 9;
+
     private final static I32 instance = new I32();
 
     public static I32 get() {
@@ -14,7 +20,7 @@ public final class I32 extends IntegerType<Integer> {
     }
 
     private I32() {
-        super(9);
+        super(typeID);
     }
 
     @Override

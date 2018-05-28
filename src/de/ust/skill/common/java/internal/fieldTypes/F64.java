@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class F64 extends FloatType<Double> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 13;
+
     private final static F64 instance = new F64();
 
     public static F64 get() {
@@ -14,7 +20,7 @@ public final class F64 extends FloatType<Double> {
     }
 
     private F64() {
-        super(13);
+        super(typeID);
     }
 
     @Override

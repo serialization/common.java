@@ -1,10 +1,16 @@
 package de.ust.skill.common.java.internal.fieldTypes;
 
 public final class ConstantV64 extends ConstantIntegerType<Long> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 4;
+
     public final long value;
 
     public ConstantV64(long value) {
-        super(4);
+        super(typeID);
         this.value = value;
     }
 

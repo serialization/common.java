@@ -7,8 +7,13 @@ import de.ust.skill.common.jvm.streams.InStream;
 
 public final class SetType<T> extends SingleArgumentType<HashSet<T>, T> {
 
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 19;
+
     public SetType(FieldType<T> groundType) {
-        super(19, groundType);
+        super(typeID, groundType);
     }
 
     @Override

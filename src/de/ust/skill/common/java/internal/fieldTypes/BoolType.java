@@ -9,13 +9,18 @@ import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class BoolType extends FieldType<Boolean> {
     private static final BoolType instance = new BoolType();
+    
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 6;
 
     public static BoolType get() {
         return instance;
     }
 
     private BoolType() {
-        super(6);
+        super(typeID);
     }
 
     @Override

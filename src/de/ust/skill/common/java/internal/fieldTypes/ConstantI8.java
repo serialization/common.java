@@ -1,10 +1,16 @@
 package de.ust.skill.common.java.internal.fieldTypes;
 
 public final class ConstantI8 extends ConstantIntegerType<Byte> {
+    
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 0;
+    
     public final byte value;
 
     public ConstantI8(byte value) {
-        super(0);
+        super(typeID);
         this.value = value;
     }
 

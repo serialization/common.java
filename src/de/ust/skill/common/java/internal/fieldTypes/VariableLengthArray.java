@@ -7,8 +7,13 @@ import de.ust.skill.common.jvm.streams.InStream;
 
 public final class VariableLengthArray<T> extends SingleArgumentType<ArrayList<T>, T> {
 
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 17;
+
     public VariableLengthArray(FieldType<T> groundType) {
-        super(17, groundType);
+        super(typeID, groundType);
     }
 
     @Override

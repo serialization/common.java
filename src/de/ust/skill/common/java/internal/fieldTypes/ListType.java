@@ -7,8 +7,13 @@ import de.ust.skill.common.jvm.streams.InStream;
 
 public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
 
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 18;
+
     public ListType(FieldType<T> groundType) {
-        super(18, groundType);
+        super(typeID, groundType);
     }
 
     @Override

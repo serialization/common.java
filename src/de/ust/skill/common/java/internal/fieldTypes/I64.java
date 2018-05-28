@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class I64 extends IntegerType<Long> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 10;
+
     private final static I64 instance = new I64();
 
     public static I64 get() {
@@ -14,7 +20,7 @@ public final class I64 extends IntegerType<Long> {
     }
 
     private I64() {
-        super(10);
+        super(typeID);
     }
 
     @Override

@@ -7,6 +7,12 @@ import de.ust.skill.common.jvm.streams.InStream;
 import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class I8 extends IntegerType<Byte> {
+
+    /**
+     * @see SKilL V1.0 reference manual §G
+     */
+    public static final int typeID = 7;
+
     private final static I8 instance = new I8();
 
     public static I8 get() {
@@ -14,7 +20,7 @@ public final class I8 extends IntegerType<Byte> {
     }
 
     private I8() {
-        super(7);
+        super(typeID);
     }
 
     @Override
