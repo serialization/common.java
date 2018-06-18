@@ -47,7 +47,7 @@ public final class ConstantLengthArray<T> extends SingleArgumentType<ArrayList<T
 
     @Override
     public void writeSingleField(ArrayList<T> elements, OutStream out) throws IOException {
-        if (elements.size() == length)
+        if (elements.size() != length)
             throw new IllegalArgumentException("constant length array has wrong size");
 
         for (T e : elements)
