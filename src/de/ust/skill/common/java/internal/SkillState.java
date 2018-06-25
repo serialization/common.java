@@ -27,7 +27,7 @@ import de.ust.skill.common.jvm.streams.FileOutputStream;
  * 
  * @author Timm Felden
  */
-public abstract class SkillState implements SkillFile, AutoCloseable {
+public abstract class SkillState implements SkillFile {
 
     /**
      * if we are on windows, then we have to change some implementation details

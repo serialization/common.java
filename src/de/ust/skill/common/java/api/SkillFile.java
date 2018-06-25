@@ -11,7 +11,7 @@ import de.ust.skill.common.java.internal.SkillObject;
  * 
  * @author Timm Felden
  */
-public interface SkillFile {
+public interface SkillFile extends AutoCloseable {
     /**
      * Modes for file handling.
      * 
@@ -84,7 +84,7 @@ public interface SkillFile {
      * @note this operation is kind of expensive
      */
     public abstract boolean contains(SkillObject target);
-    
+
     /**
      * ensure that the argument instance will be deleted on next flush
      */
@@ -120,7 +120,7 @@ public interface SkillFile {
      * @note not fully implemented
      */
     public abstract void changeMode(Mode writeMode);
-    
+
     /**
      * Force all lazy string and field data to be loaded from disk.
      */
