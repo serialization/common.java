@@ -27,7 +27,7 @@ import de.ust.skill.common.jvm.streams.FileOutputStream;
  * 
  * @author Timm Felden
  */
-public abstract class SkillState implements SkillFile {
+public abstract class SkillState implements SkillFile, AutoCloseable {
 
     /**
      * if we are on windows, then we have to change some implementation details
@@ -50,8 +50,7 @@ public abstract class SkillState implements SkillFile {
      */
     private Path path;
     /**
-     * a file input stream keeping the handle to a file for potential write
-     * operations
+     * a file input stream keeping the handle to a file for potential write operations
      * 
      * @note this is a consequence of the retarded windows file system
      */
@@ -333,6 +332,13 @@ public abstract class SkillState implements SkillFile {
     public void close() throws SkillException {
         flush();
         this.writeMode = Mode.ReadOnly;
+        if (null != input)
+            try {
+                input.close();
+            } catch (IOException e) {
+                // we don't care
+                e.printStackTrace();
+            }
     }
 
     // types in type order
