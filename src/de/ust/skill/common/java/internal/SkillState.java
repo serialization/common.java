@@ -330,8 +330,13 @@ public abstract class SkillState implements SkillFile {
 
     @Override
     public void close() throws SkillException {
-        flush();
-        this.writeMode = Mode.ReadOnly;
+        // flush if required
+        if (Mode.ReadOnly != writeMode) {
+            flush();
+            this.writeMode = Mode.ReadOnly;
+        }
+
+        // close file stream to work around issue with broken Windows FS
         if (null != input)
             try {
                 input.close();
