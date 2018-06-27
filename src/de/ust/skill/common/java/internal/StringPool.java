@@ -21,24 +21,22 @@ import de.ust.skill.common.jvm.streams.OutStream;
 
 /**
  * @author Timm Felden
- * @note String pools use magic index 0 for faster translation of string ids to
- *       strings.
- * @note String pool may contain duplicates, if strings have been added. This is
- *       a necessary behavior, if add should be an O(1) operation and Strings
- *       are loaded from file lazily.
+ * @note String pools use magic index 0 for faster translation of string ids to strings.
+ * @note String pool may contain duplicates, if strings have been added. This is a necessary behavior, if add should be
+ *       an O(1) operation and Strings are loaded from file lazily.
  */
 public class StringPool extends FieldType<String> implements ReferenceType, StringAccess {
+    public static final int typeID = 14;
+
     private FileInputStream input;
 
     /**
-     * the set of all known strings, i.e. strings which do not have an ID as
-     * well as strings that already have one
+     * the set of all known strings, i.e. strings which do not have an ID as well as strings that already have one
      */
     private final HashSet<String> knownStrings = new HashSet<>();
 
     /**
-     * ID ⇀ (absolute offset, length) will be used if idMap contains a null
-     * reference
+     * ID ⇀ (absolute offset, length) will be used if idMap contains a null reference
      *
      * @note there is a fake entry at ID 0
      */
@@ -68,7 +66,7 @@ public class StringPool extends FieldType<String> implements ReferenceType, Stri
      * DO NOT CALL IF YOU ARE NOT GENERATED OR INTERNAL CODE!
      */
     public StringPool(FileInputStream input) {
-        super(14);
+        super(typeID);
         this.input = input;
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1L, -1));
@@ -202,8 +200,7 @@ public class StringPool extends FieldType<String> implements ReferenceType, Stri
     }
 
     /**
-     * prepares serialization of the string pool and appends new Strings to the
-     * output stream.
+     * prepares serialization of the string pool and appends new Strings to the output stream.
      */
     public void prepareAndAppend(FileOutputStream out, StateAppender as) throws IOException {
 
