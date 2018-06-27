@@ -11,6 +11,7 @@ import de.ust.skill.common.java.api.SkillException;
 import de.ust.skill.common.java.internal.exceptions.PoolSizeMissmatchError;
 import de.ust.skill.common.java.internal.fieldDeclarations.AutoField;
 import de.ust.skill.common.java.internal.fieldDeclarations.IgnoredField;
+import de.ust.skill.common.java.internal.parts.Block;
 import de.ust.skill.common.java.internal.parts.BulkChunk;
 import de.ust.skill.common.java.internal.parts.Chunk;
 import de.ust.skill.common.java.internal.parts.SimpleChunk;
@@ -28,9 +29,8 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
         extends de.ust.skill.common.java.api.FieldDeclaration<T> {
 
     /**
-     * @note types may change during file parsing. this may seem like a hack,
-     *       but it makes file parser implementation a lot easier, because there
-     *       is no need for two mostly similar type hierarchy implementations
+     * @note types may change during file parsing. this may seem like a hack, but it makes file parser implementation a
+     *       lot easier, because there is no need for two mostly similar type hierarchy implementations
      */
     protected FieldType<T> type;
 
@@ -53,12 +53,9 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
      * index as used in the file
      * 
      * @note index is > 0, if the field is an actual data field
-     * @note index = 0, if the field is SKilLID (if supported by generator;
-     *       deprecated)
+     * @note index = 0, if the field is SKilLID (if supported by generator; deprecated)
      * @note index is <= 0, if the field is an auto field (or SKilLID)
-     * 
-     * @note fieldIDs should be file-global, so that remaining HashMaps with
-     *       field keys can be replaced
+     * @note fieldIDs should be file-global, so that remaining HashMaps with field keys can be replaced
      */
     final int index;
 
@@ -176,42 +173,48 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     }
 
     /**
-     * Read data from a mapped input stream and set it accordingly. This is
-     * invoked at the very end of state construction and done massively in
-     * parallel.
+     * Read data from a mapped input stream and set it accordingly. This is invoked at the very end of state
+     * construction and done massively in parallel.
      */
     protected abstract void rsc(int i, final int end, MappedInStream in);
 
     /**
-     * Read data from a mapped input stream and set it accordingly. This is
-     * invoked at the very end of state construction and done massively in
-     * parallel.
+     * Read data from a mapped input stream and set it accordingly. This is invoked at the very end of state
+     * construction and done massively in parallel.
      */
     protected abstract void rbc(BulkChunk target, MappedInStream in);
 
     /**
-     * offset cache; calculated by osc/obc; reset is done by the caller
-     * (simplifies obc)
+     * offset cache; calculated by osc/obc; reset is done by the caller (simplifies obc)
      */
     protected long offset;
 
     /**
-     * offset calculation as preparation of writing data belonging to the owners
-     * last block
+     * offset calculation as preparation of writing data belonging to the owners last block
      */
     protected abstract void osc(int i, final int end);
 
     /**
-     * offset calculation as preparation of writing data belonging to the owners
-     * last block
+     * offset calculation as preparation of writing data belonging to the owners last block
+     * 
+     * @note Defer reading to osc by creating adequate temporary simple chunks.
      */
-    protected abstract void obc(BulkChunk c);
+    protected final void obc(BulkChunk c) {
+        ArrayList<Block> blocks = owner.blocks();
+        int blockIndex = 0;
+        final int endBlock = c.blockCount;
+        while (blockIndex < endBlock) {
+            Block b = blocks.get(blockIndex++);
+            int i = b.bpo;
+            osc(i, i + b.count);
+        }
+    }
 
     /**
      * write data into a map at the end of a write/append operation
      * 
-     * @note this will always write the last chunk, as, in contrast to read, it
-     *       is impossible to write to fields in parallel
+     * @note this will always write the last chunk, as, in contrast to read, it is impossible to write to fields in
+     *       parallel
      * @note only called, if there actually is field data to be written
      */
     protected abstract void wsc(int i, final int end, MappedOutStream out) throws IOException;
@@ -219,18 +222,27 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     /**
      * write data into a map at the end of a write/append operation
      * 
-     * @note this will always write the last chunk, as, in contrast to read, it
-     *       is impossible to write to fields in parallel
+     * @note this will always write the last chunk, as, in contrast to read, it is impossible to write to fields in
+     *       parallel
      * @note only called, if there actually is field data to be written
+     * @note Defer reading to wsc by creating adequate temporary simple chunks.
      */
-    protected abstract void wbc(BulkChunk c, MappedOutStream out) throws IOException;
+    protected final void wbc(BulkChunk c, MappedOutStream out) throws IOException {
+        ArrayList<Block> blocks = owner.blocks();
+        int blockIndex = 0;
+        final int endBlock = c.blockCount;
+        while (blockIndex < endBlock) {
+            Block b = blocks.get(blockIndex++);
+            int i = b.bpo;
+            wsc(i, i + b.count, out);
+        }
+    }
 
     /**
      * Coordinates reads and prevents from state corruption using the barrier.
      * 
      * @param barrier
-     *            takes one permit in the caller thread and returns one in the
-     *            reader thread (per block)
+     *            takes one permit in the caller thread and returns one in the reader thread (per block)
      * @param readErrors
      *            errors will be reported in this queue
      * @return number of jobs started
@@ -290,11 +302,9 @@ abstract public class FieldDeclaration<T, Obj extends SkillObject>
     }
 
     /**
-     * punch a hole into the java type system that eases implementation of maps
-     * of interfaces
+     * punch a hole into the java type system that eases implementation of maps of interfaces
      * 
-     * @note the hole is only necessary, because interfaces cannot inherit from
-     *       classes
+     * @note the hole is only necessary, because interfaces cannot inherit from classes
      */
     @SuppressWarnings("unchecked")
     protected static final <K1, V1, K2, V2> HashMap<K1, V1> castMap(HashMap<K2, V2> arg) {

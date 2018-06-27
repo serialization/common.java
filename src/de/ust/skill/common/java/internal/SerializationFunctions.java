@@ -88,12 +88,12 @@ abstract public class SerializationFunctions {
         this.state = state;
 
         /**
-         * collect String instances from known string types; this is needed,
-         * because strings are something special on the jvm
+         * collect String instances from known string types; this is needed, because strings are something special on
+         * the jvm
          * 
          * @note this is a O(σ) operation:)
-         * @note we do no longer make use of the generation time type info,
-         *       because we want to treat generic fields as well
+         * @note we do no longer make use of the generation time type info, because we want to treat generic fields as
+         *       well
          */
         StringPool strings = (StringPool) state.Strings();
 
@@ -169,6 +169,14 @@ abstract public class SerializationFunctions {
                  */
                 if (f instanceof LazyField<?, ?>)
                     ((LazyField<?, ?>) f).ensureLoaded();
+
+                /**
+                 * compress distributed fields, i.e. copy new data to data
+                 * 
+                 * @note placement of compression is irrelevant in Java
+                 */
+                if (f instanceof DistributedField<?, ?>)
+                    ((DistributedField<?, ?>) f).compress();
             }
         }
 
@@ -211,8 +219,7 @@ abstract public class SerializationFunctions {
     }
 
     /**
-     * serialization of types is fortunately independent of state, because field
-     * types know their ID
+     * serialization of types is fortunately independent of state, because field types know their ID
      */
     protected static final void writeType(FieldType<?> t, OutStream out) throws IOException {
         switch (t.typeID) {

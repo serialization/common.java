@@ -32,18 +32,8 @@ public abstract class AutoField<T, Obj extends SkillObject> extends FieldDeclara
     }
 
     @Override
-    protected final void obc(BulkChunk c) {
-        throw new NoSuchMethodError("one get the offset of an auto fields!");
-    }
-
-    @Override
     protected void osc(int i, int end) {
         throw new NoSuchMethodError("one get the offset of an auto fields!");
-    }
-
-    @Override
-    protected final void wbc(BulkChunk c, MappedOutStream out) throws IOException {
-        throw new NoSuchMethodError("one can not write auto fields!");
     }
 
     @Override
