@@ -40,7 +40,7 @@ public final class I64 extends IntegerType<Long> {
 
     @Override
     public void writeSingleField(Long target, OutStream out) throws IOException {
-        out.i64(target);
+        out.i64(null == target ? 0 : target);
     }
 
     @Override

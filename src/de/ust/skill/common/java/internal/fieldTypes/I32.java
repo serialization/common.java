@@ -40,7 +40,7 @@ public final class I32 extends IntegerType<Integer> {
 
     @Override
     public void writeSingleField(Integer target, OutStream out) throws IOException {
-        out.i32(target);
+        out.i32(null == target ? 0 : target);
     }
 
     @Override

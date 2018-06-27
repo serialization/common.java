@@ -56,7 +56,8 @@ public final class V64 extends IntegerType<Long> {
     }
 
     @Override
-    public long singleOffset(Long v) {
+    public long singleOffset(Long ref) {
+        long v = null == ref ? 0 : ref;
         if (0L == (v & 0xFFFFFFFFFFFFFF80L)) {
             return 1;
         } else if (0L == (v & 0xFFFFFFFFFFFFC000L)) {
@@ -80,7 +81,7 @@ public final class V64 extends IntegerType<Long> {
 
     @Override
     public void writeSingleField(Long target, OutStream out) throws IOException {
-        out.v64(target);
+        out.v64(null == target ? 0 : target);
     }
 
     @Override

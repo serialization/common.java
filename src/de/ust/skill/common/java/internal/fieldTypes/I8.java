@@ -40,7 +40,7 @@ public final class I8 extends IntegerType<Byte> {
 
     @Override
     public void writeSingleField(Byte target, OutStream out) throws IOException {
-        out.i8(target);
+        out.i8(null == target ? 0 : target.byteValue());
     }
 
     @Override

@@ -40,7 +40,7 @@ public final class F64 extends FloatType<Double> {
 
     @Override
     public void writeSingleField(Double target, OutStream out) throws IOException {
-        out.f64(target);
+        out.f64(null == target ? 0 : target);
     }
 
     @Override

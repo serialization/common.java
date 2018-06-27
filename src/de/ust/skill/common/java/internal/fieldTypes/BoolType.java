@@ -9,7 +9,7 @@ import de.ust.skill.common.jvm.streams.OutStream;
 
 public final class BoolType extends FieldType<Boolean> {
     private static final BoolType instance = new BoolType();
-    
+
     /**
      * @see SKilL V1.0 reference manual §G
      */
@@ -39,8 +39,8 @@ public final class BoolType extends FieldType<Boolean> {
     }
 
     @Override
-    public void writeSingleField(Boolean data, OutStream out) throws IOException {
-        out.bool(data);
+    public void writeSingleField(Boolean target, OutStream out) throws IOException {
+        out.bool(null != target && target);
     }
 
     @Override

@@ -39,8 +39,8 @@ public final class F32 extends FloatType<Float> {
     }
 
     @Override
-    public void writeSingleField(Float data, OutStream out) throws IOException {
-        out.f32(data);
+    public void writeSingleField(Float target, OutStream out) throws IOException {
+        out.f32(null == target ? 0 : target);
     }
 
     @Override

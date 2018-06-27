@@ -40,7 +40,7 @@ public final class I16 extends IntegerType<Short> {
 
     @Override
     public void writeSingleField(Short target, OutStream out) throws IOException {
-        out.i16(target);
+        out.i16(null == target ? 0 : target);
     }
 
     @Override
