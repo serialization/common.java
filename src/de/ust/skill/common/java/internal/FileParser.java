@@ -39,8 +39,7 @@ import de.ust.skill.common.java.restrictions.TypeRestriction;
 import de.ust.skill.common.jvm.streams.FileInputStream;
 
 /**
- * The parser implementation is based on the denotational semantics given in
- * TR14§6.
+ * The parser implementation is based on the denotational semantics given in TR14§6.
  *
  * @author Timm Felden
  */
@@ -119,8 +118,6 @@ public abstract class FileParser {
         }
     }
 
-    // deferred pool resize requests
-    private final ArrayList<StoragePool<?, ?>> resizeQueue = new ArrayList<>();
     // pool ⇒ local field count
     private final ArrayList<LFEntry> localFields = new ArrayList<>();
 
@@ -140,9 +137,8 @@ public abstract class FileParser {
     private long offset = 0L;
 
     /**
-     * Turns a field type into a preliminary type information. In case of user
-     * types, the declaration of the respective user type may follow after the
-     * field declaration.
+     * Turns a field type into a preliminary type information. In case of user types, the declaration of the respective
+     * user type may follow after the field declaration.
      */
     FieldType<?> fieldType() {
         final int typeID = in.v32();
@@ -208,7 +204,7 @@ public abstract class FileParser {
             case 2:
                 // Monotone
                 break;
-                
+
             default:
                 if (id <= 5 || 1 == (id % 2))
                     throw new ParseException(in, blockCounter, null,
@@ -373,9 +369,6 @@ public abstract class FileParser {
             definition.blocks.add(new Block(bpo, count, count));
             definition.staticDataInstances += count;
 
-            // prepare resize
-            resizeQueue.add(definition);
-
             localFields.add(new LFEntry(definition, (int) in.v64()));
         } catch (java.nio.BufferUnderflowException e) {
             throw new ParseException(in, blockCounter, e, "unexpected end of file");
@@ -386,7 +379,6 @@ public abstract class FileParser {
         // reset counters and queues
         seenTypes.clear();
         blockIDBarrier = 0;
-        resizeQueue.clear();
         localFields.clear();
         fieldDataQueue.clear();
         offset = 0L;
@@ -397,8 +389,9 @@ public abstract class FileParser {
 
         // resize pools by updating cachedSize and staticCount
         // @note instances will be allocated just before field deserialization
-        for (StoragePool<?, ?> p : resizeQueue) {
-            Block b = p.lastBlock();
+        for (LFEntry e : localFields) {
+            final StoragePool<?, ?> p = e.p;
+            final Block b = p.lastBlock();
             p.cachedSize += b.count;
 
             if (0 != b.count) {
@@ -490,8 +483,7 @@ public abstract class FileParser {
     }
 
     /**
-     * helper for pool creation in generated code; optimization for all pools
-     * that do not have auto fields
+     * helper for pool creation in generated code; optimization for all pools that do not have auto fields
      */
     @SuppressWarnings("unchecked")
     protected static <T extends SkillObject> AutoField<?, T>[] noAutoFields() {
@@ -505,8 +497,8 @@ public abstract class FileParser {
         // the generated state has exactly one constructor
         try {
             @SuppressWarnings("unchecked")
-            State r = (State) cls.getConstructors()[0].newInstance(poolByName, Strings, Annotation, types,
-                    in, writeMode);
+            State r = (State) cls.getConstructors()[0].newInstance(poolByName, Strings, Annotation, types, in,
+                    writeMode);
 
             r.check();
             return r;
