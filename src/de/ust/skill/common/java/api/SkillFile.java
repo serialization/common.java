@@ -103,8 +103,10 @@ public interface SkillFile extends AutoCloseable {
     /**
      * Set a new path for the file. This will influence the next flush/close operation.
      * 
+     * @note The mode will be set to Write, if it was ReadOnly before.
+     * 
      * @throws IOException
-     *             if new path can not be used for some reason
+     *             if new path cannot be used for some reason
      * @note (on implementation) memory maps for lazy evaluation must have been created before invocation of this method
      */
     public abstract void changePath(Path path) throws IOException;

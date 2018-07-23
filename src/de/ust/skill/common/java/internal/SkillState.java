@@ -203,6 +203,12 @@ public abstract class SkillState implements SkillFile {
             Files.deleteIfExists(path);
             Files.copy(this.path, path);
             break;
+
+        case ReadOnly:
+            // if we change the path, we can also write to the file
+            this.writeMode = Mode.Write;
+            break;
+
         default:
             // dead!
             return;
@@ -225,6 +231,8 @@ public abstract class SkillState implements SkillFile {
         switch (writeMode) {
         case Write:
             this.writeMode = writeMode;
+            break;
+
         case Append:
             // write -> append
             throw new IllegalArgumentException(
