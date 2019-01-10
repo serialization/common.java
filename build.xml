@@ -6,7 +6,7 @@
     <property name="source" value="1.8"/>
     <path id="javaCommon.classpath">
         <pathelement location="bin"/>
-        <pathelement location="lib/skill.jvm.common.jar"/>
+        <pathelement location="lib/ogss.common.jvm.jar"/>
     </path>
 
     <target name="init">
@@ -40,7 +40,7 @@
     <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
 
   <target depends="build-project" name="build-jar">
-    <jar destfile="skill.java.common.jar"
+    <jar destfile="ogss.common.java.jar"
       basedir="bin"
       includes=""
       excludes="">
