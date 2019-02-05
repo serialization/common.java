@@ -98,7 +98,7 @@ public abstract class State implements AutoCloseable {
     /**
      * Types required for reflective IO
      */
-    final AnyRefType annotationType;
+    protected final AnyRefType annotationType;
 
     /**
      * Path and mode management can be done for arbitrary states.
