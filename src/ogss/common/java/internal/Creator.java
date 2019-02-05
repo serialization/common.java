@@ -1,5 +1,8 @@
 package ogss.common.java.internal;
 
+import java.util.HashMap;
+
+import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.streams.FileInputStream;
 
 /**
@@ -16,14 +19,26 @@ final public class Creator extends StateInitializer {
         guard = "";
 
         try {
+            // Create Classes
             for (Class<Pool<?, ?>> cls : knownClasses) {
                 Pool<?, ?> p = (Pool<?, ?>) cls.getConstructors()[0].newInstance(classes, null);
                 classes.add(p);
                 poolByName.put(p.name, p);
                 Strings.add(p.name);
+            }
+
+            // TODO Create Hulls
+
+            // Create Fields
+            for (Pool<?, ?> p : classes) {
+                int ki = 0;
                 for (String f : p.knownFields) {
                     Strings.add(f);
-                    p.addKnownField(f, Strings, Annotation);
+                    try {
+                        p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(poolByName, nextFieldID++, p);
+                    } catch (Exception e) {
+                        throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + f);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -44,7 +59,7 @@ final public class Creator extends StateInitializer {
                     // by compactness, if n has a super pool, p is the previous pool
                     if (null != n.superPool) {
                         // raw cast, because we cannot prove here that it is B, because wo do not want to introduce a
-                        // function as quntifier which would not provide any benefit anyway
+                        // function as quantifier which would not provide any benefit anyway
                         p.next = (Pool) n;
                     }
 

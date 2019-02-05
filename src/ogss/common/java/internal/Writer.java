@@ -3,7 +3,6 @@ package ogss.common.java.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
@@ -31,7 +30,7 @@ final public class Writer {
     }
 
     // async reads will post their errors in this queue
-    final LinkedList<SkillException> writeErrors = new LinkedList<SkillException>();
+    SkillException writeErrors = null;
 
     // our job synchronisation barrier
     final Semaphore barrier = new Semaphore(0, false);
@@ -96,11 +95,8 @@ final public class Writer {
         out.close();
 
         // report errors
-        if (!writeErrors.isEmpty()) {
-            for (SkillException e : writeErrors) {
-                e.printStackTrace();
-            }
-            throw writeErrors.peek();
+        if (null != writeErrors) {
+            throw writeErrors;
         }
     }
 
@@ -118,12 +114,12 @@ final public class Writer {
      * write T and F, start HD tasks, and return the number of buffers to await
      */
     private int writeTF(BufferedOutStream out) throws Exception {
-        
+
         // TODO reassign global field IDs!
 
         // calculate new bpos, sizes, object IDs and compress data arrays
-        final int[] newBPOs = new int[state.classes.size()];
         {
+            final int[] newBPOs = new int[state.classes.size()];
             int bases = 0;
             for (Pool<?, ?> p : state.classes) {
                 if (p instanceof BasePool<?>) {
@@ -138,14 +134,6 @@ final public class Writer {
                 }
             }
             barrier.acquire(bases);
-        }
-
-        // calculate cached sizes by propagating it to the parent in reverse order
-        for (int i = state.classes.size() - 1; i >= 0; i--) {
-            Pool<?, ?> p = state.classes.get(i);
-            if (null != p.superPool) {
-                p.superPool.cachedSize += p.cachedSize;
-            }
         }
 
         /**
@@ -166,7 +154,7 @@ final public class Writer {
                 out.i8((byte) 0);
             else {
                 // superID
-                out.v64(p.superPool.typeID - 10);
+                out.v64(p.superPool.typeID - 9);
                 // our bpo
                 out.v64(p.bpo);
             }
@@ -238,12 +226,19 @@ final public class Writer {
                 f.write(i, i + owner.cachedSize, buffer);
 
             } catch (SkillException e) {
-                synchronized (writeErrors) {
-                    writeErrors.add(e);
+                synchronized (Writer.this) {
+                    if (null == writeErrors)
+                        writeErrors = e;
+                    else
+                        writeErrors.addSuppressed(e);
                 }
             } catch (Throwable e) {
-                synchronized (writeErrors) {
-                    writeErrors.add(new SkillException("unexpected failure while writing field " + f.toString(), e));
+                synchronized (Writer.this) {
+                    e = new SkillException("unexpected failure while writing field " + f.toString(), e);
+                    if (null == writeErrors)
+                        writeErrors = (SkillException) e;
+                    else
+                        writeErrors.addSuppressed(e);
                 }
             } finally {
                 // return the buffer in any case to ensure that there is a

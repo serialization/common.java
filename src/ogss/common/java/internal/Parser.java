@@ -3,13 +3,13 @@ package ogss.common.java.internal;
 import java.io.ByteArrayOutputStream;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
-import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -47,15 +47,6 @@ public final class Parser extends StateInitializer {
      * This buffer provides the association of file fieldID to field.
      */
     private ArrayList<FieldDeclaration<?, ?>> fields = new ArrayList<>();
-
-    /**
-     * The next global field ID. Note that this ID does not correspond to the ID used in the file about to be read but
-     * to an ID that would be used if it were written.
-     * 
-     * @note to make this work as intended, merging known fields into the dataFields array has to be done while reading
-     *       F.
-     */
-    private int nextFieldID = 0;
 
     // synchronization of field read jobs
     final Semaphore barrier = new Semaphore(0);
@@ -256,7 +247,7 @@ public final class Parser extends StateInitializer {
     }
 
     // TODO remove type arguments?
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private <B extends Pointer, T extends B> void typeDefinition() {
 
         // name
@@ -359,8 +350,7 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    definition = (Pool<T, B>) new BasePool<T>(idx, name, Pool.noKnownFields,
-                            (AutoField<?, T>[]) Pool.noAutoFields);
+                    definition = new BasePool(idx, name, Pool.noKnownFields, Pool.noKFC, Pool.noAutoFields);
                 } else {
                     definition = (Pool<T, B>) superDef.makeSubPool(idx, name);
                 }
@@ -460,16 +450,61 @@ public final class Parser extends StateInitializer {
             // TODO change this to match my slides
             // TODO create known fields
 
+            // we have not yet seen a known field
+            int ki = 0;
+
+            // we pass the size by adding null's for each expected field in the stream because AL.clear does not return
+            // its backing array, i.e. we will likely not resize it that way
             int idx = p.dataFields.size();
+
             p.dataFields.clear();
             while (0 != idx--) {
-
                 // read field
                 final String name = Strings.read(in);
                 FieldType<?> t = fieldType();
                 HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
+                FieldDeclaration<?, ?> f;
 
-                fields.add(p.addField(t, name));
+                if (ki < p.knownFields.length) {
+                    do {
+                        // is it the next known field?
+                        if (name == p.knownFields[ki]) {
+                            try {
+                                f = p.KFC[ki++].getConstructor(FieldType.class, int.class, p.getClass()).newInstance(t,
+                                        nextFieldID++, p);
+                            } catch (Exception e) {
+                                throw new ParseException(in, e,
+                                        "Failed to instantiate known field " + p.name + "." + name);
+                            }
+                            break;
+                        }
+
+                        // else, it might be an unknown field
+                        if (name.compareTo(p.knownFields[ki]) < 0) {
+                            // create unknown field
+                            f = new LazyField(t, name, nextFieldID++, p);
+                            break;
+                        }
+
+                        // TODO else, it is a known fields not contained in the file
+                        try {
+                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(poolByName, nextFieldID++, p);
+                        } catch (Exception e) {
+                            throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
+                        }
+                        throw new Error("TODO create known field not in file");
+
+                    } while (++ki < p.knownFields.length);
+                } else {
+                    // no known fields left, so it is obviously unknown
+                    f = new LazyField(t, name, nextFieldID++, p);
+                }
+
+                f.addRestriction(rest);
+
+                // TODO check against auto field? (or specify that it would no longer be an error)
+
+                fields.add(f);
             }
         }
     }
@@ -545,7 +580,7 @@ public final class Parser extends StateInitializer {
             SkillException ex = null;
             final Pool<?, ?> owner = f.owner;
             final int bpo = owner.bpo;
-            final int end = owner.cachedSize;
+            final int end = bpo + owner.cachedSize;
             try {
                 if (map.eof()) {
                     // TODO default initialization; this is a nop for now in Java

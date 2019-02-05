@@ -29,6 +29,15 @@ public abstract class StateInitializer {
 
     String[] classNames;
 
+    /**
+     * The next global field ID. Note that this ID does not correspond to the ID used in the file about to be read but
+     * to an ID that would be used if it were written.
+     * 
+     * @note to make this work as intended, merging known fields into the dataFields array has to be done while reading
+     *       F.
+     */
+    protected int nextFieldID = 0;
+
     StateInitializer(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames) {
         this.knownClasses = knownClasses;
         this.classNames = classNames;

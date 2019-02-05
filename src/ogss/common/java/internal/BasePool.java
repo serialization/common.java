@@ -1,5 +1,7 @@
 package ogss.common.java.internal;
 
+import java.util.ArrayList;
+
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 
 /**
@@ -15,8 +17,9 @@ public class BasePool<T extends Pointer> extends Pool<T, T> {
      */
     protected State owner = null;
 
-    protected BasePool(int poolIndex, String name, String[] knownFields, AutoField<?, T>[] autoFields) {
-        super(poolIndex, name, null, knownFields, autoFields);
+    protected BasePool(int poolIndex, String name, String[] knownFields, Class<KnownDataField<?, T>>[] KFC,
+            AutoField<?, T>[] autoFields) {
+        super(poolIndex, name, null, knownFields, KFC, autoFields);
     }
 
     @Override
@@ -41,6 +44,20 @@ public class BasePool<T extends Pointer> extends Pool<T, T> {
                 next += s;
                 p = p.next;
             } while (null != p);
+        }
+
+        // calculate correct dynamic size for all sub pools
+        {
+            ArrayList<Pool<?, ?>> cs = owner.classes;
+            for (int i = cs.size();;) {
+                --i;
+                Pool<?, ?> p = cs.get(i);
+                if (this == p)
+                    break;
+                if (this == p.basePool) {
+                    p.superPool.cachedSize += p.cachedSize;
+                }
+            }
         }
 
         // note: we could move the object update to updateAfterCompress and

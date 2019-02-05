@@ -11,8 +11,8 @@ import ogss.common.streams.MappedInStream;
  */
 public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T, Obj> {
 
-    public DistributedField(FieldType<T> type, String name, Pool<Obj, ? super Obj> owner) {
-        super(type, name, owner);
+    public DistributedField(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
+        super(type, name, id, owner);
     }
 
     // data held as in storage pools

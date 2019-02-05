@@ -9,7 +9,6 @@ import java.util.stream.StreamSupport;
 import ogss.common.java.api.Access;
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
-import ogss.common.java.internal.fieldTypes.AnyRefType;
 import ogss.common.java.internal.fieldTypes.ReferenceType;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
@@ -66,7 +65,8 @@ public class Pool<T extends B, B extends Pointer> extends FieldType<T> implement
      * instantiation of types from the tool specification
      */
     @SuppressWarnings("unchecked")
-    protected Pool<? super T, B> findSuperPool(ArrayList<Pool<?, ?>> types, String name) {
+    protected static <T extends B, B extends Pointer> Pool<? super T, B> findSuperPool(ArrayList<Pool<?, ?>> types,
+            String name) {
         int i = types.size();
         while (--i >= 0) {
             Pool<?, ?> r = types.get(i);
@@ -101,6 +101,13 @@ public class Pool<T extends B, B extends Pointer> extends FieldType<T> implement
      */
     public final String[] knownFields;
     public static final String[] noKnownFields = new String[0];
+
+    /**
+     * Classes of known fields used to allocate them
+     */
+    public final Class<KnownDataField<?, T>>[] KFC;
+    @SuppressWarnings("unchecked")
+    public static final Class<KnownDataField<?, ?>>[] noKFC = new Class[0];
 
     /**
      * all fields that are declared as auto, including skillID
@@ -227,7 +234,7 @@ public class Pool<T extends B, B extends Pointer> extends FieldType<T> implement
      */
     @SuppressWarnings("unchecked")
     protected Pool(int poolIndex, String name, Pool<? super T, B> superPool, String[] knownFields,
-            AutoField<?, T>[] autoFields) {
+            Class<KnownDataField<?, T>>[] KFC, AutoField<?, T>[] autoFields) {
         super(10 + poolIndex);
         this.name = name.intern();
 
@@ -240,6 +247,7 @@ public class Pool<T extends B, B extends Pointer> extends FieldType<T> implement
             this.basePool = superPool.basePool;
         }
         this.knownFields = knownFields;
+        this.KFC = KFC;
         dataFields = new ArrayList<>(knownFields.length);
         this.autoFields = autoFields;
     }
@@ -357,26 +365,12 @@ public class Pool<T extends B, B extends Pointer> extends FieldType<T> implement
     }
 
     /**
-     * internal use only! adds an unknown field
-     */
-    public <R> FieldDeclaration<R, T> addField(FieldType<R> type, String name) {
-        return new LazyField<R, T>(type, name, this);
-    }
-
-    /**
-     * used internally for state allocation
-     */
-    @SuppressWarnings("static-method")
-    public void addKnownField(String name, StringPool string, AnyRefType annotation) {
-        throw new Error("Arbitrary storage pools know no fields!");
-    }
-
-    /**
      * used internally for type forest construction
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public Pool<? extends T, B> makeSubPool(int index, String name) {
-        return new Pool<>(index, name, this, noKnownFields, (AutoField<?, T>[]) noAutoFields);
+        // @note cannot solve type equation without turning noKFC into a function
+        return new Pool(index, name, this, noKnownFields, noKFC, noAutoFields);
     }
 
     @Override

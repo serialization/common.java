@@ -3,18 +3,16 @@ package ogss.common.java.internal;
 import ogss.common.java.api.FieldDeclaration;
 
 /**
- * The root of the hierarchy of pointer types in OGSS. It is called anyRef in
- * the specification language, but that would conflict with AnyRef in Scala.
+ * The root of the hierarchy of pointer types in OGSS. It is called anyRef in the specification language, but that would
+ * conflict with AnyRef in Scala.
  * 
  * @author Timm Felden
- * @note This type definition is in internal, because we have to protect
- *       setSkillID from the user
+ * @note This type definition is in internal, because we have to protect setSkillID from the user
  */
 public abstract class Pointer {
 
     /**
-     * The constructor is protected to ensure that users do not break states
-     * accidentally
+     * The constructor is protected to ensure that users do not break states accidentally
      */
     protected Pointer(int ID) {
         this.ID = ID;
@@ -29,21 +27,23 @@ public abstract class Pointer {
      * -1 for new objects<br>
      * 0 for deleted objects<br>
      * everything else is the ID of an object inside of a file
+     * 
+     * @note semantics of negative IDs may be subject to change without further notice
      */
     transient protected int ID;
+
+    /**
+     * Do not rely on ogss ID if you do not know exactly what you are doing.
+     */
+    public final int ID() {
+        return ID;
+    }
 
     /**
      * @return whether the object has been deleted
      */
     public boolean isDeleted() {
         return 0 == ID;
-    }
-
-    /**
-     * Do not rely on ogss ID if you do not know exactly what you are doing.
-     */
-    public final int getOGSSID() {
-        return ID;
     }
 
     /**

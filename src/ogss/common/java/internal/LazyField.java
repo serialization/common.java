@@ -15,8 +15,8 @@ import ogss.common.streams.MappedInStream;
  */
 public final class LazyField<T, Obj extends Pointer> extends DistributedField<T, Obj> {
 
-    public LazyField(FieldType<T> type, String name, Pool<Obj, ? super Obj> owner) {
-        super(type, name, owner);
+    public LazyField(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
+        super(type, name, id, owner);
     }
 
     // deferred reading info: valid after read

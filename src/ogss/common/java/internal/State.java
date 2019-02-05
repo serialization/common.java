@@ -112,84 +112,88 @@ public abstract class State implements AutoCloseable {
         this.poolByName = initial.poolByName;
         this.annotationType = initial.Annotation;
 
-//        finalizePools();
+        for (Pool<?, ?> p : classes)
+            if (p instanceof BasePool<?>)
+                ((BasePool<?>) p).owner = this;
+
+        // finalizePools();
     }
 
-//    @SuppressWarnings("unchecked")
-//    private final void finalizePools() {
-//
-//        // TODO this should be done differently
-//        if (strings.knownStrings.isEmpty()) {
-//            // add all type and field names, if there are no known strings, as they cannot have been read from file
-//            for (Pool<?, ?> p : classes) {
-//                strings.add(p.name);
-//                for (FieldDeclaration<?, ?> f : p.dataFields) {
-//                    strings.add(f.name);
-//                }
-//            }
-//        }
-//
-//        try {
-//
-//            // allocate instances
-//            final Semaphore barrier = new Semaphore(0, false);
-//            {
-//                int reads = 0;
-//
-//                HashSet<String> fieldNames = new HashSet<>();
-//                for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
-//
-//                    // set owners
-//                    if (p instanceof BasePool<?>) {
-//                        ((BasePool<?>) p).owner = this;
-//
-//                        reads += ((BasePool<?>) p).performAllocations(barrier);
-//                    }
-//
-//                    // add missing field declarations
-//                    fieldNames.clear();
-//                    for (ogss.common.java.api.FieldDeclaration<?> f : p.dataFields)
-//                        fieldNames.add(f.name());
-//
-//                    // ensure existence of known fields
-//                    for (String n : p.knownFields) {
-//                        if (!fieldNames.contains(n))
-//                            p.addKnownField(n, strings, annotationType);
-//                    }
-//                }
-//                barrier.acquire(reads);
-//            }
-//
-//            // read field data
-//            {
-//                int reads = 0;
-//                // async reads will post their errors in this queue
-//                final ArrayList<SkillException> readErrors = new ArrayList<SkillException>();
-//
-//                for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
-//                    // @note this loop must happen in type order!
-//
-//                    // read known fields
-////                    for (FieldDeclaration<?, ?> f : p.dataFields)
-////                        reads += f.finish(barrier, readErrors, input);
-//                }
-//
-//                // fix types in the Annotation-runtime type, because we need it
-//                // in offset calculation
-//                this.annotationType.fixTypes(poolByName);
-//
-//                // await async reads
-//                barrier.acquire(reads);
-//                for (SkillException e : readErrors) {
-//                    e.printStackTrace();
-//                }
-//                if (!readErrors.isEmpty())
-//                    throw readErrors.get(0);
-//            }
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//    }
+    // @SuppressWarnings("unchecked")
+    // private final void finalizePools() {
+    //
+    // // TODO this should be done differently
+    // if (strings.knownStrings.isEmpty()) {
+    // // add all type and field names, if there are no known strings, as they cannot have been read from file
+    // for (Pool<?, ?> p : classes) {
+    // strings.add(p.name);
+    // for (FieldDeclaration<?, ?> f : p.dataFields) {
+    // strings.add(f.name);
+    // }
+    // }
+    // }
+    //
+    // try {
+    //
+    // // allocate instances
+    // final Semaphore barrier = new Semaphore(0, false);
+    // {
+    // int reads = 0;
+    //
+    // HashSet<String> fieldNames = new HashSet<>();
+    // for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
+    //
+    // // set owners
+    // if (p instanceof BasePool<?>) {
+    // ((BasePool<?>) p).owner = this;
+    //
+    // reads += ((BasePool<?>) p).performAllocations(barrier);
+    // }
+    //
+    // // add missing field declarations
+    // fieldNames.clear();
+    // for (ogss.common.java.api.FieldDeclaration<?> f : p.dataFields)
+    // fieldNames.add(f.name());
+    //
+    // // ensure existence of known fields
+    // for (String n : p.knownFields) {
+    // if (!fieldNames.contains(n))
+    // p.addKnownField(n, strings, annotationType);
+    // }
+    // }
+    // barrier.acquire(reads);
+    // }
+    //
+    // // read field data
+    // {
+    // int reads = 0;
+    // // async reads will post their errors in this queue
+    // final ArrayList<SkillException> readErrors = new ArrayList<SkillException>();
+    //
+    // for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
+    // // @note this loop must happen in type order!
+    //
+    // // read known fields
+    //// for (FieldDeclaration<?, ?> f : p.dataFields)
+    //// reads += f.finish(barrier, readErrors, input);
+    // }
+    //
+    // // fix types in the Annotation-runtime type, because we need it
+    // // in offset calculation
+    // this.annotationType.fixTypes(poolByName);
+    //
+    // // await async reads
+    // barrier.acquire(reads);
+    // for (SkillException e : readErrors) {
+    // e.printStackTrace();
+    // }
+    // if (!readErrors.isEmpty())
+    // throw readErrors.get(0);
+    // }
+    // } catch (InterruptedException e) {
+    // e.printStackTrace();
+    // }
+    // }
 
     /**
      * @return true, iff the argument object is managed by this state

@@ -1,17 +1,12 @@
 package ogss.common.java.internal;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.Semaphore;
 
-import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
-import ogss.common.java.internal.fieldDeclarations.IgnoredField;
 import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.FileInputStream;
 import ogss.common.streams.MappedInStream;
 
 /**
@@ -62,9 +57,9 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
      */
     public final HashSet<FieldRestriction<T>> restrictions = new HashSet<>();
 
-    @SuppressWarnings("unchecked")
-    public <U> void addRestriction(FieldRestriction<U> r) {
-        restrictions.add((FieldRestriction<T>) r);
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public void addRestriction(HashSet<FieldRestriction<?>> r) {
+        restrictions.addAll((HashSet) r);
     }
 
     /**
@@ -82,28 +77,18 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
                         r.check(get(x));
     }
 
-    /**
-     * regular field constructor
-     */
-    protected FieldDeclaration(FieldType<T> type, String name, Pool<Obj, ? super Obj> owner) {
+    protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
         this.type = type;
         this.name = name.intern(); // we will switch on names, thus we need to
                                    // intern them
         this.owner = owner;
-        owner.dataFields.add(this);
-        this.id = 0; // TODO set correct ID!
-    }
+        this.id = id;
 
-    /**
-     * auto field constructor
-     */
-    protected FieldDeclaration(FieldType<T> type, String name, int index, Pool<Obj, ? super Obj> owner) {
-        this.type = type;
-        this.name = name.intern(); // we will switch on names, thus we need to
-                                   // intern them
-        this.owner = owner;
-        this.id = index;
-        owner.autoFields[-index] = (AutoField<?, Obj>) this;
+        // auto fields get per-type negative IDs
+        if (id < 0)
+            owner.autoFields[-1 - id] = (AutoField<?, Obj>) this;
+        else
+            owner.dataFields.add(this);
     }
 
     @Override

@@ -28,9 +28,8 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
     /**
      * @param types
      *            the array list containing all types valid inside of a state
-     * @note types can grow after passing the pointer to the annotation type.
-     *       This behavior is required in order to implement reflective
-     *       annotation parsing correctly.
+     * @note types can grow after passing the pointer to the annotation type. This behavior is required in order to
+     *       implement reflective annotation parsing correctly.
      * @note can not take a state as argument, because it may not exist yet
      */
     public AnyRefType(ArrayList<Pool<?, ?>> types) {
@@ -64,7 +63,7 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
 
         if (ref instanceof Pointer)
             out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - 31);
-        out.v64(((Pointer) ref).getOGSSID());
+        out.v64(((Pointer) ref).ID());
 
     }
 
@@ -74,8 +73,7 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
     }
 
     /**
-     * required for proper treatment of Interface types (because Java interfaces
-     * cannot inherit from classes)
+     * required for proper treatment of Interface types (because Java interfaces cannot inherit from classes)
      */
     public static <T> AnyRefType cast(FieldType<T> f) {
         return (AnyRefType) f;
