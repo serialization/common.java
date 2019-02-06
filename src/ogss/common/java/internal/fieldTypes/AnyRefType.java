@@ -3,10 +3,13 @@ package ogss.common.java.internal.fieldTypes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 
+import ogss.common.java.internal.ByRefType;
 import ogss.common.java.internal.FieldType;
 import ogss.common.java.internal.Pointer;
 import ogss.common.java.internal.Pool;
+import ogss.common.java.internal.State;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
@@ -15,7 +18,7 @@ import ogss.common.streams.OutStream;
  * 
  * @author Timm Felden
  */
-public final class AnyRefType extends FieldType<Object> implements ReferenceType {
+public final class AnyRefType extends ByRefType<Object> {
 
     /**
      * @see ???
@@ -23,7 +26,8 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
     public static final int typeID = 9;
 
     private final ArrayList<Pool<?, ?>> types;
-    private HashMap<String, Pool<?, ?>> typeByName = null;
+
+    private final HashMap<String, ByRefType<?>> typeByName;
 
     /**
      * @param types
@@ -32,15 +36,10 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
      *       implement reflective annotation parsing correctly.
      * @note can not take a state as argument, because it may not exist yet
      */
-    public AnyRefType(ArrayList<Pool<?, ?>> types) {
+    public AnyRefType(ArrayList<Pool<?, ?>> types, HashMap<String, ByRefType<?>> typeByName) {
         super(typeID);
         this.types = types;
-        assert types != null;
-    }
-
-    public void fixTypes(HashMap<String, Pool<?, ?>> poolByName) {
-        assert typeByName == null;
-        typeByName = poolByName;
+        this.typeByName = typeByName;
     }
 
     @Override
@@ -50,6 +49,7 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
             return null;
 
         final int f = in.v32();
+        // TODO fix this!
         return types.get(t - 1).getByID(f);
     }
 
@@ -62,7 +62,7 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
         }
 
         if (ref instanceof Pointer)
-            out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - 31);
+            out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - 7);
         out.v64(((Pointer) ref).ID());
 
     }
@@ -77,5 +77,25 @@ public final class AnyRefType extends FieldType<Object> implements ReferenceType
      */
     public static <T> AnyRefType cast(FieldType<T> f) {
         return (AnyRefType) f;
+    }
+
+    @Override
+    public String name() {
+        return "anyRef";
+    }
+
+    @Override
+    public int size() {
+        throw new Error("TODO");
+    }
+
+    @Override
+    public State owner() {
+        throw new Error("TODO");
+    }
+
+    @Override
+    public Iterator<Object> iterator() {
+        throw new Error("TODO");
     }
 }

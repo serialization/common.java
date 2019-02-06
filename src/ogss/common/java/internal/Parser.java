@@ -17,7 +17,6 @@ import ogss.common.java.internal.fieldTypes.I16;
 import ogss.common.java.internal.fieldTypes.I32;
 import ogss.common.java.internal.fieldTypes.I64;
 import ogss.common.java.internal.fieldTypes.I8;
-import ogss.common.java.internal.fieldTypes.ReferenceType;
 import ogss.common.java.internal.fieldTypes.V64;
 import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.java.restrictions.NonNull;
@@ -187,7 +186,7 @@ public final class Parser extends StateInitializer {
             switch (id) {
 
             case 0: {
-                if (t instanceof ReferenceType)
+                if (t instanceof ByRefType<?>)
                     rval.add(NonNull.get());
                 else
                     throw new ParseException(in, null, "Nonnull restriction on non-refernce type: %s.", t.toString());
@@ -196,7 +195,7 @@ public final class Parser extends StateInitializer {
 
             case 1: {
                 // default
-                if (t instanceof ReferenceType) {
+                if (t instanceof ByRefType<?>) {
                     // TODO typeId -> ref
                     in.v32();
                 } else {
@@ -308,7 +307,7 @@ public final class Parser extends StateInitializer {
 
             } else {
                 // ensure that the name has not been used before
-                if (poolByName.containsKey(name)) {
+                if (typeByName.containsKey(name)) {
                     throw new ParseException(in, null, "Duplicate definition of class " + name);
                 }
 
@@ -339,7 +338,7 @@ public final class Parser extends StateInitializer {
                         // note: bpo/sizes are not set, because zero-allocation is correct there
 
                         classes.add(p);
-                        poolByName.put(p.name, p);
+                        typeByName.put(p.name, p);
                         nextClass++;
                     }
                     // the next class is that obtained from file, so jump back to the start of the loop
@@ -360,7 +359,7 @@ public final class Parser extends StateInitializer {
             // note: name über reflection!
 
             classes.add(definition);
-            poolByName.put(name, definition);
+            typeByName.put(name, definition);
             break;
         }
 
@@ -488,7 +487,7 @@ public final class Parser extends StateInitializer {
 
                         // TODO else, it is a known fields not contained in the file
                         try {
-                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(poolByName, nextFieldID++, p);
+                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, nextFieldID++, p);
                         } catch (Exception e) {
                             throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
                         }

@@ -51,17 +51,13 @@ public abstract class Pointer {
      */
     public final String prettyString(State sf) {
         StringBuilder sb = new StringBuilder("(this: ").append(this);
-        Pool<?, ?> p = ((State) sf).poolByName.get(typeName());
-        printFs(p.allFields(), sb);
-        return sb.append(")").toString();
-    }
-
-    // provides required extra type quantification
-    private final <T extends Pointer> void printFs(FieldIterator fieldIterator, StringBuilder sb) {
+        Pool<?, ?> p = (Pool<?, ?>) sf.typeByName.get(typeName());
+        FieldIterator fieldIterator = p.allFields();
         while (fieldIterator.hasNext()) {
             FieldDeclaration<?> f = fieldIterator.next();
             sb.append(", ").append(f.name()).append(": ").append(f.get(this));
         }
+        return sb.append(")").toString();
     }
 
     public static final class SubType extends Pointer {

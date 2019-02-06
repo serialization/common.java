@@ -36,10 +36,10 @@ public abstract class State implements AutoCloseable {
     public static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 
     // types by skill name
-    protected final HashMap<String, Pool<?, ?>> poolByName;
+    protected final HashMap<String, ByRefType<?>> typeByName;
 
     public Pool<?, ?> pool(String name) {
-        return poolByName.get(name);
+        return (Pool<?, ?>) typeByName.get(name);
     }
 
     /**
@@ -109,7 +109,7 @@ public abstract class State implements AutoCloseable {
         this.input = initial.in;
         this.writeMode = mode;
         this.classes = initial.classes;
-        this.poolByName = initial.poolByName;
+        this.typeByName = initial.typeByName;
         this.annotationType = initial.Annotation;
 
         for (Pool<?, ?> p : classes)
@@ -204,11 +204,11 @@ public abstract class State implements AutoCloseable {
         if (null != target)
             try {
                 if (0 < target.ID)
-                    return target == poolByName.get(target.typeName()).getByID(target.ID);
+                    return target == ((Pool<?, ?>) typeByName.get(target.typeName())).getByID(target.ID);
                 else if (0 == target.ID)
                     return true; // will evaluate to a null pointer if stored
 
-                return poolByName.get(target.typeName()).newObjects.contains(target);
+                return ((Pool<?, ?>) typeByName.get(target.typeName())).newObjects.contains(target);
             } catch (Exception e) {
                 // out of bounds or similar mean its not one of ours
                 return false;
@@ -223,7 +223,7 @@ public abstract class State implements AutoCloseable {
      */
     final public void delete(Pointer target) {
         if (null != target && target.ID != 0) {
-            poolByName.get(target.typeName()).delete(target);
+            ((Pool<?, ?>) typeByName.get(target.typeName())).delete(target);
         }
     }
 

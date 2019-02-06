@@ -11,7 +11,6 @@ import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.StringAccess;
 import ogss.common.java.internal.exceptions.InvalidPoolIndexException;
-import ogss.common.java.internal.fieldTypes.ReferenceType;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
 import ogss.common.streams.InStream;
@@ -23,7 +22,7 @@ import ogss.common.streams.OutStream;
  * @note String pool may contain duplicates, if strings have been added. This is a necessary behavior, if add should be
  *       an O(1) operation and Strings are loaded from file lazily.
  */
-final public class StringPool extends FieldType<String> implements ReferenceType, StringAccess {
+final public class StringPool extends ByRefType<String> implements StringAccess {
     public static final int typeID = 8;
 
     public static final Charset utf8 = Charset.forName("UTF-8");

@@ -22,7 +22,7 @@ public abstract class StateInitializer {
 
     // types
     final ArrayList<Pool<?, ?>> classes;
-    final HashMap<String, Pool<?, ?>> poolByName = new HashMap<>();
+    final HashMap<String, ByRefType<?>> typeByName = new HashMap<>();
     final AnyRefType Annotation;
 
     Class<Pool<?, ?>>[] knownClasses;
@@ -47,7 +47,10 @@ public abstract class StateInitializer {
 
         classes = new ArrayList<>(knownClasses.length);
 
-        Annotation = new AnyRefType(classes);
+        Annotation = new AnyRefType(classes, typeByName);
+
+        typeByName.put(Annotation.name(), Annotation);
+        typeByName.put(Strings.name(), Strings);
     }
 
     /**

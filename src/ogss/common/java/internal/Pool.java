@@ -9,7 +9,6 @@ import java.util.stream.StreamSupport;
 import ogss.common.java.api.Access;
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
-import ogss.common.java.internal.fieldTypes.ReferenceType;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
@@ -25,7 +24,7 @@ import ogss.common.streams.OutStream;
  * @note We do not guarantee functional correctness if instances from multiple skill files are mixed. Such usage will
  *       likely break at least one of the files.
  */
-public class Pool<T extends B, B extends Pointer> extends FieldType<T> implements Access<T>, ReferenceType {
+public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implements Access<T> {
 
     /**
      * Builder for new instances of the pool.
