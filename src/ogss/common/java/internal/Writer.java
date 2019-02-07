@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
@@ -81,11 +81,11 @@ final public class Writer {
             awaitBuffers--;
             barrier.acquire();
             final BufferedOutStream buf = finishedBuffers.poll();
-            if (null == buf) {
-                System.out.println("something went wrong");
+            if (null != buf) {
+                out.writeSized(buf);
+                recycleBuffers.add(buf);
             }
-            out.writeSized(buf);
-            recycleBuffers.add(buf);
+            // else, someone decided to discard his buffer
         }
 
         if (0 != barrier.availablePermits()) {
@@ -145,7 +145,7 @@ final public class Writer {
 
         // write types
         ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(2 * state.classes.size());
-        final HashMap<String, Integer> stringIDs = state.strings.stringIDs;
+        final IdentityHashMap<String, Integer> stringIDs = state.strings.IDs;
         for (Pool<?, ?> p : state.classes) {
             out.v64(stringIDs.get(p.name));
             out.v64(p.staticDataInstances);
@@ -192,11 +192,19 @@ final public class Writer {
             // write info
             out.v64(stringIDs.get(f.name));
             out.v64(f.type.typeID);
+            if (f.type instanceof HullType<?>) {
+                ((HullType<?>) f.type).deps++;
+            }
             restrictions(f, out);
         }
 
-        // TODO + hull types (+1 for string)
-        return fieldQueue.size();
+        // if deps of string is currently 0, then no string hull will be created and none will be triggered
+        // hence, we must not await one
+        final int stringHulls = state.strings.deps == 0 ? 0 : 1;
+
+        // fields + 1 for string
+        // TODO + regular hull types
+        return fieldQueue.size() + stringHulls;
     }
 
     /**
@@ -225,6 +233,14 @@ final public class Writer {
                 buffer.v64(f.id);
                 f.write(i, i + owner.cachedSize, buffer);
 
+                if (f.type instanceof HullType<?>) {
+                    HullType<?> t = (HullType<?>) f.type;
+                    if (0 == --t.deps) {
+                        // execute task in this thread to avoid unnecessary overhead
+                        new HullTask(t).run();
+                    }
+                }
+
             } catch (SkillException e) {
                 synchronized (Writer.this) {
                     if (null == writeErrors)
@@ -241,9 +257,68 @@ final public class Writer {
                         writeErrors.addSuppressed(e);
                 }
             } finally {
+                // TODO discard buffer as intended
+
                 // return the buffer in any case to ensure that there is a
                 // buffer on error
                 finishedBuffers.add(buffer);
+
+                // ensure that writer can terminate, errors will be
+                // printed to command line anyway, and we wont
+                // be able to recover, because errors can only happen if
+                // the skill implementation itself is
+                // broken
+                barrier.release();
+            }
+        }
+    }
+
+    /**
+     * Data structure used for parallel serialization scheduling
+     */
+    final class HullTask implements Runnable {
+        private final HullType<?> t;
+
+        HullTask(HullType<?> t) {
+            this.t = t;
+        }
+
+        @Override
+        public void run() {
+            BufferedOutStream buffer = recycleBuffers.poll();
+            if (null == buffer) {
+                buffer = new BufferedOutStream();
+            } else {
+                buffer.recycle();
+            }
+
+            boolean discard = true;
+            try {
+                buffer.v64(t.fieldID);
+                discard = t.write(buffer);
+            } catch (SkillException e) {
+                synchronized (Writer.this) {
+                    if (null == writeErrors)
+                        writeErrors = e;
+                    else
+                        writeErrors.addSuppressed(e);
+                }
+            } catch (Throwable e) {
+                synchronized (Writer.this) {
+                    e = new SkillException("unexpected failure while writing hull " + t.toString(), e);
+                    if (null == writeErrors)
+                        writeErrors = (SkillException) e;
+                    else
+                        writeErrors.addSuppressed(e);
+                }
+            } finally {
+                // return the buffer in any case to ensure that there is a
+                // buffer on error
+                if (discard) {
+                    recycleBuffers.add(buffer);
+                } else {
+                    finishedBuffers.add(buffer);
+                }
 
                 // ensure that writer can terminate, errors will be
                 // printed to command line anyway, and we wont

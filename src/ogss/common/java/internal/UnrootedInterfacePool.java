@@ -8,16 +8,12 @@ import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
 /**
- * Holds interface instances. Serves as an API realization. Ensures correctness
- * of reflective type system.
+ * Holds interface instances. Serves as an API realization. Ensures correctness of reflective type system.
  * 
  * @note in this case, the super type is annotation
- * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we
- *       cannot inherit from Access<T>
- *
- * @note typing in this implementation is intentionally incorrect, because java
- *       does not permit interfaces to inherit from classes
- * 
+ * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we cannot inherit from Access<T>
+ * @note typing in this implementation is intentionally incorrect, because java does not permit interfaces to inherit
+ *       from classes
  * @author Timm Felden
  */
 final public class UnrootedInterfacePool<T> extends FieldType<T> implements GeneralAccess<T> {
@@ -25,8 +21,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     final private String name;
     final private AnyRefType superType;
     /**
-     * @note the Java type system seems to be to weak to prove the correct type
-     *       [? extends T, ?]
+     * @note the Java type system seems to be to weak to prove the correct type [? extends T, ?]
      */
     final private Pool<Pointer, Pointer>[] realizations;
 
@@ -86,5 +81,10 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     @Override
     public State owner() {
         throw new Error("TODO");
+    }
+
+    @Override
+    public T get(int ID) {
+        throw new NoSuchMethodError();
     }
 }

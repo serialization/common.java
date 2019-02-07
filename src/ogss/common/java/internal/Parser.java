@@ -45,7 +45,7 @@ public final class Parser extends StateInitializer {
     /**
      * This buffer provides the association of file fieldID to field.
      */
-    private ArrayList<FieldDeclaration<?, ?>> fields = new ArrayList<>();
+    private ArrayList<Object> fields = new ArrayList<>();
 
     // synchronization of field read jobs
     final Semaphore barrier = new Semaphore(0);
@@ -93,6 +93,8 @@ public final class Parser extends StateInitializer {
     }
 
     final private void stringBlock() throws ParseException {
+        fields.add(Strings);
+
         try {
             int count = in.v32();
 
@@ -110,7 +112,7 @@ public final class Parser extends StateInitializer {
                 // is done using absolute sizes
                 last = 0;
                 for (int i = 0; i < count; i++) {
-                    Strings.stringPositions.add(new StringPool.Position((int) in.position() + last, offsets[i] - last));
+                    Strings.stringPositions.add(new StringPool.Position(in.position() + last, offsets[i] - last));
                     Strings.idMap.add(null);
                     last = offsets[i];
                 }
@@ -295,6 +297,7 @@ public final class Parser extends StateInitializer {
                 try {
                     definition = (Pool<T, B>) knownClasses[nextClass].getConstructors()[0].newInstance(classes,
                             superDef);
+                    SIFA[nextClass] = definition;
                 } catch (Exception e) {
                     throw new ParseException(in, e, "Failed to instantiate known class " + name);
                 }
@@ -329,6 +332,7 @@ public final class Parser extends StateInitializer {
                         Pool<?, ?> p;
                         try {
                             p = (Pool<?, ?>) knownClasses[nextClass].getConstructors()[0].newInstance(classes, null);
+                            SIFA[nextClass] = p;
                         } catch (Exception e) {
                             throw new ParseException(in, e,
                                     "Failed to instantiate known class " + classNames[nextClass]);
@@ -388,45 +392,47 @@ public final class Parser extends StateInitializer {
         // calculate cached size and next for all pools
         {
             final int cs = classes.size();
-            int i = cs - 2;
-            if (i >= 0) {
-                Pool<?, ?> n, p = classes.get(i + 1);
-                // propagate information in reverse order
-                // i is the pool where next is set, hence we skip the last pool
-                do {
-                    n = p;
-                    p = classes.get(i);
+            if (0 != cs) {
+                int i = cs - 2;
+                if (i >= 0) {
+                    Pool<?, ?> n, p = classes.get(i + 1);
+                    // propagate information in reverse order
+                    // i is the pool where next is set, hence we skip the last pool
+                    do {
+                        n = p;
+                        p = classes.get(i);
 
-                    // by compactness, if n has a super pool, p is the previous pool
-                    if (null != n.superPool) {
-                        // raw cast, because we cannot prove here that it is B, because wo do not want to introduce a
-                        // function as quntifier which would not provide any benefit anyway
-                        p.next = (Pool) n;
-                        n.superPool.cachedSize += n.cachedSize;
-                        if (0 == n.bpo) {
-                            n.bpo = p.bpo;
+                        // by compactness, if n has a super pool, p is the previous pool
+                        if (null != n.superPool) {
+                            // raw cast, because we cannot prove here that it is B, because we do not want to introduce
+                            // a function as quantifier which would not provide any benefit anyway
+                            p.next = (Pool) n;
+                            n.superPool.cachedSize += n.cachedSize;
+                            if (0 == n.bpo) {
+                                n.bpo = p.bpo;
+                            }
                         }
-                    }
 
-                } while (--i >= 0);
-            }
-
-            // allocate data and start instance allocation jobs
-            Pointer[] d = null;
-            while (++i < cs) {
-                final Pool p = classes.get(i);
-                if (null == p.superPool) {
-                    // create new d, because we are in a new type hierarchy
-                    d = new Pointer[p.cachedSize];
+                    } while (--i >= 0);
                 }
-                p.data = d;
-                State.pool.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        p.allocateInstances();
-                        barrier.release();
+
+                // allocate data and start instance allocation jobs
+                Pointer[] d = null;
+                while (++i < cs) {
+                    final Pool p = classes.get(i);
+                    if (null == p.superPool) {
+                        // create new d, because we are in a new type hierarchy
+                        d = new Pointer[p.cachedSize];
                     }
-                });
+                    p.data = d;
+                    State.pool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            p.allocateInstances();
+                            barrier.release();
+                        }
+                    });
+                }
             }
         }
 
@@ -487,7 +493,8 @@ public final class Parser extends StateInitializer {
 
                         // TODO else, it is a known fields not contained in the file
                         try {
-                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, nextFieldID++, p);
+                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                    nextFieldID++, p);
                         } catch (Exception e) {
                             throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
                         }
@@ -521,34 +528,57 @@ public final class Parser extends StateInitializer {
         int remaining = fields.size();
         ReadTask[] jobs = new ReadTask[remaining];
 
-        while (--remaining >= 0) {
+        int awaitHulls = 0;
+
+        while (--remaining >= 0 & !in.eof()) {
             // get size of the block, which is relative to the position after size
             final int size = in.v32();
             final int position = in.position();
             final int id = in.v32();
-            final FieldDeclaration<?, ?> f = fields.get(id);
+            final Object f = fields.get(id);
             // overwrite entry to prevent duplicate read of the same field
             fields.set(id, null);
 
-            // TODO if instanceof hull type, read count
-            // TODO start hull allocation job
+            if (f instanceof HullType<?>) {
+                final int count = in.v32();
+                final HullType<?> p = (HullType<?>) f;
+                final MappedInStream map = in.map(size + position - in.position());
 
-            // create job with an adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-            jobs[id] = new ReadTask(f, in.map(size + position - in.position()));
+                // start hull allocation job
+                awaitHulls++;
+                State.pool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        p.allocateInstances(count, map);
+                        barrier.release();
+                    }
+                });
+
+                // create hull read data task except for StringPool which is still lazy per element and eager per offset
+                if (!(p instanceof StringPool)) {
+                    // TODO jobs[id] = new HRT(p);
+                }
+
+            } else {
+                // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
+                jobs[id] = new ReadTask((FieldDeclaration<?, ?>) f, in.map(size + position - in.position()));
+            }
         }
 
         // await allocations of class and hull types
         try {
-            // TODO await hull types
-            barrier.acquire(classes.size());
-
+            barrier.acquire(classes.size() + awaitHulls);
         } catch (InterruptedException e) {
             throw new SkillException("internal error: unexpected foreign exception", e);
         }
 
         // start read tasks
-        for (ReadTask j : jobs)
-            State.pool.execute(j);
+        for (ReadTask j : jobs) {
+            if (null != j)
+                State.pool.execute(j);
+            else
+                barrier.release();
+        }
 
         // TODO start tasks that perform default initialization of fields not obtained from file
     }

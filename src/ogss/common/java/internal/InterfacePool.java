@@ -7,15 +7,11 @@ import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
 /**
- * Holds interface instances. Serves as an API realization. Ensures correctness
- * of reflective type system.
+ * Holds interface instances. Serves as an API realization. Ensures correctness of reflective type system.
  * 
- * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we
- *       cannot inherit from Access<T>
- *
- * @note typing in this implementation is intentionally incorrect, because java
- *       does not permit interfaces to inherit from classes
- * 
+ * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we cannot inherit from Access<T>
+ * @note typing in this implementation is intentionally incorrect, because java does not permit interfaces to inherit
+ *       from classes
  * @author Timm Felden
  */
 final public class InterfacePool<T, B extends Pointer> extends FieldType<T> implements GeneralAccess<T> {
@@ -86,5 +82,11 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
     @Override
     public String toString() {
         return name;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public T get(int ID) {
+        return (T) superPool.get(ID);
     }
 }

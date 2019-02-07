@@ -25,9 +25,16 @@ public abstract class StateInitializer {
     final HashMap<String, ByRefType<?>> typeByName = new HashMap<>();
     final AnyRefType Annotation;
 
-    Class<Pool<?, ?>>[] knownClasses;
+    final Class<Pool<?, ?>>[] knownClasses;
+    /**
+     * State Initialization of Fields Array. In C++, it should be possible to memcpy this array into the first field to
+     * achieve state initialization.
+     * 
+     * @note invariant: ∀i. SIFA[i].getClass == knownClasses[i]
+     */
+    public final Pool<?, ?>[] SIFA;
 
-    String[] classNames;
+    final String[] classNames;
 
     /**
      * The next global field ID. Note that this ID does not correspond to the ID used in the file about to be read but
@@ -35,12 +42,14 @@ public abstract class StateInitializer {
      * 
      * @note to make this work as intended, merging known fields into the dataFields array has to be done while reading
      *       F.
+     * @note ID 0 is reserved for the String hull which is always present
      */
-    protected int nextFieldID = 0;
+    protected int nextFieldID = 1;
 
     StateInitializer(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames) {
         this.knownClasses = knownClasses;
         this.classNames = classNames;
+        SIFA = new Pool[knownClasses.length];
 
         this.in = in;
         Strings = new StringPool(in);

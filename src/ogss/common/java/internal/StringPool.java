@@ -4,17 +4,16 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.StringAccess;
 import ogss.common.java.internal.exceptions.InvalidPoolIndexException;
+import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.streams.MappedInStream;
 
 /**
  * @author Timm Felden
@@ -22,7 +21,7 @@ import ogss.common.streams.OutStream;
  * @note String pool may contain duplicates, if strings have been added. This is a necessary behavior, if add should be
  *       an O(1) operation and Strings are loaded from file lazily.
  */
-final public class StringPool extends ByRefType<String> implements StringAccess {
+final public class StringPool extends HullType<String> implements StringAccess {
     public static final int typeID = 8;
 
     public static final Charset utf8 = Charset.forName("UTF-8");
@@ -37,9 +36,7 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
     /**
      * ID ⇀ (absolute offset, length) will be used if idMap contains a null reference
      *
-     * @note there is a fake entry at ID 0
-     * 
-     * TODO replace by long[]; add a second array for hullStrings
+     * @note there is a fake entry at ID 0 TODO replace by long[]; add a second array for hullStrings
      */
     final ArrayList<Position> stringPositions;
 
@@ -54,60 +51,27 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
         public int length;
     }
 
-    /**
-     * get string by ID
-     */
-    final ArrayList<String> idMap;
-
-    /**
-     * Get ID for a string
-     */
-    final HashMap<String, Integer> stringIDs = new HashMap<>();
-
-    /**
-     * DO NOT CALL IF YOU ARE NOT GENERATED OR INTERNAL CODE!
-     */
-    public StringPool(FileInputStream input) {
+    StringPool(FileInputStream input) {
         super(typeID);
         this.input = input;
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1, -1));
-        idMap = new ArrayList<>();
-        idMap.add(null);
-    }
-
-    @Override
-    public String r(InStream in) {
-        return get(in.v32());
-    }
-
-    @Override
-    public void w(String v, OutStream out) throws IOException {
-        if (null == v)
-            out.i8((byte) 0);
-        else
-            out.v64(stringIDs.get(v));
-
     }
 
     /**
      * write the string block to out and release the barrier when done, so that parallel creation of T and F can be
      * written to out
      * 
-     * @note the parellel write operation is synchronized on this, hence the buffer flush has to be synchronized on this
+     * @note the parallel write operation is synchronized on this, hence the buffer flush has to be synchronized on this
      *       as well
      */
     Semaphore writeBlock(final FileOutputStream out) {
-        stringIDs.clear();
-
-        // throw away id map, as it is no longer valid
-        idMap.clear();
-        idMap.add(null);
+        resetSerialization();
 
         // create inverse map
         for (String s : knownStrings) {
-            if (!stringIDs.containsKey(s)) {
-                stringIDs.put(s, idMap.size());
+            if (!IDs.containsKey(s)) {
+                IDs.put(s, idMap.size());
                 idMap.add(s);
             }
         }
@@ -119,7 +83,8 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
                 try {
                     // count
                     // @note idMap access performance hack
-                    final int count = idMap.size() - 1;
+                    hullOffset = idMap.size();
+                    final int count = hullOffset - 1;
                     out.v64(count);
 
                     // @note idMap access performance hack
@@ -150,11 +115,33 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
         return writeBarrier;
     }
 
-    void writeHull() {
-        // TODO implementation
+    int hullOffset;
+
+    @Override
+    final boolean write(BufferedOutStream out) throws IOException {
+        final int count = idMap.size() - hullOffset;
+        if (0 == count)
+            return true;
+
+        out.v64(count);
+
+        // note: getBytes is an expensive operation!
+        final byte[][] images = new byte[count][];
+        // lengths
+        for (int i = 0; i < count; i++) {
+            final byte[] img = idMap.get(i + hullOffset).getBytes(utf8);
+            images[i] = img;
+            out.v64(img.length);
+        }
+
+        // data
+        for (int i = 0; i < count; i++) {
+            out.put(images[i]);
+        }
 
         // cleanup
-        stringIDs.clear();
+        IDs.clear();
+        return false;
     }
 
     @Override
@@ -165,6 +152,11 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
     @Override
     public int size() {
         return knownStrings.size();
+    }
+
+    @Override
+    int id(String ref) {
+        return null == ref ? 0 : super.id(ref.intern());
     }
 
     @Override
@@ -224,7 +216,27 @@ final public class StringPool extends ByRefType<String> implements StringAccess 
         knownStrings.add(result);
 
         return result;
+    }
 
+    @Override
+    void allocateInstances(int count, MappedInStream in) {
+        // read offsets
+        int last = 0;
+        int[] offsets = new int[count];
+        for (int i = 0; i < count; i++) {
+            last += in.v32();
+            offsets[i] = last;
+        }
+
+        // store offsets
+        // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
+        // is done using absolute sizes
+        last = 0;
+        for (int i = 0; i < count; i++) {
+            stringPositions.add(new StringPool.Position(in.position() + last, offsets[i] - last));
+            idMap.add(null);
+            last = offsets[i];
+        }
     }
 
     @Override

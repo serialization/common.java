@@ -20,8 +20,9 @@ final public class Creator extends StateInitializer {
 
         try {
             // Create Classes
-            for (Class<Pool<?, ?>> cls : knownClasses) {
-                Pool<?, ?> p = (Pool<?, ?>) cls.getConstructors()[0].newInstance(classes, null);
+            for (int i = 0; i < knownClasses.length; i++) {
+                Pool<?, ?> p = (Pool<?, ?>) knownClasses[i].getConstructors()[0].newInstance(classes, null);
+                SIFA[i] = p;
                 classes.add(p);
                 typeByName.put(p.name, p);
                 Strings.add(p.name);
@@ -35,7 +36,8 @@ final public class Creator extends StateInitializer {
                 for (String f : p.knownFields) {
                     Strings.add(f);
                     try {
-                        p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, nextFieldID++, p);
+                        p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                nextFieldID++, p);
                     } catch (Exception e) {
                         throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + f);
                     }

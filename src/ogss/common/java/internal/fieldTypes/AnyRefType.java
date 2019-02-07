@@ -50,7 +50,7 @@ public final class AnyRefType extends ByRefType<Object> {
 
         final int f = in.v32();
         // TODO fix this!
-        return types.get(t - 1).getByID(f);
+        return types.get(t - 1).get(f);
     }
 
     @Override
@@ -97,5 +97,10 @@ public final class AnyRefType extends ByRefType<Object> {
     @Override
     public Iterator<Object> iterator() {
         throw new Error("TODO");
+    }
+
+    @Override
+    public Object get(int ID) {
+        throw new NoSuchMethodError();
     }
 }

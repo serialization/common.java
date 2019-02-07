@@ -204,7 +204,7 @@ public abstract class State implements AutoCloseable {
         if (null != target)
             try {
                 if (0 < target.ID)
-                    return target == ((Pool<?, ?>) typeByName.get(target.typeName())).getByID(target.ID);
+                    return target == ((Pool<?, ?>) typeByName.get(target.typeName())).get(target.ID);
                 else if (0 == target.ID)
                     return true; // will evaluate to a null pointer if stored
 

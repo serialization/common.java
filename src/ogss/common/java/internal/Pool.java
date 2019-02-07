@@ -254,8 +254,9 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     /**
      * @return the instance matching argument object id
      */
+    @Override
     @SuppressWarnings("unchecked")
-    final public T getByID(int ID) {
+    final public T get(int ID) {
         int index = ID - 1;
         if (index < 0 | data.length <= index)
             return null;
