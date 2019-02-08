@@ -54,7 +54,7 @@ public final class AnyRefType extends ByRefType<Object> {
             return typeByName.get("string").get(f);
 
         // TODO fix this!
-        return types.get(t - 1).get(f);
+        return types.get(t - 2).get(f);
     }
 
     @Override
