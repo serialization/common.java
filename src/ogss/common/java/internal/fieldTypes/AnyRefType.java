@@ -10,6 +10,7 @@ import ogss.common.java.internal.FieldType;
 import ogss.common.java.internal.Pointer;
 import ogss.common.java.internal.Pool;
 import ogss.common.java.internal.State;
+import ogss.common.java.internal.StringPool;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
@@ -23,7 +24,7 @@ public final class AnyRefType extends ByRefType<Object> {
     /**
      * @see ???
      */
-    public static final int typeID = 9;
+    public static final int typeID = 8;
 
     private final ArrayList<Pool<?, ?>> types;
 
@@ -43,28 +44,37 @@ public final class AnyRefType extends ByRefType<Object> {
     }
 
     @Override
-    public Pointer r(InStream in) {
+    public Object r(InStream in) {
         final int t = in.v32();
         if (0 == t)
             return null;
 
         final int f = in.v32();
+        if (1 == t)
+            return typeByName.get("string").get(f);
+
         // TODO fix this!
         return types.get(t - 1).get(f);
     }
 
     @Override
-    public void w(Object ref, OutStream out) throws IOException {
+    public boolean w(Object ref, OutStream out) throws IOException {
         if (null == ref) {
             // magic trick!
             out.i8((byte) 0);
-            return;
+            return true;
         }
 
-        if (ref instanceof Pointer)
-            out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - 7);
-        out.v64(((Pointer) ref).ID());
-
+        if (ref instanceof Pointer) {
+            out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - typeID);
+            out.v64(((Pointer) ref).ID());
+        } else if (ref instanceof String) {
+            out.i8((byte) 1);
+            out.v64(((StringPool) typeByName.get("string")).id((String) ref));
+        } else {
+            throw new Error("TODO");
+        }
+        return false;
     }
 
     @Override

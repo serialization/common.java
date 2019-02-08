@@ -65,8 +65,8 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     }
 
     @Override
-    public void w(T data, OutStream out) throws IOException {
-        superType.w((Pointer) data, out);
+    public boolean w(T data, OutStream out) throws IOException {
+        return superType.w(data, out);
     }
 
     public AnyRefType getType() {

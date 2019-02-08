@@ -148,9 +148,9 @@ public final class Parser extends StateInitializer {
         case 7:
             return F64.get();
         case 8:
-            return Strings;
-        case 9:
             return Annotation;
+        case 9:
+            return Strings;
         default:
             return classes.get(typeID - 10);
         }

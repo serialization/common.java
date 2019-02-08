@@ -26,9 +26,12 @@ public final class I8 extends IntegerType<Byte> {
     public Byte r(InStream in) {
         return in.i8();
     }
+
     @Override
-    public void w(Byte target, OutStream out) throws IOException {
-        out.i8(null == target ? 0 : target.byteValue());
+    public boolean w(Byte target, OutStream out) throws IOException {
+        byte v = null == target ? 0 : target.byteValue();
+        out.i8(v);
+        return 0 == v;
     }
 
     @Override

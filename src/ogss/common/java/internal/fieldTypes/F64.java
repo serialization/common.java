@@ -28,8 +28,10 @@ public final class F64 extends FloatType<Double> {
     }
 
     @Override
-    public void w(Double target, OutStream out) throws IOException {
-        out.f64(null == target ? 0 : target);
+    public boolean w(Double target, OutStream out) throws IOException {
+        double v = null == target ? 0 : target;
+        out.f64(v);
+        return 0 == v;
     }
 
     @Override

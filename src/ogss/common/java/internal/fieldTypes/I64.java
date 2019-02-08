@@ -28,8 +28,10 @@ public final class I64 extends IntegerType<Long> {
     }
 
     @Override
-    public void w(Long target, OutStream out) throws IOException {
-        out.i64(null == target ? 0 : target);
+    public boolean w(Long target, OutStream out) throws IOException {
+        long v = null == target ? 0 : target;
+        out.i64(v);
+        return 0 == v;
     }
 
     @Override

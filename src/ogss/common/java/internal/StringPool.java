@@ -22,7 +22,7 @@ import ogss.common.streams.MappedInStream;
  *       an O(1) operation and Strings are loaded from file lazily.
  */
 final public class StringPool extends HullType<String> implements StringAccess {
-    public static final int typeID = 8;
+    public static final int typeID = 9;
 
     public static final Charset utf8 = Charset.forName("UTF-8");
 
@@ -155,7 +155,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     }
 
     @Override
-    int id(String ref) {
+    public int id(String ref) {
         return null == ref ? 0 : super.id(ref.intern());
     }
 

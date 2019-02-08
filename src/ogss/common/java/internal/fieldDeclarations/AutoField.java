@@ -22,11 +22,11 @@ public abstract class AutoField<T, Obj extends Pointer> extends FieldDeclaration
 
     @Override
     protected void read(int i, final int h, MappedInStream in) {
-        throw new NoSuchMethodError("one can not read auto fields!");
+        throw new NoSuchMethodError("one cannot read auto fields!");
     }
 
     @Override
-    protected void write(int i, int end, BufferedOutStream out) throws IOException {
-        throw new NoSuchMethodError("one can not write auto fields!");
+    protected boolean write(int i, int end, BufferedOutStream out) throws IOException {
+        throw new NoSuchMethodError("one cannot write auto fields!");
     }
 }

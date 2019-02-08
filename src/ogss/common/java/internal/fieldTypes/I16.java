@@ -28,8 +28,10 @@ public final class I16 extends IntegerType<Short> {
     }
 
     @Override
-    public void w(Short target, OutStream out) throws IOException {
-        out.i16(null == target ? 0 : target);
+    public boolean w(Short target, OutStream out) throws IOException {
+        short v = null == target ? 0 : target;
+        out.i16(v);
+        return 0 == v;
     }
 
     @Override

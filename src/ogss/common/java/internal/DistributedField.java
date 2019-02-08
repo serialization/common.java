@@ -39,11 +39,13 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     }
 
     @Override
-    protected void write(int i, final int h, BufferedOutStream out) throws IOException {
+    protected final boolean write(int i, final int h, BufferedOutStream out) throws IOException {
+        boolean drop = true;
         final Pointer[] d = owner.basePool.data;
         for (; i < h; i++) {
-            type.w(data.get(d[i]), out);
+            drop &= type.w(data.get(d[i]), out);
         }
+        return drop;
     }
 
     @Override

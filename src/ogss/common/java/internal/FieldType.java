@@ -57,6 +57,8 @@ abstract public class FieldType<T> extends ogss.common.java.api.FieldType<T> {
      *       of the Java type system (and any other sane type system)
      * 
      * @note intended for internal usage only!
+     * 
+     * @return true iff a default value was written
      */
-    public abstract void w(T data, OutStream out) throws IOException;
+    public abstract boolean w(T data, OutStream out) throws IOException;
 }

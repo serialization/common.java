@@ -88,9 +88,8 @@ final public class Writer {
             // else, someone decided to discard his buffer
         }
 
-        if (0 != barrier.availablePermits()) {
-            System.out.println("something went wrong: " + barrier.availablePermits() + " permits remained unused");
-        }
+        assert 0 == barrier.availablePermits() : ("something went wrong: " + barrier.availablePermits()
+                + " permits remained unused");
 
         out.close();
 
@@ -114,8 +113,6 @@ final public class Writer {
      * write T and F, start HD tasks, and return the number of buffers to await
      */
     private int writeTF(BufferedOutStream out) throws Exception {
-
-        // TODO reassign global field IDs!
 
         // calculate new bpos, sizes, object IDs and compress data arrays
         {
@@ -145,6 +142,7 @@ final public class Writer {
 
         // write types
         ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(2 * state.classes.size());
+        int awaitHulls = 0;
         final IdentityHashMap<String, Integer> stringIDs = state.strings.IDs;
         for (Pool<?, ?> p : state.classes) {
             out.v64(stringIDs.get(p.name));
@@ -164,8 +162,19 @@ final public class Writer {
             // add field to queues for description and data tasks
             for (FieldDeclaration<?, ?> f : p.dataFields) {
                 fieldQueue.add(f);
-                State.pool.execute(new Task(f));
+                if (f.type instanceof HullType<?>) {
+                    ((HullType<?>) f.type).deps++;
+                    if (f.type instanceof StringPool) {
+                        awaitHulls = 1;
+                    }
+                }
             }
+        }
+
+        // note: we cannot start field jobs immediately because they could decrement deps to 0 multiple times in that
+        // case
+        for (FieldDeclaration<?, ?> f : fieldQueue) {
+            State.pool.execute(new Task(f));
         }
 
         /**
@@ -192,19 +201,11 @@ final public class Writer {
             // write info
             out.v64(stringIDs.get(f.name));
             out.v64(f.type.typeID);
-            if (f.type instanceof HullType<?>) {
-                ((HullType<?>) f.type).deps++;
-            }
             restrictions(f, out);
         }
 
-        // if deps of string is currently 0, then no string hull will be created and none will be triggered
-        // hence, we must not await one
-        final int stringHulls = state.strings.deps == 0 ? 0 : 1;
-
-        // fields + 1 for string
-        // TODO + regular hull types
-        return fieldQueue.size() + stringHulls;
+        // fields + hull types
+        return fieldQueue.size() + awaitHulls;
     }
 
     /**
@@ -226,18 +227,21 @@ final public class Writer {
                 buffer.recycle();
             }
 
+            boolean discard = true;
             try {
                 Pool<?, ?> owner = f.owner;
                 int i = owner.bpo;
 
                 buffer.v64(f.id);
-                f.write(i, i + owner.cachedSize, buffer);
+                discard = f.write(i, i + owner.cachedSize, buffer);
 
                 if (f.type instanceof HullType<?>) {
                     HullType<?> t = (HullType<?>) f.type;
-                    if (0 == --t.deps) {
-                        // execute task in this thread to avoid unnecessary overhead
-                        new HullTask(t).run();
+                    synchronized (t) {
+                        if (0 == --t.deps) {
+                            // execute task in this thread to avoid unnecessary overhead
+                            new HullTask(t).run();
+                        }
                     }
                 }
 
@@ -257,11 +261,13 @@ final public class Writer {
                         writeErrors.addSuppressed(e);
                 }
             } finally {
-                // TODO discard buffer as intended
-
                 // return the buffer in any case to ensure that there is a
                 // buffer on error
-                finishedBuffers.add(buffer);
+                if (discard) {
+                    recycleBuffers.add(buffer);
+                } else {
+                    finishedBuffers.add(buffer);
+                }
 
                 // ensure that writer can terminate, errors will be
                 // printed to command line anyway, and we wont

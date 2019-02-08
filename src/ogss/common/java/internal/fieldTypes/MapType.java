@@ -37,18 +37,19 @@ public final class MapType<K, V> extends CompoundType<HashMap<K, V>> {
 
     @SuppressWarnings("null")
     @Override
-    public void w(HashMap<K, V> data, OutStream out) throws IOException {
+    public boolean w(HashMap<K, V> data, OutStream out) throws IOException {
         // TODO incorrect
         int size = (null == data) ? 0 : data.size();
         if (0 == size) {
             out.i8((byte) 0);
-            return;
+            return true;
         }
         out.v64(size);
         for (Entry<K, V> e : data.entrySet()) {
             keyType.w(e.getKey(), out);
             valueType.w(e.getValue(), out);
         }
+        return false;
     }
 
     @Override

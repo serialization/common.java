@@ -28,8 +28,10 @@ public final class I32 extends IntegerType<Integer> {
     }
 
     @Override
-    public void w(Integer target, OutStream out) throws IOException {
-        out.i32(null == target ? 0 : target);
+    public boolean w(Integer target, OutStream out) throws IOException {
+        int v = null == target ? 0 : target;
+        out.i32(v);
+        return 0 == v;
     }
 
     @Override

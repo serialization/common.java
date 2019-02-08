@@ -21,15 +21,17 @@ public abstract class SingleArgumentType<T extends Collection<Base>, Base> exten
 
     @SuppressWarnings("null")
     @Override
-    public void w(T x, OutStream out) throws IOException {
+    public boolean w(T x, OutStream out) throws IOException {
         // TODO incorrect
         final int size = null == x ? 0 : x.size();
         if (0 == size) {
             out.i8((byte) 0);
-        } else {
-            out.v64(size);
-            for (Base e : x)
-                groundType.w(e, out);
+            return true;
         }
+
+        out.v64(size);
+        for (Base e : x)
+            groundType.w(e, out);
+        return false;
     }
 }

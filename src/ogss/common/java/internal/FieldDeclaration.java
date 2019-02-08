@@ -130,8 +130,9 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
      * @note this will always write the last chunk, as, in contrast to read, it is impossible to write to fields in
      *       parallel
      * @note only called, if there actually is field data to be written
+     * @return true iff the written data contains default values only
      */
-    protected abstract void write(int i, final int last, BufferedOutStream out) throws IOException;
+    protected abstract boolean write(int i, final int last, BufferedOutStream out) throws IOException;
 
     /**
      * punch a hole into the java type system :)

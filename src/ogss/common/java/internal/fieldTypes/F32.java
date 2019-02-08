@@ -28,8 +28,10 @@ public final class F32 extends FloatType<Float> {
     }
 
     @Override
-    public void w(Float target, OutStream out) throws IOException {
-        out.f32(null == target ? 0 : target);
+    public boolean w(Float target, OutStream out) throws IOException {
+        float v = null == target ? 0 : target;
+        out.f32(v);
+        return 0 == v;
     }
 
     @Override

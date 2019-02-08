@@ -248,7 +248,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         this.knownFields = knownFields;
         this.KFC = KFC;
         dataFields = new ArrayList<>(knownFields.length);
-        this.autoFields = 0==autoFields ? (AutoField[]) noAutoFields : new AutoField[autoFields];
+        this.autoFields = 0 == autoFields ? (AutoField[]) noAutoFields : new AutoField[autoFields];
     }
 
     /**
@@ -273,11 +273,14 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     }
 
     @Override
-    public final void w(T ref, OutStream out) throws IOException {
-        if (null == ref)
+    public final boolean w(T ref, OutStream out) throws IOException {
+        if (null == ref) {
             out.i8((byte) 0);
-        else
-            out.v64(ref.ID);
+            return true;
+        }
+
+        out.v64(ref.ID);
+        return false;
     }
 
     /**

@@ -83,12 +83,14 @@ public abstract class HullType<T> extends ByRefType<T> {
     }
 
     @Override
-    public final void w(T v, OutStream out) throws IOException {
-        if (null == v)
+    public final boolean w(T v, OutStream out) throws IOException {
+        if (null == v) {
             out.i8((byte) 0);
-        else
-            out.v64(id(v));
+            return true;
+        }
 
+        out.v64(id(v));
+        return false;
     }
 
     abstract void allocateInstances(int count, MappedInStream map);

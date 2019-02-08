@@ -28,8 +28,10 @@ public final class BoolType extends FieldType<Boolean> {
     }
 
     @Override
-    public void w(Boolean target, OutStream out) throws IOException {
-        out.bool(null != target && target);
+    public boolean w(Boolean target, OutStream out) throws IOException {
+        boolean v = null != target && target;
+        out.bool(v);
+        return !v;
     }
 
     @Override

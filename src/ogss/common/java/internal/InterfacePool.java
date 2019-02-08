@@ -72,11 +72,14 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
     }
 
     @Override
-    public void w(T data, OutStream out) throws IOException {
-        if (null == data)
+    public boolean w(T data, OutStream out) throws IOException {
+        if (null == data) {
             out.i8((byte) 0);
-        else
-            out.v64(((Pointer) data).ID);
+            return true;
+        }
+
+        out.v64(((Pointer) data).ID);
+        return false;
     }
 
     @Override
