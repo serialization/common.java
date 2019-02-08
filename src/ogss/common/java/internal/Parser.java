@@ -10,6 +10,7 @@ import java.util.concurrent.Semaphore;
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
+import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -353,7 +354,7 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    definition = new BasePool(idx, name, Pool.noKnownFields, Pool.noKFC, Pool.noAutoFields);
+                    definition = new BasePool(idx, name, Pool.noKnownFields, Pool.noKFC, 0);
                 } else {
                     definition = (Pool<T, B>) superDef.makeSubPool(idx, name);
                 }
@@ -452,11 +453,10 @@ public final class Parser extends StateInitializer {
          * *************** * F * ****************
          */
         for (Pool<?, ?> p : classes) {
-            // TODO change this to match my slides
-            // TODO create known fields
-
             // we have not yet seen a known field
             int ki = 0;
+            // we have to count seen auto fields
+            int af = -1;
 
             // we pass the size by adding null's for each expected field in the stream because AL.clear does not return
             // its backing array, i.e. we will likely not resize it that way
@@ -475,8 +475,16 @@ public final class Parser extends StateInitializer {
                         // is it the next known field?
                         if (name == p.knownFields[ki]) {
                             try {
-                                f = p.KFC[ki++].getConstructor(FieldType.class, int.class, p.getClass()).newInstance(t,
-                                        nextFieldID++, p);
+                                final Class<?> cls = p.KFC[ki++];
+                                if (cls.getSuperclass() == AutoField.class)
+                                    throw new ParseException(in, null,
+                                            "File contains a field conflicting with transient field " + p.name + "." + name);
+
+                                f = (FieldDeclaration<?, ?>) cls
+                                        .getConstructor(FieldType.class, int.class, p.getClass())
+                                        .newInstance(t, nextFieldID++, p);
+                            } catch (ParseException e) {
+                                throw e;
                             } catch (Exception e) {
                                 throw new ParseException(in, e,
                                         "Failed to instantiate known field " + p.name + "." + name);
@@ -493,8 +501,16 @@ public final class Parser extends StateInitializer {
 
                         // TODO else, it is a known fields not contained in the file
                         try {
-                            p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                    nextFieldID++, p);
+
+                            final Class<?> cls = p.KFC[ki++];
+                            // auto fields reside in a separate ID range
+                            if (cls.getSuperclass() == AutoField.class) {
+                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                        af--, p);
+                            } else {
+                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                        nextFieldID++, p);   
+                            }
                         } catch (Exception e) {
                             throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
                         }
@@ -507,8 +523,6 @@ public final class Parser extends StateInitializer {
                 }
 
                 f.addRestriction(rest);
-
-                // TODO check against auto field? (or specify that it would no longer be an error)
 
                 fields.add(f);
             }
@@ -532,7 +546,7 @@ public final class Parser extends StateInitializer {
 
         while (--remaining >= 0 & !in.eof()) {
             // get size of the block, which is relative to the position after size
-            final int size = in.v32();
+            final int size = in.v32() + 2;
             final int position = in.position();
             final int id = in.v32();
             final Object f = fields.get(id);

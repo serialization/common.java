@@ -3,6 +3,7 @@ package ogss.common.java.internal;
 import java.util.HashMap;
 
 import ogss.common.java.internal.exceptions.ParseException;
+import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.streams.FileInputStream;
 
 /**
@@ -33,11 +34,17 @@ final public class Creator extends StateInitializer {
             // Create Fields
             for (Pool<?, ?> p : classes) {
                 int ki = 0;
+                int af = -1;
                 for (String f : p.knownFields) {
                     Strings.add(f);
                     try {
-                        p.KFC[ki++].getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                nextFieldID++, p);
+                        final Class<?> cls = p.KFC[ki++];
+                        if (cls.getSuperclass() == AutoField.class) {
+                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
+                        } else {
+                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                    nextFieldID++, p);
+                        }
                     } catch (Exception e) {
                         throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + f);
                     }

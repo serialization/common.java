@@ -104,9 +104,9 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     /**
      * Classes of known fields used to allocate them
      */
-    public final Class<KnownDataField<?, T>>[] KFC;
+    public final Class<FieldDeclaration<?, T>>[] KFC;
     @SuppressWarnings("unchecked")
-    public static final Class<KnownDataField<?, ?>>[] noKFC = new Class[0];
+    public static final Class<FieldDeclaration<?, ?>>[] noKFC = new Class[0];
 
     /**
      * all fields that are declared as auto, including skillID
@@ -233,7 +233,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      */
     @SuppressWarnings("unchecked")
     protected Pool(int poolIndex, String name, Pool<? super T, B> superPool, String[] knownFields,
-            Class<KnownDataField<?, T>>[] KFC, AutoField<?, T>[] autoFields) {
+            Class<FieldDeclaration<?, T>>[] KFC, int autoFields) {
         super(10 + poolIndex);
         this.name = name.intern();
 
@@ -248,7 +248,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         this.knownFields = knownFields;
         this.KFC = KFC;
         dataFields = new ArrayList<>(knownFields.length);
-        this.autoFields = autoFields;
+        this.autoFields = 0==autoFields ? (AutoField[]) noAutoFields : new AutoField[autoFields];
     }
 
     /**
@@ -370,7 +370,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public Pool<? extends T, B> makeSubPool(int index, String name) {
         // @note cannot solve type equation without turning noKFC into a function
-        return new Pool(index, name, this, noKnownFields, noKFC, noAutoFields);
+        return new Pool(index, name, this, noKnownFields, noKFC, 0);
     }
 
     @Override

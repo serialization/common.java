@@ -2,8 +2,6 @@ package ogss.common.java.internal;
 
 import java.util.ArrayList;
 
-import ogss.common.java.internal.fieldDeclarations.AutoField;
-
 /**
  * The base of a type hierarchy. Contains optimized representations of data compared to sub pools.
  * 
@@ -17,8 +15,8 @@ public class BasePool<T extends Pointer> extends Pool<T, T> {
      */
     protected State owner = null;
 
-    protected BasePool(int poolIndex, String name, String[] knownFields, Class<KnownDataField<?, T>>[] KFC,
-            AutoField<?, T>[] autoFields) {
+    protected BasePool(int poolIndex, String name, String[] knownFields, Class<FieldDeclaration<?, T>>[] KFC,
+            int autoFields) {
         super(poolIndex, name, null, knownFields, KFC, autoFields);
     }
 

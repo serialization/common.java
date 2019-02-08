@@ -31,6 +31,8 @@ public abstract class StateInitializer {
      * achieve state initialization.
      * 
      * @note invariant: ∀i. SIFA[i].getClass == knownClasses[i]
+     * 
+     * @note this is essentially the SKilL/Java large spec passing mode, except that the name binding happens implicitly
      */
     public final Pool<?, ?>[] SIFA;
 
