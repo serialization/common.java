@@ -7,6 +7,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.SkillException;
+import ogss.common.java.internal.fieldTypes.ArrayType;
+import ogss.common.java.internal.fieldTypes.ListType;
+import ogss.common.java.internal.fieldTypes.MapType;
+import ogss.common.java.internal.fieldTypes.SetType;
+import ogss.common.java.internal.fieldTypes.SingleArgumentType;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileOutputStream;
 import ogss.common.streams.OutStream;
@@ -182,8 +187,61 @@ final public class Writer {
          */
 
         // write count of the type block
-        out.v64(0);
-        // TODO container write implementation
+        {
+            int count = state.containers.size();
+            out.v64(count);
+            for (HullType<?> c : state.containers) {
+                if (c instanceof ArrayType<?>) {
+                    ArrayType<?> t = (ArrayType<?>) c;
+                    out.i8((byte) 0);
+                    out.v64(t.base.typeID);
+                    if (t.base instanceof HullType<?>) {
+                        ((HullType<?>) t.base).deps++;
+                        if (t.base instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
+                    }
+                } else if (c instanceof ListType<?>) {
+                    ListType<?> t = (ListType<?>) c;
+                    out.i8((byte) 1);
+                    out.v64(t.base.typeID);
+                    if (t.base instanceof HullType<?>) {
+                        ((HullType<?>) t.base).deps++;
+                        if (t.base instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
+                    }
+                } else if (c instanceof SetType<?>) {
+                    SetType<?> t = (SetType<?>) c;
+                    out.i8((byte) 2);
+                    out.v64(t.base.typeID);
+                    if (t.base instanceof HullType<?>) {
+                        ((HullType<?>) t.base).deps++;
+                        if (t.base instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
+                    }
+                } else if (c instanceof MapType<?, ?>) {
+                    MapType<?, ?> t = (MapType<?, ?>) c;
+                    out.i8((byte) 3);
+                    out.v64(t.keyType.typeID);
+                    if (t.keyType instanceof HullType<?>) {
+                        ((HullType<?>) t.keyType).deps++;
+                        if (t.keyType instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
+                    }
+                    out.v64(t.valueType.typeID);
+                    if (t.valueType instanceof HullType<?>) {
+                        ((HullType<?>) t.valueType).deps++;
+                        if (t.valueType instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
+                    }
+                }
+            }
+            awaitHulls += count;
+        }
 
         /**
          * *************** * T Enum * ****************
@@ -228,6 +286,7 @@ final public class Writer {
             }
 
             boolean discard = true;
+            Runnable tail = null;
             try {
                 Pool<?, ?> owner = f.owner;
                 int i = owner.bpo;
@@ -240,7 +299,7 @@ final public class Writer {
                     synchronized (t) {
                         if (0 == --t.deps) {
                             // execute task in this thread to avoid unnecessary overhead
-                            new HullTask(t).run();
+                            tail = new HullTask(t);
                         }
                     }
                 }
@@ -275,6 +334,9 @@ final public class Writer {
                 // the skill implementation itself is
                 // broken
                 barrier.release();
+
+                if (null != tail)
+                    tail.run();
             }
         }
     }
@@ -299,9 +361,44 @@ final public class Writer {
             }
 
             boolean discard = true;
+            Runnable tail = null;
             try {
                 buffer.v64(t.fieldID);
                 discard = t.write(buffer);
+
+                if (t instanceof SingleArgumentType<?, ?>) {
+                    SingleArgumentType<?, ?> p = (SingleArgumentType<?, ?>) t;
+                    if (p.base instanceof HullType<?>) {
+                        HullType<?> t = (HullType<?>) p.base;
+                        synchronized (t) {
+                            if (0 == --t.deps) {
+                                // execute task in this thread to avoid unnecessary overhead
+                                tail = new HullTask(t);
+                            }
+                        }
+                    }
+                } else if (t instanceof MapType<?, ?>) {
+                    MapType<?, ?> p = (MapType<?, ?>) t;
+                    if (p.keyType instanceof HullType<?>) {
+                        HullType<?> t = (HullType<?>) p.keyType;
+                        synchronized (t) {
+                            if (0 == --t.deps) {
+                                // do not execute key hulls, as value hull is more likely and its execution would be
+                                // blocked by the key hull
+                                State.pool.execute(new HullTask(t));
+                            }
+                        }
+                    }
+                    if (p.valueType instanceof HullType<?>) {
+                        HullType<?> t = (HullType<?>) p.valueType;
+                        synchronized (t) {
+                            if (0 == --t.deps) {
+                                // execute task in this thread to avoid unnecessary overhead
+                                tail = new HullTask(t);
+                            }
+                        }
+                    }
+                }
             } catch (SkillException e) {
                 synchronized (Writer.this) {
                     if (null == writeErrors)
@@ -332,6 +429,9 @@ final public class Writer {
                 // the skill implementation itself is
                 // broken
                 barrier.release();
+
+                if (null != tail)
+                    tail.run();
             }
         }
     }

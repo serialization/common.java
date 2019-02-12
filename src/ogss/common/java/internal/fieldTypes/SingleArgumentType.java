@@ -2,36 +2,69 @@ package ogss.common.java.internal.fieldTypes;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Iterator;
 
 import ogss.common.java.internal.FieldType;
-import ogss.common.streams.OutStream;
+import ogss.common.java.internal.HullType;
+import ogss.common.streams.BufferedOutStream;
+import ogss.common.streams.MappedInStream;
 
 /**
  * Super class of all container types with one type argument.
  * 
  * @author Timm Felden
  */
-public abstract class SingleArgumentType<T extends Collection<Base>, Base> extends CompoundType<T> {
-    public final FieldType<Base> groundType;
+public abstract class SingleArgumentType<T extends Collection<Base>, Base> extends HullType<T> {
+    public final FieldType<Base> base;
 
-    public SingleArgumentType(int typeID, FieldType<Base> groundType) {
+    public SingleArgumentType(int typeID, FieldType<Base> base) {
         super(typeID);
-        this.groundType = groundType;
+        this.base = base;
     }
 
-    @SuppressWarnings("null")
     @Override
-    public boolean w(T x, OutStream out) throws IOException {
-        // TODO incorrect
-        final int size = null == x ? 0 : x.size();
-        if (0 == size) {
-            out.i8((byte) 0);
-            return true;
-        }
+    public int size() {
+        return IDs.size();
+    }
 
-        out.v64(size);
-        for (Base e : x)
-            groundType.w(e, out);
-        return false;
+    @Override
+    public Iterator<T> iterator() {
+        return IDs.keySet().iterator();
+    }
+
+    @Override
+    public final T get(int ID) {
+        return idMap.get(ID);
+    }
+
+    protected MappedInStream in;
+
+    @Override
+    protected final void read() {
+        final int count = idMap.size() - 1;
+        for (int i = 1; i <= count; i++) {
+            T xs = idMap.get(i);
+            int s = in.v32();
+            while (s-- != 0) {
+                xs.add(base.r(in));
+            }
+        }
+    }
+
+    @Override
+    protected boolean write(BufferedOutStream out) throws IOException {
+        final int count = idMap.size() - 1;
+        if (0 != count) {
+            out.v64(count);
+            for (int i = 1; i <= count; i++) {
+                T xs = idMap.get(i);
+                out.v64(xs.size());
+                for (Base x : xs) {
+                    base.w(x, out);
+                }
+            }
+            return false;
+        }
+        return true;
     }
 }

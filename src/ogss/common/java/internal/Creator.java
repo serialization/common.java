@@ -2,8 +2,13 @@ package ogss.common.java.internal;
 
 import java.util.HashMap;
 
+import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
+import ogss.common.java.internal.fieldTypes.ArrayType;
+import ogss.common.java.internal.fieldTypes.ListType;
+import ogss.common.java.internal.fieldTypes.MapType;
+import ogss.common.java.internal.fieldTypes.SetType;
 import ogss.common.streams.FileInputStream;
 
 /**
@@ -14,8 +19,8 @@ import ogss.common.streams.FileInputStream;
  */
 final public class Creator extends StateInitializer {
 
-    public Creator(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames) {
-        super(in, knownClasses, classNames);
+    public Creator(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+        super(in, knownClasses, classNames, kccs);
 
         guard = "";
 
@@ -29,7 +34,34 @@ final public class Creator extends StateInitializer {
                 Strings.add(p.name);
             }
 
-            // TODO Create Hulls
+            // Execute known container constructors
+            {
+                int tid = 10 + classes.size();
+                for (KCC c : kccs) {
+                    HullType<?> r;
+                    switch (c.kind) {
+                    case 0:
+                        r = new ArrayType<>(tid++, typeByName.get(c.b1));
+                        break;
+                    case 1:
+                        r = new ListType<>(tid++, typeByName.get(c.b1));
+                        break;
+                    case 2:
+                        r = new SetType<>(tid++, typeByName.get(c.b1));
+                        break;
+
+                    case 3:
+                        r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
+                        break;
+
+                    default:
+                        throw new SkillException("Illegal container constructor ID: " + c.kind);
+                    }
+                    typeByName.put(r.toString(), r);
+                    r.fieldID = nextFieldID++;
+                    containers.add(r);
+                }
+            }
 
             // Create Fields
             for (Pool<?, ?> p : classes) {

@@ -375,9 +375,4 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         // @note cannot solve type equation without turning noKFC into a function
         return new Pool(index, name, this, noKnownFields, noKFC, 0);
     }
-
-    @Override
-    final public String toString() {
-        return name;
-    }
 }

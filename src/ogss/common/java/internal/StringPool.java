@@ -118,7 +118,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     int hullOffset;
 
     @Override
-    final boolean write(BufferedOutStream out) throws IOException {
+    protected final boolean write(BufferedOutStream out) throws IOException {
         final int count = idMap.size() - hullOffset;
         if (0 == count)
             return true;
@@ -142,11 +142,6 @@ final public class StringPool extends HullType<String> implements StringAccess {
         // cleanup
         IDs.clear();
         return false;
-    }
-
-    @Override
-    public String toString() {
-        return "string";
     }
 
     @Override
@@ -219,7 +214,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     }
 
     @Override
-    void allocateInstances(int count, MappedInStream in) {
+    protected void allocateInstances(int count, MappedInStream in) {
         // read offsets
         int last = 0;
         int[] offsets = new int[count];
@@ -315,7 +310,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     }
 
     @Override
-    public State owner() {
-        throw new Error("TODO");
+    protected void read() throws IOException {
+        throw new NoSuchMethodError();
     }
 }

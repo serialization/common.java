@@ -13,6 +13,9 @@ import ogss.common.streams.OutStream;
  *            the Java type to represent instances of this field type
  * @note representation of the type system relies on invariants and heavy abuse
  *       of type erasure
+ *       
+ * TODO overriding hashCode with typeID was likely never correct. What is the purpose? Try to get rid of it!       
+ *       
  * @author Timm Felden
  */
 abstract public class FieldType<T> extends ogss.common.java.api.FieldType<T> {

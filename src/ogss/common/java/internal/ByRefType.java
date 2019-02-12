@@ -15,4 +15,8 @@ public abstract class ByRefType<T> extends FieldType<T> implements GeneralAccess
         super(typeID);
     }
 
+    @Override
+    public final String toString() {
+        return name();
+    }
 }

@@ -11,6 +11,7 @@ import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
+import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -18,6 +19,9 @@ import ogss.common.java.internal.fieldTypes.I16;
 import ogss.common.java.internal.fieldTypes.I32;
 import ogss.common.java.internal.fieldTypes.I64;
 import ogss.common.java.internal.fieldTypes.I8;
+import ogss.common.java.internal.fieldTypes.ListType;
+import ogss.common.java.internal.fieldTypes.MapType;
+import ogss.common.java.internal.fieldTypes.SetType;
 import ogss.common.java.internal.fieldTypes.V64;
 import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.java.restrictions.NonNull;
@@ -48,13 +52,19 @@ public final class Parser extends StateInitializer {
      */
     private ArrayList<Object> fields = new ArrayList<>();
 
+    /**
+     * User defined types. This array is used to resolve type IDs while parsing. The type IDs assigned to created
+     * entities may not correspond to udts indices (shifted by 10).
+     */
+    final ArrayList<FieldType<?>> udts = new ArrayList<>();
+
     // synchronization of field read jobs
     final Semaphore barrier = new Semaphore(0);
 
     public SkillException readErrors;
 
-    public Parser(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames) {
-        super(in, knownClasses, classNames);
+    public Parser(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+        super(in, knownClasses, classNames, kccs);
 
         // G
         {
@@ -152,7 +162,7 @@ public final class Parser extends StateInitializer {
         case 9:
             return Strings;
         default:
-            return classes.get(typeID - 10);
+            return udts.get(typeID - 10);
         }
     }
 
@@ -363,6 +373,7 @@ public final class Parser extends StateInitializer {
             // hier über nextClass, id, name pools anlegen
             // note: name über reflection!
 
+            udts.add(definition);
             classes.add(definition);
             typeByName.put(name, definition);
             break;
@@ -420,7 +431,7 @@ public final class Parser extends StateInitializer {
                 // allocate data and start instance allocation jobs
                 Pointer[] d = null;
                 while (++i < cs) {
-                    final Pool p = classes.get(i);
+                    final Pool<?, ?> p = classes.get(i);
                     if (null == p.superPool) {
                         // create new d, because we are in a new type hierarchy
                         d = new Pointer[p.cachedSize];
@@ -440,8 +451,91 @@ public final class Parser extends StateInitializer {
         /**
          * *************** * T Container * ****************
          */
-        for (int count = in.v32(); count != 0; count--)
-            throw new Error("TODO");
+        {
+            // next type ID
+            int tid = 10 + classes.size();
+            // KCC index
+            int ki = 0;
+            for (int count = in.v32(); count != 0; count--) {
+                final int kind = in.i8();
+                final FieldType<?> b1 = fieldType();
+                final FieldType<?> b2 = (3 == kind) ? fieldType() : null;
+                final String name;
+                switch (kind) {
+                case 0:
+                    name = b1 + "[]";
+                    break;
+                case 1:
+                    name = "list<" + b1 + ">";
+                    break;
+                case 2:
+                    name = "set<" + b1 + ">";
+                    break;
+                case 3:
+                    name = "map<" + b1 + "," + b2 + ">";
+                    break;
+                default:
+                    throw new IllegalStateException();
+                }
+
+                // construct known containers not present in the file
+                int cmp;
+                while ((cmp = name.compareTo(kccs[ki].name)) > 0) {
+                    KCC c = kccs[ki++];
+                    HullType<?> r;
+                    switch (c.kind) {
+                    case 0:
+                        r = new ArrayType<>(tid++, typeByName.get(c.b1));
+                        break;
+                    case 1:
+                        r = new ListType<>(tid++, typeByName.get(c.b1));
+                        break;
+                    case 2:
+                        r = new SetType<>(tid++, typeByName.get(c.b1));
+                        break;
+
+                    case 3:
+                        r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
+                        break;
+
+                    default:
+                        throw new SkillException("Illegal container constructor ID: " + c.kind);
+                    }
+                    typeByName.put(r.toString(), r);
+                    r.fieldID = nextFieldID++;
+                    containers.add(r);
+                }
+                // construct an expected container
+                if (0 == cmp) {
+                    ki++;
+                }
+                HullType<?> r;
+                switch (kind) {
+                case 0:
+                    r = new ArrayType<>(tid++, b1);
+                    break;
+                case 1:
+                    r = new ListType<>(tid++, b1);
+                    break;
+                case 2:
+                    r = new SetType<>(tid++, b1);
+                    break;
+
+                case 3:
+                    r = new MapType<>(tid++, b1, b2);
+                    break;
+
+                default:
+                    throw new SkillException("Illegal container constructor ID: " + kind);
+                }
+
+                typeByName.put(r.toString(), r);
+                r.fieldID = nextFieldID++;
+                fields.add(r);
+                udts.add(r);
+                containers.add(r);
+            }
+        }
 
         /**
          * *************** * T Enum * ****************
@@ -478,7 +572,8 @@ public final class Parser extends StateInitializer {
                                 final Class<?> cls = p.KFC[ki++];
                                 if (cls.getSuperclass() == AutoField.class)
                                     throw new ParseException(in, null,
-                                            "File contains a field conflicting with transient field " + p.name + "." + name);
+                                            "File contains a field conflicting with transient field " + p.name + "."
+                                                    + name);
 
                                 f = (FieldDeclaration<?, ?>) cls
                                         .getConstructor(FieldType.class, int.class, p.getClass())
@@ -501,15 +596,14 @@ public final class Parser extends StateInitializer {
 
                         // TODO else, it is a known fields not contained in the file
                         try {
-
                             final Class<?> cls = p.KFC[ki++];
                             // auto fields reside in a separate ID range
                             if (cls.getSuperclass() == AutoField.class) {
-                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                        af--, p);
+                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--,
+                                        p);
                             } else {
                                 cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                        nextFieldID++, p);   
+                                        nextFieldID++, p);
                             }
                         } catch (Exception e) {
                             throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
@@ -534,13 +628,9 @@ public final class Parser extends StateInitializer {
      */
     private final void processData() {
 
-        // we have to add the file offset to all begins and ends we encounter
-        final long fileOffset = in.position();
-        long dataEnd = fileOffset;
-
         // we expect one HD-entry per field
         int remaining = fields.size();
-        ReadTask[] jobs = new ReadTask[remaining];
+        Runnable[] jobs = new Runnable[remaining];
 
         int awaitHulls = 0;
 
@@ -570,7 +660,7 @@ public final class Parser extends StateInitializer {
 
                 // create hull read data task except for StringPool which is still lazy per element and eager per offset
                 if (!(p instanceof StringPool)) {
-                    // TODO jobs[id] = new HRT(p);
+                    jobs[id] = new HRT(p);
                 }
 
             } else {
@@ -587,7 +677,7 @@ public final class Parser extends StateInitializer {
         }
 
         // start read tasks
-        for (ReadTask j : jobs) {
+        for (Runnable j : jobs) {
             if (null != j)
                 State.pool.execute(j);
             else
@@ -636,6 +726,40 @@ public final class Parser extends StateInitializer {
 
             } catch (BufferUnderflowException e) {
                 ex = new PoolSizeMissmatchError(bpo, end, f, e);
+            } catch (SkillException t) {
+                ex = t;
+            } catch (Throwable t) {
+                ex = new SkillException("internal error: unexpected foreign exception", t);
+            } finally {
+                barrier.release();
+                if (null != ex)
+                    synchronized (fields) {
+                        if (null == readErrors)
+                            readErrors = ex;
+                        else
+                            readErrors.addSuppressed(ex);
+                    }
+            }
+        }
+    }
+
+    /**
+     * A hull read task. Reads H-Data.
+     * 
+     * @author Timm Felden
+     */
+    private final class HRT implements Runnable {
+        private final HullType<?> t;
+
+        HRT(HullType<?> t) {
+            this.t = t;
+        }
+
+        @Override
+        public void run() {
+            SkillException ex = null;
+            try {
+                t.read();
             } catch (SkillException t) {
                 ex = t;
             } catch (Throwable t) {

@@ -36,7 +36,7 @@ public abstract class State implements AutoCloseable {
     public static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 
     // types by skill name
-    protected final HashMap<String, ByRefType<?>> typeByName;
+    protected final HashMap<String, FieldType<?>> typeByName;
 
     public Pool<?, ?> pool(String name) {
         return (Pool<?, ?>) typeByName.get(name);
@@ -87,6 +87,7 @@ public abstract class State implements AutoCloseable {
 
     // types in type order
     final protected ArrayList<Pool<?, ?>> classes;
+    final protected ArrayList<HullType<?>> containers;
 
     /**
      * @return iterator over all user types
@@ -109,6 +110,7 @@ public abstract class State implements AutoCloseable {
         this.input = initial.in;
         this.writeMode = mode;
         this.classes = initial.classes;
+        this.containers = initial.containers;
         this.typeByName = initial.typeByName;
         this.annotationType = initial.Annotation;
 

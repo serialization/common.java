@@ -16,11 +16,7 @@ import ogss.common.streams.MappedInStream;
  */
 abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.common.java.api.FieldDeclaration<T> {
 
-    /**
-     * @note types may change during file parsing. this may seem like a hack, but it makes file parser implementation a
-     *       lot easier, because there is no need for two mostly similar type hierarchy implementations
-     */
-    protected FieldType<T> type;
+    public final FieldType<T> type;
 
     @Override
     public final FieldType<T> type() {
@@ -79,6 +75,7 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
 
     protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
         this.type = type;
+        assert null != type;
         this.name = name.intern(); // we will switch on names, thus we need to
                                    // intern them
         this.owner = owner;

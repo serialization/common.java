@@ -32,9 +32,9 @@ public abstract class HullType<T> extends ByRefType<T> {
     /**
      * get object by ID
      */
-    final ArrayList<T> idMap;
+    protected final ArrayList<T> idMap;
 
-    final IdentityHashMap<T, Integer> IDs = new IdentityHashMap<>();
+    protected final IdentityHashMap<T, Integer> IDs = new IdentityHashMap<>();
 
     final void resetSerialization() {
         IDs.clear();
@@ -45,12 +45,20 @@ public abstract class HullType<T> extends ByRefType<T> {
     }
 
     /**
+     * Read the hull data from the stream. Abstract, because the inner loop is type-dependent anyway.
+     * 
+     * @note the fieldID is written by the caller
+     * @return true iff hull shall be discarded (i.e. it is empty)
+     */
+    protected abstract void read() throws IOException;
+
+    /**
      * Write the hull into the stream. Abstract, because the inner loop is type-dependent anyway.
      * 
      * @note the fieldID is written by the caller
      * @return true iff hull shall be discarded (i.e. it is empty)
      */
-    abstract boolean write(BufferedOutStream out) throws IOException;
+    protected abstract boolean write(BufferedOutStream out) throws IOException;
 
     protected HullType(int typeID) {
         super(typeID);
@@ -93,5 +101,10 @@ public abstract class HullType<T> extends ByRefType<T> {
         return false;
     }
 
-    abstract void allocateInstances(int count, MappedInStream map);
+    protected abstract void allocateInstances(int count, MappedInStream map);
+
+    @Override
+    public final State owner() {
+        throw new Error("TODO");
+    }
 }
