@@ -139,8 +139,6 @@ final public class StringPool extends HullType<String> implements StringAccess {
             out.put(images[i]);
         }
 
-        // cleanup
-        IDs.clear();
         return false;
     }
 

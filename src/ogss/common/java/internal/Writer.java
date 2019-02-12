@@ -176,12 +176,6 @@ final public class Writer {
             }
         }
 
-        // note: we cannot start field jobs immediately because they could decrement deps to 0 multiple times in that
-        // case
-        for (FieldDeclaration<?, ?> f : fieldQueue) {
-            State.pool.execute(new Task(f));
-        }
-
         /**
          * *************** * T Container * ****************
          */
@@ -241,6 +235,12 @@ final public class Writer {
                 }
             }
             awaitHulls += count;
+        }
+
+        // note: we cannot start field jobs immediately because they could decrement deps to 0 multiple times in that
+        // case
+        for (FieldDeclaration<?, ?> f : fieldQueue) {
+            State.pool.execute(new Task(f));
         }
 
         /**
