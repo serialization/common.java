@@ -67,7 +67,7 @@ public abstract class State implements AutoCloseable {
                 public Thread newThread(Runnable r) {
                     final Thread t = new Thread(r);
                     t.setDaemon(true);
-                    t.setName("SkillStatePoolThread");
+                    t.setName("OGSSWorker");
                     return t;
                 }
             });

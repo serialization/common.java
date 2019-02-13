@@ -562,56 +562,51 @@ public final class Parser extends StateInitializer {
                 final String name = Strings.read(in);
                 FieldType<?> t = fieldType();
                 HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
-                FieldDeclaration<?, ?> f;
+                FieldDeclaration<?, ?> f = null;
 
-                if (ki < p.knownFields.length) {
-                    do {
-                        // is it the next known field?
-                        if (name == p.knownFields[ki]) {
-                            try {
-                                final Class<?> cls = p.KFC[ki++];
-                                if (cls.getSuperclass() == AutoField.class)
-                                    throw new ParseException(in, null,
-                                            "File contains a field conflicting with transient field " + p.name + "."
-                                                    + name);
-
-                                f = (FieldDeclaration<?, ?>) cls
-                                        .getConstructor(FieldType.class, int.class, p.getClass())
-                                        .newInstance(t, nextFieldID++, p);
-                            } catch (ParseException e) {
-                                throw e;
-                            } catch (Exception e) {
-                                throw new ParseException(in, e,
-                                        "Failed to instantiate known field " + p.name + "." + name);
-                            }
-                            break;
-                        }
-
-                        // else, it might be an unknown field
-                        if (name.compareTo(p.knownFields[ki]) < 0) {
-                            // create unknown field
-                            f = new LazyField(t, name, nextFieldID++, p);
-                            break;
-                        }
-
-                        // TODO else, it is a known fields not contained in the file
+                while (ki < p.knownFields.length) {
+                    // is it the next known field?
+                    if (name == p.knownFields[ki]) {
                         try {
                             final Class<?> cls = p.KFC[ki++];
-                            // auto fields reside in a separate ID range
-                            if (cls.getSuperclass() == AutoField.class) {
-                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--,
-                                        p);
-                            } else {
-                                cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                        nextFieldID++, p);
-                            }
+                            if (cls.getSuperclass() == AutoField.class)
+                                throw new ParseException(in, null,
+                                        "File contains a field conflicting with transient field " + p.name + "."
+                                                + name);
+
+                            f = (FieldDeclaration<?, ?>) cls.getConstructor(FieldType.class, int.class, p.getClass())
+                                    .newInstance(t, nextFieldID++, p);
+                        } catch (ParseException e) {
+                            throw e;
                         } catch (Exception e) {
                             throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
                         }
-                        throw new Error("TODO create known field not in file");
+                        break;
+                    }
 
-                    } while (++ki < p.knownFields.length);
-                } else {
+                    // else, it might be an unknown field
+                    if (name.compareTo(p.knownFields[ki]) < 0) {
+                        // create unknown field
+                        f = new LazyField(t, name, nextFieldID++, p);
+                        break;
+                    }
+
+                    // else, it is a known fields not contained in the file
+                    try {
+                        final Class<?> cls = p.KFC[ki++];
+                        // auto fields reside in a separate ID range
+                        if (cls.getSuperclass() == AutoField.class) {
+                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
+                        } else {
+                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                    nextFieldID++, p);
+                        }
+                    } catch (Exception e) {
+                        throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
+                    }
+                }
+
+                if (null == f) {
                     // no known fields left, so it is obviously unknown
                     f = new LazyField(t, name, nextFieldID++, p);
                 }
