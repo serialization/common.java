@@ -73,16 +73,16 @@ public abstract class HullType<T> extends ByRefType<T> {
     int id(T ref) {
         if (null == ref)
             return 0;
-        Integer rval = IDs.get(ref);
-        if (null == rval) {
-            synchronized (this) {
+        synchronized (this) {
+            Integer rval = IDs.get(ref);
+            if (null == rval) {
                 final int ID = idMap.size();
                 idMap.add(ref);
                 IDs.put(ref, ID);
                 return ID;
             }
+            return rval;
         }
-        return rval;
     }
 
     @Override

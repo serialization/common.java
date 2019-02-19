@@ -2,7 +2,6 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
@@ -148,9 +147,9 @@ final public class Writer {
         // write types
         ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(2 * state.classes.size());
         int awaitHulls = 0;
-        final IdentityHashMap<String, Integer> stringIDs = state.strings.IDs;
+        final StringPool string = state.strings;
         for (Pool<?, ?> p : state.classes) {
-            out.v64(stringIDs.get(p.name));
+            out.v64(string.id(p.name));
             out.v64(p.staticDataInstances);
             restrictions(p, out);
             if (null == p.superPool)
@@ -257,7 +256,7 @@ final public class Writer {
 
         for (FieldDeclaration<?, ?> f : fieldQueue) {
             // write info
-            out.v64(stringIDs.get(f.name));
+            out.v64(string.id(f.name));
             out.v64(f.type.typeID);
             restrictions(f, out);
         }
