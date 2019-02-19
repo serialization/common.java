@@ -34,12 +34,12 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      *       is questionable.
      */
     protected static abstract class Builder<T extends Pointer> {
-        protected Pool<T, ? super T> pool;
-        protected T instance;
+        protected Pool<T, ? super T> p;
+        public final T self;
 
-        protected Builder(Pool<T, ? super T> pool, T instance) {
-            this.pool = pool;
-            this.instance = instance;
+        protected Builder(Pool<T, ? super T> pool, T self) {
+            this.p = pool;
+            this.self = self;
         }
 
         /**
@@ -48,10 +48,14 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
          * @note abstract to work around JVM bug
          * @return the created object
          */
-        abstract public T make();
+        public final T make() {
+            p.add(self);
+            p = null; // invalidate to prevent duplicate registration
+            return self;
+        }
     }
 
-    final String name;
+    public final String name;
 
     // type hierarchy
     public final Pool<? super T, B> superPool;
@@ -315,6 +319,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      * @note Do not use objects managed by other skill files.
      */
     public final boolean add(T e) {
+        e.ID = -1 - newObjects.size();
         return newObjects.add(e);
     }
 
@@ -359,11 +364,11 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      * @note defaults to unknown objects to reduce code size
      */
     protected void allocateInstances() {
-        int i = bpo;
+        int i = bpo, j;
         final int high = i + staticDataInstances;
         while (i < high) {
-            data[i] = new Pointer.SubType(this, i + 1);
-            i += 1;
+            data[i] = new Pointer.SubType(this, j = (i + 1));
+            i = j;
         }
     }
 

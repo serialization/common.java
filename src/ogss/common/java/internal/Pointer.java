@@ -13,6 +13,8 @@ public abstract class Pointer {
 
     /**
      * The constructor is protected to ensure that users do not break states accidentally
+     * 
+     * @note we have to pass ID to allow generated code to implement allocateInstances
      */
     protected Pointer(int ID) {
         this.ID = ID;
