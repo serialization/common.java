@@ -13,6 +13,7 @@ import ogss.common.java.internal.exceptions.InvalidPoolIndexException;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
+import ogss.common.streams.InStream;
 import ogss.common.streams.MappedInStream;
 
 /**
@@ -27,6 +28,8 @@ final public class StringPool extends HullType<String> implements StringAccess {
     public static final Charset utf8 = Charset.forName("UTF-8");
 
     private FileInputStream input;
+    // workaround for absurdly stupid ByteBuffer implementation
+    final private MappedInStream rb;
 
     /**
      * the set of all known strings, i.e. strings which do not have an ID as well as strings that already have one
@@ -54,6 +57,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     StringPool(FileInputStream input) {
         super(typeID);
         this.input = input;
+        rb = input.map(-1);
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1, -1));
     }
@@ -143,6 +147,42 @@ final public class StringPool extends HullType<String> implements StringAccess {
     }
 
     @Override
+    protected void allocateInstances(int count, MappedInStream in) {
+        S(count, in);
+    }
+    
+    /**
+     * Read a string block
+     * 
+     * @return the position behind the string block
+     */
+    int S(int count, InStream in) {
+        // read offsets
+        int[] offsets = new int[count];
+        for (int i = 0; i < count; i++) {
+            offsets[i] = in.v32();
+        }
+
+        // store offsets
+        // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
+        // is done using absolute sizes
+        int last = in.position(), off;
+        for (int i = 0; i < count; i++) {
+            off = offsets[i];
+            stringPositions.add(new StringPool.Position(last, off));
+            idMap.add(null);
+            last += off;
+        }
+        
+        return last;
+    }
+
+    @Override
+    protected void read() throws IOException {
+        throw new NoSuchMethodError();
+    }
+
+    @Override
     public int size() {
         return knownStrings.size();
     }
@@ -158,78 +198,26 @@ final public class StringPool extends HullType<String> implements StringAccess {
             return null;
 
         String result;
-        try {
-            result = idMap.get(index);
-        } catch (IndexOutOfBoundsException e) {
-            throw new InvalidPoolIndexException(index, stringPositions.size(), "string", e);
-        }
-        if (null != result)
-            return result;
-
-        // we have to load the string from disk
         // @note this block has to be synchronized in order to enable parallel
         // decoding of field data
-        // @note this is correct, because string pool is the only one who can do
-        // parallel operations on input!
         synchronized (this) {
-            Position off = stringPositions.get(index);
-            byte[] chars = input.bytes(off.absoluteOffset, off.length);
+            try {
+                result = idMap.get(index);
+            } catch (IndexOutOfBoundsException e) {
+                throw new InvalidPoolIndexException(index, stringPositions.size(), "string", e);
+            }
+            if (null != result)
+                return result;
 
-            result = new String(chars, utf8);
+            // we have to load the string from disk
+            Position off = stringPositions.get(index);
+            byte[] chars = rb.bytes(off.absoluteOffset, off.length);
+
+            result = new String(chars, utf8).intern();
             idMap.set(index, result);
             knownStrings.add(result);
         }
         return result;
-    }
-
-    /**
-     * Sequential read as invoked from the file parser for type and field names. The strings will be interned to ensure
-     * that they are identical to generated type names.
-     */
-    String read(FileInputStream in) {
-        final int index = in.v32();
-        if (0 == index)
-            return null;
-
-        String result;
-        try {
-            result = idMap.get(index);
-        } catch (IndexOutOfBoundsException e) {
-            throw new InvalidPoolIndexException(index, stringPositions.size(), "string", e);
-        }
-        if (null != result)
-            return result;
-
-        // load the string from disk
-        Position off = stringPositions.get(index);
-        byte[] chars = input.bytes(off.absoluteOffset, off.length);
-
-        result = new String(chars, utf8).intern();
-        idMap.set(index, result);
-        knownStrings.add(result);
-
-        return result;
-    }
-
-    @Override
-    protected void allocateInstances(int count, MappedInStream in) {
-        // read offsets
-        int last = 0;
-        int[] offsets = new int[count];
-        for (int i = 0; i < count; i++) {
-            last += in.v32();
-            offsets[i] = last;
-        }
-
-        // store offsets
-        // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
-        // is done using absolute sizes
-        last = 0;
-        for (int i = 0; i < count; i++) {
-            stringPositions.add(new StringPool.Position(in.position() + last, offsets[i] - last));
-            idMap.add(null);
-            last = offsets[i];
-        }
     }
 
     @Override
@@ -305,10 +293,5 @@ final public class StringPool extends HullType<String> implements StringAccess {
     @Override
     public String name() {
         return "string";
-    }
-
-    @Override
-    protected void read() throws IOException {
-        throw new NoSuchMethodError();
     }
 }

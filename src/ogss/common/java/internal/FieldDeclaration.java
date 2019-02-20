@@ -75,7 +75,6 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
 
     protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
         this.type = type;
-        assert null != type;
         this.name = name.intern(); // we will switch on names, thus we need to
                                    // intern them
         this.owner = owner;

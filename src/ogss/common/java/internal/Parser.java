@@ -90,7 +90,16 @@ public final class Parser extends StateInitializer {
         }
 
         // S
-        stringBlock();
+        try {
+            fields.add(Strings);
+            int count = in.v32();
+
+            if (0 != count) {
+                in.jump(Strings.S(count, in));
+            }
+        } catch (Exception e) {
+            throw new ParseException(in, e, "corrupted string block");
+        }
 
         // T
         typeBlock();
@@ -100,37 +109,6 @@ public final class Parser extends StateInitializer {
 
         if (!in.eof()) {
             throw new ParseException(in, null, "Expected end of file, but some bytes remain.");
-        }
-    }
-
-    final private void stringBlock() throws ParseException {
-        fields.add(Strings);
-
-        try {
-            int count = in.v32();
-
-            if (0 != count) {
-                // read offsets
-                int last = 0;
-                int[] offsets = new int[count];
-                for (int i = 0; i < count; i++) {
-                    last += in.v32();
-                    offsets[i] = last;
-                }
-
-                // store offsets
-                // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
-                // is done using absolute sizes
-                last = 0;
-                for (int i = 0; i < count; i++) {
-                    Strings.stringPositions.add(new StringPool.Position(in.position() + last, offsets[i] - last));
-                    Strings.idMap.add(null);
-                    last = offsets[i];
-                }
-                in.jump(in.position() + last);
-            }
-        } catch (Exception e) {
-            throw new ParseException(in, e, "corrupted string block");
         }
     }
 
@@ -181,12 +159,8 @@ public final class Parser extends StateInitializer {
                 break;
 
             default:
-                if (id <= 5 || 1 == (id % 2))
-                    throw new ParseException(in, null,
-                            "Found unknown type restriction %d. Please regenerate your binding, if possible.", id);
-                System.err
-                        .println("Skiped unknown skippable type restriction. Please update the SKilL implementation.");
-                break;
+                throw new ParseException(in, null,
+                        "Found unknown type restriction %d. Please regenerate your binding, if possible.", id);
             }
         }
         return rval;
@@ -247,12 +221,8 @@ public final class Parser extends StateInitializer {
             }
 
             default:
-                if (id <= 9 || 1 == (id % 2))
-                    throw new ParseException(in, null,
-                            "Found unknown field restriction %d. Please regenerate your binding, if possible.", id);
-                System.err
-                        .println("Skipped unknown skippable type restriction. Please update the SKilL implementation.");
-                break;
+                throw new ParseException(in, null,
+                        "Found unknown field restriction %d. Please regenerate your binding, if possible.", id);
             }
         }
         return rval;
@@ -263,7 +233,7 @@ public final class Parser extends StateInitializer {
     private <B extends Pointer, T extends B> void typeDefinition() {
 
         // name
-        final String name = Strings.read(in);
+        final String name = Strings.r(in);
         if (null == name)
             throw new ParseException(in, null, "corrupted file: nullptr in type name");
 
@@ -559,7 +529,7 @@ public final class Parser extends StateInitializer {
             p.dataFields.clear();
             while (0 != idx--) {
                 // read field
-                final String name = Strings.read(in);
+                final String name = Strings.r(in);
                 FieldType<?> t = fieldType();
                 HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
                 FieldDeclaration<?, ?> f = null;
@@ -638,10 +608,11 @@ public final class Parser extends StateInitializer {
             // overwrite entry to prevent duplicate read of the same field
             fields.set(id, null);
 
+            final MappedInStream map = in.map(size + position - in.position());
+
             if (f instanceof HullType<?>) {
-                final int count = in.v32();
+                final int count = map.v32();
                 final HullType<?> p = (HullType<?>) f;
-                final MappedInStream map = in.map(size + position - in.position());
 
                 // start hull allocation job
                 awaitHulls++;
@@ -660,7 +631,7 @@ public final class Parser extends StateInitializer {
 
             } else {
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-                jobs[id] = new ReadTask((FieldDeclaration<?, ?>) f, in.map(size + position - in.position()));
+                jobs[id] = new ReadTask((FieldDeclaration<?, ?>) f, map);
             }
         }
 

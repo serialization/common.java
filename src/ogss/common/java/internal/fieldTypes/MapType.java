@@ -17,8 +17,6 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
 
     public MapType(int typeID, FieldType<K> keyType, FieldType<V> valueType) {
         super(typeID);
-        assert null != keyType;
-        assert null != valueType;
 
         this.keyType = keyType;
         this.valueType = valueType;
@@ -61,8 +59,11 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
         for (int i = 1; i <= count; i++) {
             HashMap<K, V> xs = idMap.get(i);
             int s = in.v32();
-            while (s-- != 0)
-                xs.put(keyType.r(in), valueType.r(in));
+            while (s-- != 0) {
+                final K k = keyType.r(in);
+                final V v = valueType.r(in);
+                xs.put(k, v);
+            }
         }
     }
 

@@ -89,11 +89,8 @@ final public class Writer {
                 out.writeSized(buf);
                 recycleBuffers.add(buf);
             }
-            // else, someone decided to discard his buffer
+            // else, someone buffer was discarded
         }
-
-        assert 0 == barrier.availablePermits() : ("something went wrong: " + barrier.availablePermits()
-                + " permits remained unused");
 
         out.close();
 
