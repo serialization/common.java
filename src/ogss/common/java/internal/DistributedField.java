@@ -3,6 +3,8 @@ package ogss.common.java.internal;
 import java.io.IOException;
 import java.util.HashMap;
 
+import ogss.common.java.internal.fieldTypes.BoolType;
+import ogss.common.streams.BoolOutWrapper;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.MappedInStream;
 
@@ -23,8 +25,15 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     @Override
     protected void read(int i, final int h, MappedInStream in) {
         final Pointer[] d = owner.basePool.data;
-        for (; i != h; i++) {
-            data.put(d[i], type.r(in));
+        if (type instanceof BoolType) {
+            System.err.println("TODO bool in wrapper");
+            for (; i != h; i++) {
+                data.put(d[i], type.r(in));
+            }
+        } else {
+            for (; i != h; i++) {
+                data.put(d[i], type.r(in));
+            }
         }
     }
 
@@ -42,8 +51,18 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     protected final boolean write(int i, final int h, BufferedOutStream out) throws IOException {
         boolean drop = true;
         final Pointer[] d = owner.basePool.data;
-        for (; i < h; i++) {
-            drop &= type.w(data.get(d[i]), out);
+        if (type instanceof BoolType) {
+            BoolOutWrapper wrap = new BoolOutWrapper(out);
+            for (; i < h; i++) {
+                boolean v = Boolean.TRUE == data.get(d[i]);
+                wrap.bool(v);
+                drop &= !v;
+            }
+            wrap.unwrap();
+        } else {
+            for (; i < h; i++) {
+                drop &= type.w(data.get(d[i]), out);
+            }
         }
         return drop;
     }

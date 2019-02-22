@@ -366,6 +366,7 @@ public abstract class State implements AutoCloseable {
     /**
      * Same as flush, but will also sync and close file, thus the state must not be used afterwards.
      */
+    @Override
     public void close() throws SkillException {
         // flush if required
         if (Mode.ReadOnly != writeMode) {

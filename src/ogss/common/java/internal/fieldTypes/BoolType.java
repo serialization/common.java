@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import ogss.common.java.internal.FieldType;
 import ogss.common.streams.InStream;
+import ogss.common.streams.MappedInStream;
 import ogss.common.streams.OutStream;
 
 public final class BoolType extends FieldType<Boolean> {
@@ -24,14 +25,12 @@ public final class BoolType extends FieldType<Boolean> {
 
     @Override
     public Boolean r(InStream in) {
-        return in.bool();
+        return ((MappedInStream) in).bool();
     }
 
     @Override
     public boolean w(Boolean target, OutStream out) throws IOException {
-        boolean v = null != target && target;
-        out.bool(v);
-        return !v;
+        throw new NoSuchMethodError("the caller has to wrap out!");
     }
 
     @Override

@@ -75,13 +75,13 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
 
     protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
         this.type = type;
-        this.name = name.intern(); // we will switch on names, thus we need to
-                                   // intern them
+        this.name = name;
         this.owner = owner;
         this.id = id;
 
-        // auto fields get per-type negative IDs
+        // register field
         if (id < 0)
+            // auto fields get per-type negative IDs
             owner.autoFields[-1 - id] = (AutoField<?, Obj>) this;
         else
             owner.dataFields.add(this);

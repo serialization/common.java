@@ -103,14 +103,19 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      * names of known fields, the actual field information is given in the generated addKnownFiled method.
      */
     public final String[] knownFields;
-    public static final String[] noKnownFields = new String[0];
+    public static final String[] myKFN = new String[0];
 
     /**
      * Classes of known fields used to allocate them
      */
     public final Class<FieldDeclaration<?, T>>[] KFC;
-    @SuppressWarnings("unchecked")
-    public static final Class<FieldDeclaration<?, ?>>[] noKFC = new Class[0];
+
+    /**
+     * magic trick using static name resolution; KFC should be a class val, but that's not possible in java, so we use
+     * static fields instead and pass them; if no KFC is specified, the empty pool myKFC wins resolution.
+     */
+    @SuppressWarnings("rawtypes")
+    public static final Class[] myKFC = new Class[0];
 
     /**
      * all fields that are declared as auto, including skillID
@@ -125,7 +130,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     /**
      * used as placeholder, if there are no auto fields at all to optimize allocation time and memory usage
      */
-    protected static final AutoField<?, ?>[] noAutoFields = new AutoField<?, ?>[0];
+    private static final AutoField<?, ?>[] noAutoFields = new AutoField<?, ?>[0];
 
     /**
      * all fields that hold actual data
@@ -239,7 +244,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     protected Pool(int poolIndex, String name, Pool<? super T, B> superPool, String[] knownFields,
             Class<FieldDeclaration<?, T>>[] KFC, int autoFields) {
         super(10 + poolIndex);
-        this.name = name.intern();
+        this.name = name;
 
         this.superPool = superPool;
         if (null == superPool) {
@@ -378,6 +383,6 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public Pool<? extends T, B> makeSubPool(int index, String name) {
         // @note cannot solve type equation without turning noKFC into a function
-        return new Pool(index, name, this, noKnownFields, noKFC, 0);
+        return new Pool(index, name, this, myKFN, myKFC, 0);
     }
 }

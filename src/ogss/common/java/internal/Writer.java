@@ -10,7 +10,6 @@ import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
-import ogss.common.java.internal.fieldTypes.SingleArgumentType;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileOutputStream;
 import ogss.common.streams.OutStream;
@@ -34,7 +33,7 @@ final public class Writer {
     }
 
     // async reads will post their errors in this queue
-    SkillException writeErrors = null;
+    Throwable writeErrors = null;
 
     // our job synchronisation barrier
     final Semaphore barrier = new Semaphore(0, false);
@@ -89,14 +88,14 @@ final public class Writer {
                 out.writeSized(buf);
                 recycleBuffers.add(buf);
             }
-            // else, someone buffer was discarded
+            // else: some buffer was discarded
         }
 
         out.close();
 
         // report errors
         if (null != writeErrors) {
-            throw writeErrors;
+            throw new SkillException("write failed", writeErrors);
         }
     }
 
@@ -115,61 +114,62 @@ final public class Writer {
      */
     private int writeTF(BufferedOutStream out) throws Exception {
 
-        // calculate new bpos, sizes, object IDs and compress data arrays
-        {
-            final int[] newBPOs = new int[state.classes.size()];
-            int bases = 0;
-            for (Pool<?, ?> p : state.classes) {
-                if (p instanceof BasePool<?>) {
-                    bases++;
-                    State.pool.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            ((BasePool<?>) p).compress(newBPOs);
-                            barrier.release();
-                        }
-                    });
-                }
-            }
-            barrier.acquire(bases);
-        }
+        int awaitHulls = 0;
+        final ArrayList<FieldDeclaration<?, ?>> fieldQueue;
+        final StringPool string;
 
         /**
          * *************** * T Class * ****************
          */
 
-        // write count of the type block
-        out.v64(state.classes.size());
-
-        // write types
-        ArrayList<FieldDeclaration<?, ?>> fieldQueue = new ArrayList<>(2 * state.classes.size());
-        int awaitHulls = 0;
-        final StringPool string = state.strings;
-        for (Pool<?, ?> p : state.classes) {
-            out.v64(string.id(p.name));
-            out.v64(p.staticDataInstances);
-            restrictions(p, out);
-            if (null == p.superPool)
-                out.i8((byte) 0);
-            else {
-                // superID
-                out.v64(p.superPool.typeID - 9);
-                // our bpo
-                out.v64(p.bpo);
+        // calculate new bpos, sizes, object IDs and compress data arrays
+        {
+            final int[] bpos = new int[state.classes.size()];
+            int bases = 0;
+            for (Pool<?, ?> p : state.classes) {
+                if (null == p.superPool) {
+                    bases++;
+                    State.pool.execute(new WCompress(this, (BasePool<?>) p, bpos));
+                }
             }
 
-            out.v64(p.dataFields.size());
+            // write count of the type block
+            out.v64(state.classes.size());
 
-            // add field to queues for description and data tasks
-            for (FieldDeclaration<?, ?> f : p.dataFields) {
-                fieldQueue.add(f);
-                if (f.type instanceof HullType<?>) {
-                    ((HullType<?>) f.type).deps++;
-                    if (f.type instanceof StringPool) {
-                        awaitHulls = 1;
+            // initialize local state before waiting for compress
+            fieldQueue = new ArrayList<>(2 * state.classes.size());
+            string = state.strings;
+
+            barrier.acquire(bases);
+
+            // write types
+            for (Pool<?, ?> p : state.classes) {
+                out.v64(string.id(p.name));
+                out.v64(p.staticDataInstances);
+                restrictions(p, out);
+                if (null == p.superPool)
+                    out.i8((byte) 0);
+                else {
+                    // superID
+                    out.v64(p.superPool.typeID - 9);
+                    // our bpo
+                    out.v64(p.bpo);
+                }
+
+                out.v64(p.dataFields.size());
+
+                // add field to queues for description and data tasks
+                for (FieldDeclaration<?, ?> f : p.dataFields) {
+                    fieldQueue.add(f);
+                    if (f.type instanceof HullType<?>) {
+                        ((HullType<?>) f.type).deps++;
+                        if (f.type instanceof StringPool) {
+                            awaitHulls = 1;
+                        }
                     }
                 }
             }
+
         }
 
         /**
@@ -236,7 +236,7 @@ final public class Writer {
         // note: we cannot start field jobs immediately because they could decrement deps to 0 multiple times in that
         // case
         for (FieldDeclaration<?, ?> f : fieldQueue) {
-            State.pool.execute(new Task(f));
+            State.pool.execute(new WFT(this, f));
         }
 
         /**
@@ -258,177 +258,9 @@ final public class Writer {
             restrictions(f, out);
         }
 
+        out.close();
+
         // fields + hull types
         return fieldQueue.size() + awaitHulls;
-    }
-
-    /**
-     * Data structure used for parallel serialization scheduling
-     */
-    final class Task implements Runnable {
-        private final FieldDeclaration<?, ?> f;
-
-        Task(FieldDeclaration<?, ?> f) {
-            this.f = f;
-        }
-
-        @Override
-        public void run() {
-            BufferedOutStream buffer = recycleBuffers.poll();
-            if (null == buffer) {
-                buffer = new BufferedOutStream();
-            } else {
-                buffer.recycle();
-            }
-
-            boolean discard = true;
-            Runnable tail = null;
-            try {
-                Pool<?, ?> owner = f.owner;
-                int i = owner.bpo;
-
-                buffer.v64(f.id);
-                discard = f.write(i, i + owner.cachedSize, buffer);
-
-                if (f.type instanceof HullType<?>) {
-                    HullType<?> t = (HullType<?>) f.type;
-                    synchronized (t) {
-                        if (0 == --t.deps) {
-                            // execute task in this thread to avoid unnecessary overhead
-                            tail = new HullTask(t);
-                        }
-                    }
-                }
-
-            } catch (SkillException e) {
-                synchronized (Writer.this) {
-                    if (null == writeErrors)
-                        writeErrors = e;
-                    else
-                        writeErrors.addSuppressed(e);
-                }
-            } catch (Throwable e) {
-                synchronized (Writer.this) {
-                    e = new SkillException("unexpected failure while writing field " + f.toString(), e);
-                    if (null == writeErrors)
-                        writeErrors = (SkillException) e;
-                    else
-                        writeErrors.addSuppressed(e);
-                }
-            } finally {
-                // return the buffer in any case to ensure that there is a
-                // buffer on error
-                if (discard) {
-                    recycleBuffers.add(buffer);
-                } else {
-                    finishedBuffers.add(buffer);
-                }
-
-                // ensure that writer can terminate, errors will be
-                // printed to command line anyway, and we wont
-                // be able to recover, because errors can only happen if
-                // the skill implementation itself is
-                // broken
-                barrier.release();
-
-                if (null != tail)
-                    tail.run();
-            }
-        }
-    }
-
-    /**
-     * Data structure used for parallel serialization scheduling
-     */
-    final class HullTask implements Runnable {
-        private final HullType<?> t;
-
-        HullTask(HullType<?> t) {
-            this.t = t;
-        }
-
-        @Override
-        public void run() {
-            BufferedOutStream buffer = recycleBuffers.poll();
-            if (null == buffer) {
-                buffer = new BufferedOutStream();
-            } else {
-                buffer.recycle();
-            }
-
-            boolean discard = true;
-            Runnable tail = null;
-            try {
-                buffer.v64(t.fieldID);
-                discard = t.write(buffer);
-
-                if (t instanceof SingleArgumentType<?, ?>) {
-                    SingleArgumentType<?, ?> p = (SingleArgumentType<?, ?>) t;
-                    if (p.base instanceof HullType<?>) {
-                        HullType<?> t = (HullType<?>) p.base;
-                        synchronized (t) {
-                            if (0 == --t.deps) {
-                                // execute task in this thread to avoid unnecessary overhead
-                                tail = new HullTask(t);
-                            }
-                        }
-                    }
-                } else if (t instanceof MapType<?, ?>) {
-                    MapType<?, ?> p = (MapType<?, ?>) t;
-                    if (p.keyType instanceof HullType<?>) {
-                        HullType<?> t = (HullType<?>) p.keyType;
-                        synchronized (t) {
-                            if (0 == --t.deps) {
-                                // do not execute key hulls, as value hull is more likely and its execution would be
-                                // blocked by the key hull
-                                State.pool.execute(new HullTask(t));
-                            }
-                        }
-                    }
-                    if (p.valueType instanceof HullType<?>) {
-                        HullType<?> t = (HullType<?>) p.valueType;
-                        synchronized (t) {
-                            if (0 == --t.deps) {
-                                // execute task in this thread to avoid unnecessary overhead
-                                tail = new HullTask(t);
-                            }
-                        }
-                    }
-                }
-            } catch (SkillException e) {
-                synchronized (Writer.this) {
-                    if (null == writeErrors)
-                        writeErrors = e;
-                    else
-                        writeErrors.addSuppressed(e);
-                }
-            } catch (Throwable e) {
-                synchronized (Writer.this) {
-                    e = new SkillException("unexpected failure while writing hull " + t.toString(), e);
-                    if (null == writeErrors)
-                        writeErrors = (SkillException) e;
-                    else
-                        writeErrors.addSuppressed(e);
-                }
-            } finally {
-                // return the buffer in any case to ensure that there is a
-                // buffer on error
-                if (discard) {
-                    recycleBuffers.add(buffer);
-                } else {
-                    finishedBuffers.add(buffer);
-                }
-
-                // ensure that writer can terminate, errors will be
-                // printed to command line anyway, and we wont
-                // be able to recover, because errors can only happen if
-                // the skill implementation itself is
-                // broken
-                barrier.release();
-
-                if (null != tail)
-                    tail.run();
-            }
-        }
     }
 }

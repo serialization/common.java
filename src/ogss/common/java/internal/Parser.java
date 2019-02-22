@@ -334,7 +334,7 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    definition = new BasePool(idx, name, Pool.noKnownFields, Pool.noKFC, 0);
+                    definition = new BasePool(idx, name, Pool.myKFN, Pool.myKFC, 0);
                 } else {
                     definition = (Pool<T, B>) superDef.makeSubPool(idx, name);
                 }
@@ -351,8 +351,6 @@ public final class Parser extends StateInitializer {
 
         definition.bpo = bpo;
         definition.cachedSize = definition.staticDataInstances = count;
-
-        // TODO begin to allocate instances in parallel
 
         // add a null value for each data field to ensure that the temporary size of data fields matches those from file
         int fields = in.v32();
@@ -407,13 +405,18 @@ public final class Parser extends StateInitializer {
                         d = new Pointer[p.cachedSize];
                     }
                     p.data = d;
-                    State.pool.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            p.allocateInstances();
-                            barrier.release();
-                        }
-                    });
+                    if (0 != p.staticDataInstances) {
+                        State.pool.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                p.allocateInstances();
+                                barrier.release();
+                            }
+                        });
+                    } else {
+                        // we would not allocate an instance anyway
+                        barrier.release();
+                    }
                 }
             }
         }
@@ -643,11 +646,16 @@ public final class Parser extends StateInitializer {
         }
 
         // start read tasks
-        for (Runnable j : jobs) {
-            if (null != j)
-                State.pool.execute(j);
-            else
-                barrier.release();
+        {
+            int skips = 0;
+            for (Runnable j : jobs) {
+                if (null != j)
+                    State.pool.execute(j);
+                else
+                    skips++;
+            }
+            if (0 != skips)
+                barrier.release(skips);
         }
 
         // TODO start tasks that perform default initialization of fields not obtained from file
