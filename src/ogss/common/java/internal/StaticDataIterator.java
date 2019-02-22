@@ -7,17 +7,17 @@ import java.util.Iterator;
  *
  * @author Timm Felden
  */
-public class StaticDataIterator<T extends Pointer> implements Iterator<T> {
+public class StaticDataIterator<T extends Obj> implements Iterator<T> {
 
     // ! target pool
-    final Pool<T, ? super T> p;
+    final Pool<T> p;
 
     int index;
     int last;
 
     boolean second;
 
-    public StaticDataIterator(Pool<T, ? super T> storagePool) {
+    public StaticDataIterator(Pool<T> storagePool) {
         p = storagePool;
         // @note other members are zero-allocated
 

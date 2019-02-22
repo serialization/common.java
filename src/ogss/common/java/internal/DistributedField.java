@@ -11,20 +11,20 @@ import ogss.common.streams.MappedInStream;
 /**
  * The fields data is distributed into an array (for now its a hash map) holding its instances.
  */
-public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T, Obj> {
+public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Ref> {
 
-    public DistributedField(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
+    public DistributedField(FieldType<T> type, String name, int id, Pool<Ref> owner) {
         super(type, name, id, owner);
     }
 
     // data held as in storage pools
     // @note C++-style implementation is not possible on JVM
-    protected final HashMap<Pointer, T> data = new HashMap<>();
-    protected final HashMap<Pointer, T> newData = new HashMap<>();
+    protected final HashMap<Obj, T> data = new HashMap<>();
+    protected final HashMap<Obj, T> newData = new HashMap<>();
 
     @Override
     protected void read(int i, final int h, MappedInStream in) {
-        final Pointer[] d = owner.basePool.data;
+        final Obj[] d = owner.basePool.data;
         if (type instanceof BoolType) {
             System.err.println("TODO bool in wrapper");
             for (; i != h; i++) {
@@ -50,7 +50,7 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     @Override
     protected final boolean write(int i, final int h, BufferedOutStream out) throws IOException {
         boolean drop = true;
-        final Pointer[] d = owner.basePool.data;
+        final Obj[] d = owner.data;
         if (type instanceof BoolType) {
             BoolOutWrapper wrap = new BoolOutWrapper(out);
             for (; i < h; i++) {
@@ -68,7 +68,7 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     }
 
     @Override
-    public T get(Pointer ref) {
+    public T get(Obj ref) {
         if (-1 == ref.ID)
             return newData.get(ref);
 
@@ -76,7 +76,7 @@ public class DistributedField<T, Obj extends Pointer> extends FieldDeclaration<T
     }
 
     @Override
-    public void set(Pointer ref, T value) {
+    public void set(Obj ref, T value) {
         if (-1 == ref.ID)
             newData.put(ref, value);
         else

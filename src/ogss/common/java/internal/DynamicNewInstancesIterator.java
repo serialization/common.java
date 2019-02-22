@@ -9,14 +9,14 @@ import java.util.Iterator;
  *
  * @author Timm Felden
  */
-public final class DynamicNewInstancesIterator<T extends B, B extends Pointer> implements Iterator<T> {
+public final class DynamicNewInstancesIterator<T extends Obj> implements Iterator<T> {
 
-    final TypeHierarchyIterator<T, B> ts;
+    final TypeHierarchyIterator<T> ts;
 
     int index;
     int last;
 
-    public DynamicNewInstancesIterator(Pool<T, B> storagePool) {
+    public DynamicNewInstancesIterator(Pool<T> storagePool) {
         ts = new TypeHierarchyIterator<>(storagePool);
         last = storagePool.newObjects.size();
 

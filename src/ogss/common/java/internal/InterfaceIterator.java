@@ -6,17 +6,16 @@ import java.util.Iterator;
  * Returns all instances for an interface pool.
  * 
  * @author Timm Felden
- * 
- * @note typing in this implementation is intentionally incorrect, because java
- *       does not permit interfaces to inherit from classes
+ * @note typing in this implementation is intentionally incorrect, because java does not permit interfaces to inherit
+ *       from classes
  */
 public final class InterfaceIterator<T> implements Iterator<T> {
 
-    private final Pool<Pointer, Pointer>[] ps;
+    private final Pool<Obj>[] ps;
     private int i;
-    private DynamicDataIterator<Pointer, Pointer> xs;
+    private DynamicDataIterator<Obj> xs;
 
-    public InterfaceIterator(Pool<Pointer, Pointer>[] realizations) {
+    public InterfaceIterator(Pool<Obj>[] realizations) {
         ps = realizations;
         while (i < ps.length) {
             xs = ps[i++].iterator();
@@ -31,7 +30,7 @@ public final class InterfaceIterator<T> implements Iterator<T> {
     @Override
     @SuppressWarnings("unchecked")
     public T next() {
-        T r = (T)xs.next();
+        T r = (T) xs.next();
         if (!xs.hasNext())
             while (i < ps.length) {
                 xs = ps[i++].iterator();

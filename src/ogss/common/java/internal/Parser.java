@@ -63,7 +63,7 @@ public final class Parser extends StateInitializer {
 
     public SkillException readErrors;
 
-    public Parser(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+    public Parser(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
         super(in, knownClasses, classNames, kccs);
 
         // G
@@ -230,7 +230,7 @@ public final class Parser extends StateInitializer {
 
     // TODO remove type arguments?
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private <B extends Pointer, T extends B> void typeDefinition() {
+    private <T extends Obj> void typeDefinition() {
 
         // name
         final String name = Strings.r(in);
@@ -251,7 +251,7 @@ public final class Parser extends StateInitializer {
         }
 
         // super
-        final Pool<? super T, B> superDef;
+        final Pool<? super T> superDef;
         final int bpo;
         {
             final int superID = in.v32();
@@ -264,19 +264,19 @@ public final class Parser extends StateInitializer {
                                 + "          found: %d; current number of other types %d",
                         name, superID, classes.size());
             else {
-                superDef = (Pool<? super T, B>) classes.get(superID - 1);
+                superDef = (Pool<? super T>) classes.get(superID - 1);
                 bpo = in.v32();
             }
         }
 
         // allocate pool
-        final Pool<T, B> definition;
+        final Pool<T> definition;
         while (true) {
 
             // check common case, i.e. the next class is the expected one
             if (classNames[nextClass] == name) {
                 try {
-                    definition = (Pool<T, B>) knownClasses[nextClass].getConstructors()[0].newInstance(classes,
+                    definition = (Pool<T>) knownClasses[nextClass].getConstructors()[0].newInstance(classes,
                             superDef);
                     SIFA[nextClass] = definition;
                 } catch (Exception e) {
@@ -310,9 +310,9 @@ public final class Parser extends StateInitializer {
 
                         // @note: we do not know, which parameters to pass the constructor; therefore, the generated
                         // constructor will calculate its super type if null is passed as super type
-                        Pool<?, ?> p;
+                        Pool<?> p;
                         try {
-                            p = (Pool<?, ?>) knownClasses[nextClass].getConstructors()[0].newInstance(classes, null);
+                            p = (Pool<?>) knownClasses[nextClass].getConstructors()[0].newInstance(classes, null);
                             SIFA[nextClass] = p;
                         } catch (Exception e) {
                             throw new ParseException(in, e,
@@ -334,9 +334,9 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    definition = new BasePool(idx, name, Pool.myKFN, Pool.myKFC, 0);
+                    definition = new Pool(idx, name, null, Pool.myKFN, Pool.myKFC, 0);
                 } else {
-                    definition = (Pool<T, B>) superDef.makeSubPool(idx, name);
+                    definition = (Pool<T>) superDef.makeSubPool(idx, name);
                 }
             }
             //
@@ -375,7 +375,7 @@ public final class Parser extends StateInitializer {
             if (0 != cs) {
                 int i = cs - 2;
                 if (i >= 0) {
-                    Pool<?, ?> n, p = classes.get(i + 1);
+                    Pool<?> n, p = classes.get(i + 1);
                     // propagate information in reverse order
                     // i is the pool where next is set, hence we skip the last pool
                     do {
@@ -386,7 +386,7 @@ public final class Parser extends StateInitializer {
                         if (null != n.superPool) {
                             // raw cast, because we cannot prove here that it is B, because we do not want to introduce
                             // a function as quantifier which would not provide any benefit anyway
-                            p.next = (Pool) n;
+                            p.next = n;
                             n.superPool.cachedSize += n.cachedSize;
                             if (0 == n.bpo) {
                                 n.bpo = p.bpo;
@@ -397,12 +397,12 @@ public final class Parser extends StateInitializer {
                 }
 
                 // allocate data and start instance allocation jobs
-                Pointer[] d = null;
+                Obj[] d = null;
                 while (++i < cs) {
-                    final Pool<?, ?> p = classes.get(i);
+                    final Pool<?> p = classes.get(i);
                     if (null == p.superPool) {
                         // create new d, because we are in a new type hierarchy
-                        d = new Pointer[p.cachedSize];
+                        d = new Obj[p.cachedSize];
                     }
                     p.data = d;
                     if (0 != p.staticDataInstances) {
@@ -519,7 +519,7 @@ public final class Parser extends StateInitializer {
         /**
          * *************** * F * ****************
          */
-        for (Pool<?, ?> p : classes) {
+        for (Pool<?> p : classes) {
             // we have not yet seen a known field
             int ki = 0;
             // we have to count seen auto fields
@@ -537,9 +537,9 @@ public final class Parser extends StateInitializer {
                 HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
                 FieldDeclaration<?, ?> f = null;
 
-                while (ki < p.knownFields.length) {
+                while (ki < p.KFN.length) {
                     // is it the next known field?
-                    if (name == p.knownFields[ki]) {
+                    if (name == p.KFN[ki]) {
                         try {
                             final Class<?> cls = p.KFC[ki++];
                             if (cls.getSuperclass() == AutoField.class)
@@ -558,9 +558,9 @@ public final class Parser extends StateInitializer {
                     }
 
                     // else, it might be an unknown field
-                    if (name.compareTo(p.knownFields[ki]) < 0) {
+                    if (name.compareTo(p.KFN[ki]) < 0) {
                         // create unknown field
-                        f = new LazyField(t, name, nextFieldID++, p);
+                        f = new LazyField<>(t, name, nextFieldID++, p);
                         break;
                     }
 
@@ -581,7 +581,7 @@ public final class Parser extends StateInitializer {
 
                 if (null == f) {
                     // no known fields left, so it is obviously unknown
-                    f = new LazyField(t, name, nextFieldID++, p);
+                    f = new LazyField<>(t, name, nextFieldID++, p);
                 }
 
                 f.addRestriction(rest);
@@ -685,7 +685,7 @@ public final class Parser extends StateInitializer {
         @Override
         public void run() {
             SkillException ex = null;
-            final Pool<?, ?> owner = f.owner;
+            final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
             final int end = bpo + owner.cachedSize;
             try {

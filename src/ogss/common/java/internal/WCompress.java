@@ -10,12 +10,12 @@ import java.util.ArrayList;
 final class WCompress implements Runnable {
 
     final private Writer self;
-    final private BasePool<?> p;
+    final private Pool<?> base;
     final private int[] bpos;
 
-    WCompress(Writer self, BasePool<?> p, int[] bpos) {
+    WCompress(Writer self, Pool<?> p, int[] bpos) {
         this.self = self;
-        this.p = p;
+        this.base = p;
         this.bpos = bpos;
     }
 
@@ -28,27 +28,27 @@ final class WCompress implements Runnable {
         // create our part of the bpo map
         {
             int next = 0;
-            Pool<?, ?> q = p;
+            Pool<?> p = base;
 
             do {
-                bpos[q.typeID - 10] = next;
-                final int s = q.staticSize() - q.deletedCount;
-                q.cachedSize = s;
+                bpos[p.typeID - 10] = next;
+                final int s = p.staticSize() - p.deletedCount;
+                p.cachedSize = s;
                 next += s;
-                q = q.next;
-            } while (null != q);
+                p = p.next;
+            } while (null != p);
         }
 
         // calculate correct dynamic size for all sub pools
         {
-            ArrayList<Pool<?, ?>> cs = p.owner.classes;
+            ArrayList<Pool<?>> cs = base.owner.classes;
             for (int i = cs.size();;) {
                 --i;
-                Pool<?, ?> q = cs.get(i);
-                if (p == q)
+                Pool<?> p = cs.get(i);
+                if (base == p)
                     break;
-                if (p == q.basePool) {
-                    q.superPool.cachedSize += q.cachedSize;
+                if (base == p.basePool) {
+                    p.superPool.cachedSize += p.cachedSize;
                 }
             }
         }
@@ -58,11 +58,11 @@ final class WCompress implements Runnable {
 
         // from now on, size will take deleted objects into account, thus d may
         // in fact be smaller then data!
-        Pointer[] d = new Pointer[p.cachedSize];
+        Obj[] d = new Obj[base.cachedSize];
         int pos = 0;
-        TypeOrderIterator<?, ?> is = new TypeOrderIterator<>(p);
+        TypeOrderIterator<?> is = new TypeOrderIterator<>(base);
         while (is.hasNext()) {
-            final Pointer i = is.next();
+            final Obj i = is.next();
             if (i.ID != 0) {
                 d[pos++] = i;
                 i.ID = pos;
@@ -70,21 +70,21 @@ final class WCompress implements Runnable {
         }
 
         // update after compress for all sub-pools
-        Pool<?, ?> q = p;
+        Pool<?> p = base;
 
         do {
             // update data
-            q.data = d;
+            p.data = d;
 
             // update structural knowledge of data
-            q.staticDataInstances += q.newObjects.size() - q.deletedCount;
-            q.deletedCount = 0;
-            q.newObjects.clear();
+            p.staticDataInstances += p.newObjects.size() - p.deletedCount;
+            p.deletedCount = 0;
+            p.newObjects.clear();
 
-            q.bpo = bpos[q.typeID - 10];
+            p.bpo = bpos[p.typeID - 10];
 
-            q = q.next;
-        } while (null != q);
+            p = p.next;
+        } while (null != p);
 
         self.barrier.release();
     }

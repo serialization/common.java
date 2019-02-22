@@ -1,6 +1,6 @@
 package ogss.common.java.api;
 
-import ogss.common.java.internal.Pointer;
+import ogss.common.java.internal.Obj;
 
 /**
  * An abstract Field declaration, used for the runtime representation of types.
@@ -31,12 +31,12 @@ public abstract class FieldDeclaration<T> {
      * 
      * @note it is up to the user to ensure that the field is valid for ref.
      */
-    public abstract T get(Pointer ref);
+    public abstract T get(Obj ref);
 
     /**
      * Generic setter for an object.
      * 
      * @note it is up to the user to ensure that the field is valid for ref.
      */
-    public abstract void set(Pointer ref, T value);
+    public abstract void set(Obj ref, T value);
 }

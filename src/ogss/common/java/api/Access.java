@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.stream.Stream;
 
 import ogss.common.java.internal.FieldIterator;
-import ogss.common.java.internal.Pointer;
+import ogss.common.java.internal.Obj;
 import ogss.common.java.internal.StaticDataIterator;
 import ogss.common.java.internal.StaticFieldIterator;
 
@@ -13,7 +13,7 @@ import ogss.common.java.internal.StaticFieldIterator;
  * 
  * @author Timm Felden
  */
-public interface Access<T extends Pointer> extends GeneralAccess<T> {
+public interface Access<T extends Obj> extends GeneralAccess<T> {
 
     /**
      * @return a stream over all T's managed by this access

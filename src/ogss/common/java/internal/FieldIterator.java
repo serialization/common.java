@@ -4,10 +4,10 @@ import java.util.Iterator;
 
 public final class FieldIterator implements Iterator<FieldDeclaration<?, ?>> {
 
-    private Pool<?, ?> p;
+    private Pool<?> p;
     private int i;
 
-    FieldIterator(Pool<?, ?> p) {
+    FieldIterator(Pool<?> p) {
         this.p = p;
         this.i = -p.autoFields.length;
         while (this.p != null && i == 0 && 0 == this.p.dataFields.size()) {

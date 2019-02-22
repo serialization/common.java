@@ -12,13 +12,17 @@ import ogss.common.streams.OutStream;
  * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we cannot inherit from Access<T>
  * @note typing in this implementation is intentionally incorrect, because java does not permit interfaces to inherit
  *       from classes
+ * @param T
+ *            the type of the interface
+ * @param B
+ *            the super class of the interface
  * @author Timm Felden
  */
-final public class InterfacePool<T, B extends Pointer> extends FieldType<T> implements GeneralAccess<T> {
+final public class InterfacePool<T, B extends Obj> extends FieldType<T> implements GeneralAccess<T> {
 
     final private String name;
-    final public Pool<? extends Pointer, B> superPool;
-    final private Pool<? extends B, B>[] realizations;
+    final public Pool<? extends Obj> superPool;
+    final private Pool<? extends B>[] realizations;
 
     /**
      * Construct an interface pool.
@@ -26,7 +30,7 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
      * @note realizations must be in type order
      */
     @SafeVarargs
-    public InterfacePool(String name, Pool<?, B> superPool, Pool<? extends B, B>... realizations) {
+    public InterfacePool(String name, Pool<B> superPool, Pool<? extends B>... realizations) {
         super(superPool.typeID);
         this.name = name;
         this.superPool = superPool;
@@ -36,7 +40,7 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
     @Override
     public int size() {
         int rval = 0;
-        for (Pool<? extends B, B> p : realizations) {
+        for (Pool<? extends B> p : realizations) {
             rval += p.size();
         }
         return rval;
@@ -48,7 +52,7 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
     @SuppressWarnings("unchecked")
     @Override
     final public InterfaceIterator<T> iterator() {
-        return new InterfaceIterator<T>((Pool<Pointer, Pointer>[]) realizations);
+        return new InterfaceIterator<T>((Pool<Obj>[]) realizations);
     }
 
     @Override
@@ -65,7 +69,7 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
     @Override
     public T r(InStream in) {
         int index = in.v32() - 1;
-        final Pointer[] data = superPool.data;
+        final Obj[] data = superPool.data;
         if (index < 0 | data.length <= index)
             return null;
         return (T) data[index];
@@ -78,7 +82,7 @@ final public class InterfacePool<T, B extends Pointer> extends FieldType<T> impl
             return true;
         }
 
-        out.v64(((Pointer) data).ID);
+        out.v64(((Obj) data).ID);
         return false;
     }
 

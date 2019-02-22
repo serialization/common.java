@@ -21,7 +21,7 @@ final public class Writer {
     /**
      * TODO serialization of restrictions
      */
-    protected static final void restrictions(Pool<?, ?> p, OutStream out) throws IOException {
+    protected static final void restrictions(Pool<?> p, OutStream out) throws IOException {
         out.i8((byte) 0);
     }
 
@@ -126,10 +126,10 @@ final public class Writer {
         {
             final int[] bpos = new int[state.classes.size()];
             int bases = 0;
-            for (Pool<?, ?> p : state.classes) {
+            for (Pool<?> p : state.classes) {
                 if (null == p.superPool) {
                     bases++;
-                    State.pool.execute(new WCompress(this, (BasePool<?>) p, bpos));
+                    State.pool.execute(new WCompress(this, p, bpos));
                 }
             }
 
@@ -143,7 +143,7 @@ final public class Writer {
             barrier.acquire(bases);
 
             // write types
-            for (Pool<?, ?> p : state.classes) {
+            for (Pool<?> p : state.classes) {
                 out.v64(string.id(p.name));
                 out.v64(p.staticDataInstances);
                 restrictions(p, out);

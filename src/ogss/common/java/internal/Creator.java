@@ -19,7 +19,7 @@ import ogss.common.streams.FileInputStream;
  */
 final public class Creator extends StateInitializer {
 
-    public Creator(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+    public Creator(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
         super(in, knownClasses, classNames, kccs);
 
         guard = "";
@@ -27,7 +27,7 @@ final public class Creator extends StateInitializer {
         try {
             // Create Classes
             for (int i = 0; i < knownClasses.length; i++) {
-                Pool<?, ?> p = (Pool<?, ?>) knownClasses[i].getConstructors()[0].newInstance(classes, null);
+                Pool<?> p = (Pool<?>) knownClasses[i].getConstructors()[0].newInstance(classes, null);
                 SIFA[i] = p;
                 classes.add(p);
                 typeByName.put(p.name, p);
@@ -64,10 +64,10 @@ final public class Creator extends StateInitializer {
             }
 
             // Create Fields
-            for (Pool<?, ?> p : classes) {
+            for (Pool<?> p : classes) {
                 int ki = 0;
                 int af = -1;
-                for (String f : p.knownFields) {
+                for (String f : p.KFN) {
                     Strings.add(f);
                     try {
                         final Class<?> cls = p.KFC[ki++];
@@ -90,7 +90,7 @@ final public class Creator extends StateInitializer {
         {
             int i = classes.size() - 2;
             if (i >= 0) {
-                Pool<?, ?> n, p = classes.get(i + 1);
+                Pool<?> n, p = classes.get(i + 1);
                 // propagate information in reverse order
                 // i is the pool where next is set, hence we skip the last pool
                 do {
@@ -101,7 +101,7 @@ final public class Creator extends StateInitializer {
                     if (null != n.superPool) {
                         // raw cast, because we cannot prove here that it is B, because wo do not want to introduce a
                         // function as quantifier which would not provide any benefit anyway
-                        p.next = (Pool) n;
+                        p.next = n;
                     }
 
                 } while (--i >= 0);

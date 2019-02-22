@@ -3,16 +3,14 @@ package ogss.common.java.internal;
 import java.util.Iterator;
 
 /**
- * Iterates efficiently over dynamic instances of a pool.
- *
- * First phase will iterate over all blocks of the pool. The second phase will
- * iterate over all dynamic instances of the pool.
+ * Iterates efficiently over dynamic instances of a pool. First phase will iterate over all blocks of the pool. The
+ * second phase will iterate over all dynamic instances of the pool.
  *
  * @author Timm Felden
  */
-public final class DynamicDataIterator<T extends B, B extends Pointer> implements Iterator<T> {
+public final class DynamicDataIterator<T extends Obj> implements Iterator<T> {
 
-    Pool<? extends T, B> p;
+    Pool<? extends T> p;
 
     final int endHeight;
     int index;
@@ -20,9 +18,9 @@ public final class DynamicDataIterator<T extends B, B extends Pointer> implement
     // true if in second phase
     boolean second;
 
-    public DynamicDataIterator(Pool<T, B> storagePool) {
+    public DynamicDataIterator(Pool<T> storagePool) {
         p = storagePool;
-        endHeight = p.typeHierarchyHeight;
+        endHeight = p.THH;
         // other fields are zero-allocated
 
         // find an instance in first phase
@@ -89,8 +87,8 @@ public final class DynamicDataIterator<T extends B, B extends Pointer> implement
 
     private void nextP() {
         @SuppressWarnings("unchecked")
-        final Pool<? extends T, B> n = (Pool<? extends T, B>) p.next;
-        if (null != n && endHeight < n.typeHierarchyHeight)
+        final Pool<? extends T> n = (Pool<? extends T>) p.next;
+        if (null != n && endHeight < n.THH)
             p = n;
         else
             p = null;

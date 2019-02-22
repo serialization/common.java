@@ -9,15 +9,15 @@ import java.util.Iterator;
  * @note cast required to work around weakened type system by javac 1.8.131
  */
 @SuppressWarnings("unchecked")
-public class TypeOrderIterator<T extends B, B extends Pointer> implements Iterator<T> {
+public class TypeOrderIterator<T extends Obj> implements Iterator<T> {
 
-    final TypeHierarchyIterator<T, B> ts;
+    final TypeHierarchyIterator<T> ts;
     StaticDataIterator<T> is;
 
-    public TypeOrderIterator(Pool<T, B> storagePool) {
-        ts = new TypeHierarchyIterator<T, B>(storagePool);
+    public TypeOrderIterator(Pool<T> pool) {
+        ts = new TypeHierarchyIterator<>(pool);
         while (ts.hasNext()) {
-            Pool<T, B> t = (Pool<T, B>) ts.next();
+            Pool<T> t = (Pool<T>) ts.next();
             if (0 != t.staticSize()) {
                 is = new StaticDataIterator<T>(t);
                 break;
@@ -35,7 +35,7 @@ public class TypeOrderIterator<T extends B, B extends Pointer> implements Iterat
         T result = is.next();
         if (!is.hasNext()) {
             while (ts.hasNext()) {
-                Pool<T, B> t = (Pool<T, B>) ts.next();
+                Pool<T> t = (Pool<T>) ts.next();
                 if (0 != t.staticSize()) {
                     is = new StaticDataIterator<T>(t);
                     break;

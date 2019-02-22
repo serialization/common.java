@@ -29,12 +29,12 @@ public abstract class StateInitializer {
     final StringPool Strings;
 
     // types
-    final ArrayList<Pool<?, ?>> classes;
+    final ArrayList<Pool<?>> classes;
     final ArrayList<HullType<?>> containers;
     final HashMap<String, FieldType<?>> typeByName = new HashMap<>();
     final AnyRefType Annotation;
 
-    final Class<Pool<?, ?>>[] knownClasses;
+    final Class<Pool<?>>[] knownClasses;
     /**
      * State Initialization of Fields Array. In C++, it should be possible to memcpy this array into the first field to
      * achieve state initialization.
@@ -42,7 +42,7 @@ public abstract class StateInitializer {
      * @note invariant: ∀i. SIFA[i].getClass == knownClasses[i]
      * @note this is essentially the SKilL/Java large spec passing mode, except that the name binding happens implicitly
      */
-    public final Pool<?, ?>[] SIFA;
+    public final Pool<?>[] SIFA;
 
     final String[] classNames;
     final KCC[] kccs;
@@ -58,7 +58,7 @@ public abstract class StateInitializer {
     protected int nextFieldID = 1;
 
 
-    StateInitializer(FileInputStream in, Class<Pool<?, ?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+    StateInitializer(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
         this.knownClasses = knownClasses;
         this.classNames = classNames;
         this.kccs = kccs;

@@ -18,63 +18,37 @@ import ogss.common.streams.OutStream;
  * @author Timm Felden
  * @param <T>
  *            static type of instances
- * @param <B>
- *            base type of this hierarchy
- * @note Storage pools must be created in type order!
- * @note We do not guarantee functional correctness if instances from multiple skill files are mixed. Such usage will
- *       likely break at least one of the files.
+ * @note Storage pools are created by a StateInitializer, only
  */
-public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implements Access<T> {
-
-    /**
-     * Builder for new instances of the pool.
-     * 
-     * @author Timm Felden
-     * @todo revisit implementation after the pool is completely implemented. Having an instance as constructor argument
-     *       is questionable.
-     */
-    protected static abstract class Builder<T extends Pointer> {
-        protected Pool<T, ? super T> p;
-        public final T self;
-
-        protected Builder(Pool<T, ? super T> pool, T self) {
-            this.p = pool;
-            this.self = self;
-        }
-
-        /**
-         * registers the object and invalidates the builder
-         * 
-         * @note abstract to work around JVM bug
-         * @return the created object
-         */
-        public final T make() {
-            p.add(self);
-            p = null; // invalidate to prevent duplicate registration
-            return self;
-        }
-    }
+public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
 
     public final String name;
 
-    // type hierarchy
-    public final Pool<? super T, B> superPool;
-    public final int typeHierarchyHeight;
+    protected State owner = null;
 
-    public final BasePool<B> basePool;
+    @Override
+    public final State owner() {
+        return owner;
+    }
+
+    // type hierarchy
+    public final Pool<? super T> superPool, basePool;
+    /**
+     * the number of super pools aka the height of the type hierarchy
+     */
+    public final int THH;
 
     /**
      * Find a super pool if only its name is known. This is called by generated constructors to allow correct
      * instantiation of types from the tool specification
      */
     @SuppressWarnings("unchecked")
-    protected static <T extends B, B extends Pointer> Pool<? super T, B> findSuperPool(ArrayList<Pool<?, ?>> types,
-            String name) {
+    protected static <T extends Obj> Pool<? super T> findSuperPool(ArrayList<Pool<?>> types, String name) {
         int i = types.size();
         while (--i >= 0) {
-            Pool<?, ?> r = types.get(i);
+            Pool<?> r = types.get(i);
             if (r.name == name)
-                return (Pool<? super T, B>) r;
+                return (Pool<? super T>) r;
         }
         throw new Error("internal error");
     }
@@ -85,24 +59,24 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      * @note on setting nextPool, the bpo of nextPool will be adjusted iff it is 0 to allow insertion of types from the
      *       tool specification
      */
-    Pool<?, B> next;
+    Pool<?> next;
 
     /**
      * @return next pool of this hierarchy in weak type order
      */
-    public Pool<?, B> nextPool() {
+    public Pool<?> next() {
         return next;
     }
 
     /**
      * pointer to base-pool-managed data array
      */
-    protected Pointer[] data;
+    protected Obj[] data;
 
     /**
      * names of known fields, the actual field information is given in the generated addKnownFiled method.
      */
-    public final String[] knownFields;
+    public final String[] KFN;
     public static final String[] myKFN = new String[0];
 
     /**
@@ -178,13 +152,13 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         newObjects.ensureCapacity(capacity);
     }
 
-    protected final DynamicNewInstancesIterator<T, B> newDynamicInstances() {
+    protected final DynamicNewInstancesIterator<T> newDynamicInstances() {
         return new DynamicNewInstancesIterator<>(this);
     }
 
     protected final int newDynamicInstancesSize() {
         int rval = 0;
-        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
+        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
         while (ts.hasNext())
             rval += ts.next().newObjects.size();
 
@@ -205,13 +179,9 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         return staticDataInstances + newObjects.size();
     }
 
-    /***
-     * @note cast required to work around weakened type system by javac 1.8.131
-     */
     @Override
-    @SuppressWarnings("unchecked")
     public final StaticDataIterator<T> staticInstances() {
-        return (StaticDataIterator<T>) new StaticDataIterator<Pointer>((Pool<Pointer, Pointer>) this);
+        return new StaticDataIterator<>(this);
     }
 
     /**
@@ -232,7 +202,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     }
 
     @Override
-    final public Pool<? super T, B> superType() {
+    final public Pool<? super T> superType() {
         return superPool;
     }
 
@@ -241,20 +211,20 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      *       the base pool can not be an argument to the constructor. The cast will never fail anyway.
      */
     @SuppressWarnings("unchecked")
-    protected Pool(int poolIndex, String name, Pool<? super T, B> superPool, String[] knownFields,
+    protected Pool(int poolIndex, String name, Pool<? super T> superPool, String[] knownFields,
             Class<FieldDeclaration<?, T>>[] KFC, int autoFields) {
         super(10 + poolIndex);
         this.name = name;
 
         this.superPool = superPool;
         if (null == superPool) {
-            this.typeHierarchyHeight = 0;
-            this.basePool = (BasePool<B>) this;
+            this.THH = 0;
+            this.basePool = this;
         } else {
-            this.typeHierarchyHeight = superPool.typeHierarchyHeight + 1;
+            this.THH = superPool.THH + 1;
             this.basePool = superPool.basePool;
         }
-        this.knownFields = knownFields;
+        this.KFN = knownFields;
         this.KFC = KFC;
         dataFields = new ArrayList<>(knownFields.length);
         this.autoFields = 0 == autoFields ? (AutoField[]) noAutoFields : new AutoField[autoFields];
@@ -298,7 +268,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     @Override
     final public int size() {
         int size = 0;
-        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
+        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
         while (ts.hasNext())
             size += ts.next().staticSize();
         return size;
@@ -311,7 +281,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
 
     public T[] toArray(T[] a) {
         final T[] rval = Arrays.copyOf(a, size());
-        DynamicDataIterator<T, B> is = iterator();
+        DynamicDataIterator<T> is = iterator();
         for (int i = 0; i < rval.length; i++) {
             rval[i] = is.next();
         }
@@ -336,7 +306,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
      * @note we type target using the erasure directly, because the Java type system is too weak to express correct
      *       typing, when taking the pool from a map
      */
-    final void delete(Pointer target) {
+    final void delete(Obj target) {
         if (!target.isDeleted()) {
             target.ID = 0;
             deletedCount++;
@@ -344,18 +314,13 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     }
 
     @Override
-    public State owner() {
-        return basePool.owner();
+    final public DynamicDataIterator<T> iterator() {
+        return new DynamicDataIterator<>(this);
     }
 
     @Override
-    final public DynamicDataIterator<T, B> iterator() {
-        return new DynamicDataIterator<T, B>(this);
-    }
-
-    @Override
-    final public TypeOrderIterator<T, B> typeOrderIterator() {
-        return new TypeOrderIterator<T, B>(this);
+    final public TypeOrderIterator<T> typeOrderIterator() {
+        return new TypeOrderIterator<T>(this);
     }
 
     @Override
@@ -372,7 +337,7 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
         int i = bpo, j;
         final int high = i + staticDataInstances;
         while (i < high) {
-            data[i] = new Pointer.SubType(this, j = (i + 1));
+            data[i] = new UnknownObject(this, j = (i + 1));
             i = j;
         }
     }
@@ -380,9 +345,8 @@ public class Pool<T extends B, B extends Pointer> extends ByRefType<T> implement
     /**
      * used internally for type forest construction
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public Pool<? extends T, B> makeSubPool(int index, String name) {
-        // @note cannot solve type equation without turning noKFC into a function
-        return new Pool(index, name, this, myKFN, myKFC, 0);
+    @SuppressWarnings("unchecked")
+    protected Pool<? extends T> makeSubPool(int index, String name) {
+        return new Pool<>(index, name, this, myKFN, myKFC, 0);
     }
 }

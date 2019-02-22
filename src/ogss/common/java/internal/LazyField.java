@@ -13,9 +13,9 @@ import ogss.common.streams.MappedInStream;
  * @note offset and write methods will not be overwritten, because forcing has
  *       to happen even before resetChunks
  */
-public final class LazyField<T, Obj extends Pointer> extends DistributedField<T, Obj> {
+public final class LazyField<T, Ref extends Obj> extends DistributedField<T, Ref> {
 
-    public LazyField(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
+    public LazyField(FieldType<T> type, String name, int id, Pool<Ref> owner) {
         super(type, name, id, owner);
     }
 
@@ -45,7 +45,7 @@ public final class LazyField<T, Obj extends Pointer> extends DistributedField<T,
     }
 
     @Override
-    public T get(Pointer ref) {
+    public T get(Obj ref) {
         if (-1 == ref.ID)
             return newData.get(ref);
 
@@ -56,7 +56,7 @@ public final class LazyField<T, Obj extends Pointer> extends DistributedField<T,
     }
 
     @Override
-    public void set(Pointer ref, T value) {
+    public void set(Obj ref, T value) {
         if (-1 == ref.ID)
             newData.put(ref, value);
         else {

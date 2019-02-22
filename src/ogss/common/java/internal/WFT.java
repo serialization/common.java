@@ -19,7 +19,7 @@ final class WFT extends WJob {
 
     @Override
     protected void job(BufferedOutStream buffer) throws IOException {
-        Pool<?, ?> owner = f.owner;
+        Pool<?> owner = f.owner;
         int i = owner.bpo;
         int h = i + owner.cachedSize;
 

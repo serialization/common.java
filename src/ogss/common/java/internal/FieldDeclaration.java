@@ -14,7 +14,7 @@ import ogss.common.streams.MappedInStream;
  * 
  * @author Timm Felden
  */
-abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.common.java.api.FieldDeclaration<T> {
+abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.java.api.FieldDeclaration<T> {
 
     public final FieldType<T> type;
 
@@ -41,10 +41,10 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
     /**
      * the enclosing storage pool
      */
-    protected final Pool<Obj, ? super Obj> owner;
+    protected final Pool<Ref> owner;
 
     @Override
-    public Pool<Obj, ? super Obj> owner() {
+    public Pool<Ref> owner() {
         return owner;
     }
 
@@ -73,7 +73,7 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
                         r.check(get(x));
     }
 
-    protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Obj, ? super Obj> owner) {
+    protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Ref> owner) {
         this.type = type;
         this.name = name;
         this.owner = owner;
@@ -82,7 +82,7 @@ abstract public class FieldDeclaration<T, Obj extends Pointer> extends ogss.comm
         // register field
         if (id < 0)
             // auto fields get per-type negative IDs
-            owner.autoFields[-1 - id] = (AutoField<?, Obj>) this;
+            owner.autoFields[-1 - id] = (AutoField<?, Ref>) this;
         else
             owner.dataFields.add(this);
     }

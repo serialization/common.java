@@ -23,7 +23,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
     /**
      * @note the Java type system seems to be to weak to prove the correct type [? extends T, ?]
      */
-    final private Pool<Pointer, Pointer>[] realizations;
+    final private Pool<Obj>[] realizations;
 
     /**
      * Construct an interface pool.
@@ -32,17 +32,17 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
      * @note realizations must be of type StoragePool<? extends T, ?>
      */
     @SuppressWarnings("unchecked")
-    public UnrootedInterfacePool(String name, AnyRefType superPool, Pool<?, ?>... realizations) {
+    public UnrootedInterfacePool(String name, AnyRefType superPool, Pool<?>... realizations) {
         super(superPool.typeID());
         this.name = name;
         this.superType = superPool;
-        this.realizations = (Pool<Pointer, Pointer>[]) realizations;
+        this.realizations = (Pool<Obj>[]) realizations;
     }
 
     @Override
     public int size() {
         int rval = 0;
-        for (Pool<Pointer, Pointer> p : realizations) {
+        for (Pool<?> p : realizations) {
             rval += p.size();
         }
         return rval;
@@ -80,7 +80,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
 
     @Override
     public State owner() {
-        throw new Error("TODO");
+        return realizations[0].owner;
     }
 
     @Override

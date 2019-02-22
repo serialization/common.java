@@ -7,7 +7,7 @@ import java.util.Iterator;
 
 import ogss.common.java.internal.ByRefType;
 import ogss.common.java.internal.FieldType;
-import ogss.common.java.internal.Pointer;
+import ogss.common.java.internal.Obj;
 import ogss.common.java.internal.Pool;
 import ogss.common.java.internal.State;
 import ogss.common.java.internal.StringPool;
@@ -26,7 +26,7 @@ public final class AnyRefType extends ByRefType<Object> {
      */
     public static final int typeID = 8;
 
-    private final ArrayList<Pool<?, ?>> types;
+    private final ArrayList<Pool<?>> types;
 
     private final HashMap<String, FieldType<?>> typeByName;
 
@@ -37,7 +37,7 @@ public final class AnyRefType extends ByRefType<Object> {
      *       implement reflective annotation parsing correctly.
      * @note can not take a state as argument, because it may not exist yet
      */
-    public AnyRefType(ArrayList<Pool<?, ?>> types, HashMap<String, FieldType<?>> typeByName) {
+    public AnyRefType(ArrayList<Pool<?>> types, HashMap<String, FieldType<?>> typeByName) {
         super(typeID);
         this.types = types;
         this.typeByName = typeByName;
@@ -65,9 +65,9 @@ public final class AnyRefType extends ByRefType<Object> {
             return true;
         }
 
-        if (ref instanceof Pointer) {
-            out.v64(typeByName.get(((Pointer) ref).typeName()).typeID() - typeID);
-            out.v64(((Pointer) ref).ID());
+        if (ref instanceof Obj) {
+            out.v64(typeByName.get(((Obj) ref).typeName()).typeID() - typeID);
+            out.v64(((Obj) ref).ID());
         } else if (ref instanceof String) {
             out.i8((byte) 1);
             out.v64(((StringPool) typeByName.get("string")).id((String) ref));

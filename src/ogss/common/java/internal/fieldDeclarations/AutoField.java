@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import ogss.common.java.internal.FieldDeclaration;
 import ogss.common.java.internal.FieldType;
-import ogss.common.java.internal.Pointer;
+import ogss.common.java.internal.Obj;
 import ogss.common.java.internal.Pool;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.MappedInStream;
@@ -14,9 +14,8 @@ import ogss.common.streams.MappedInStream;
  * 
  * @author Timm Felden
  */
-public abstract class AutoField<T, Obj extends Pointer> extends FieldDeclaration<T, Obj>
-        implements KnownField<T, Obj> {
-    protected AutoField(FieldType<T> type, String name, int index, Pool<Obj, ? super Obj> owner) {
+public abstract class AutoField<T, Ref extends Obj> extends FieldDeclaration<T, Ref> implements KnownField<T, Obj> {
+    protected AutoField(FieldType<T> type, String name, int index, Pool<Ref> owner) {
         super(type, name, index, owner);
     }
 
