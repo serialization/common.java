@@ -1,7 +1,7 @@
 package ogss.common.java.internal;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.streams.BoolOutWrapper;
@@ -19,8 +19,8 @@ public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Re
 
     // data held as in storage pools
     // @note C++-style implementation is not possible on JVM
-    protected final HashMap<Obj, T> data = new HashMap<>();
-    protected final HashMap<Obj, T> newData = new HashMap<>();
+    protected final IdentityHashMap<Obj, T> data = new IdentityHashMap<>();
+    protected final IdentityHashMap<Obj, T> newData = new IdentityHashMap<>();
 
     @Override
     protected void read(int i, final int h, MappedInStream in) {

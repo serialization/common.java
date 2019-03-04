@@ -38,7 +38,7 @@ import ogss.common.streams.MappedInStream;
 public final class Parser extends StateInitializer {
 
     // the index of the next known class
-    private int nextClass;
+    private int nextKnown;
 
     /**
      * name of all known classes to distinguish between known and unknown classes from the file spec
@@ -270,24 +270,23 @@ public final class Parser extends StateInitializer {
         }
 
         // allocate pool
-        final Pool<T> definition;
+        final Pool<T> result;
         while (true) {
 
             // check common case, i.e. the next class is the expected one
-            if (classNames[nextClass] == name) {
+            if (classNames[nextKnown] == name) {
                 try {
-                    definition = (Pool<T>) knownClasses[nextClass].getConstructors()[0].newInstance(classes,
-                            superDef);
-                    SIFA[nextClass] = definition;
+                    result = (Pool<T>) knownClasses[nextKnown].getConstructors()[0].newInstance(classes, superDef);
+                    SIFA[nextKnown] = result;
                 } catch (Exception e) {
                     throw new ParseException(in, e, "Failed to instantiate known class " + name);
                 }
 
-                if (definition.superPool != superDef)
+                if (result.superPool != superDef)
                     throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
                             name, superDef.name);
 
-                nextClass++;
+                nextKnown++;
 
             } else {
                 // ensure that the name has not been used before
@@ -306,17 +305,17 @@ public final class Parser extends StateInitializer {
                 if (known) {
                     // the class has a known name, has not been declared before and is not the expected class
                     // therefore, we have to allocate all classes
-                    while (classNames[nextClass] != name) {
+                    while (classNames[nextKnown] != name) {
 
                         // @note: we do not know, which parameters to pass the constructor; therefore, the generated
                         // constructor will calculate its super type if null is passed as super type
                         Pool<?> p;
                         try {
-                            p = (Pool<?>) knownClasses[nextClass].getConstructors()[0].newInstance(classes, null);
-                            SIFA[nextClass] = p;
+                            p = (Pool<?>) knownClasses[nextKnown].getConstructors()[0].newInstance(classes, null);
+                            SIFA[nextKnown] = p;
                         } catch (Exception e) {
                             throw new ParseException(in, e,
-                                    "Failed to instantiate known class " + classNames[nextClass]);
+                                    "Failed to instantiate known class " + classNames[nextKnown]);
                         }
 
                         // note: p will not receive data fields; this is exactly, what we intend here
@@ -324,7 +323,7 @@ public final class Parser extends StateInitializer {
 
                         classes.add(p);
                         typeByName.put(p.name, p);
-                        nextClass++;
+                        nextKnown++;
                     }
                     // the next class is that obtained from file, so jump back to the start of the loop
                     continue;
@@ -334,28 +333,25 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    definition = new Pool(idx, name, null, Pool.myKFN, Pool.myKFC, 0);
+                    result = new Pool(idx, name, null, Pool.myKFN, Pool.myKFC, 0);
                 } else {
-                    definition = (Pool<T>) superDef.makeSubPool(idx, name);
+                    result = (Pool<T>) superDef.makeSubPool(idx, name);
                 }
             }
-            //
-            // hier über nextClass, id, name pools anlegen
-            // note: name über reflection!
 
-            udts.add(definition);
-            classes.add(definition);
-            typeByName.put(name, definition);
+            udts.add(result);
+            classes.add(result);
+            typeByName.put(name, result);
             break;
         }
 
-        definition.bpo = bpo;
-        definition.cachedSize = definition.staticDataInstances = count;
+        result.bpo = bpo;
+        result.cachedSize = result.staticDataInstances = count;
 
         // add a null value for each data field to ensure that the temporary size of data fields matches those from file
         int fields = in.v32();
         while (fields-- != 0)
-            definition.dataFields.add(null);
+            result.dataFields.add(null);
     }
 
     /**
@@ -520,74 +516,78 @@ public final class Parser extends StateInitializer {
          * *************** * F * ****************
          */
         for (Pool<?> p : classes) {
-            // we have not yet seen a known field
-            int ki = 0;
-            // we have to count seen auto fields
-            int af = -1;
+            readFields(p);
+        }
+    }
 
-            // we pass the size by adding null's for each expected field in the stream because AL.clear does not return
-            // its backing array, i.e. we will likely not resize it that way
-            int idx = p.dataFields.size();
+    private void readFields(Pool<?> p) {
+        // we have not yet seen a known field
+        int ki = 0;
+        // we have to count seen auto fields
+        int af = -1;
 
-            p.dataFields.clear();
-            while (0 != idx--) {
-                // read field
-                final String name = Strings.r(in);
-                FieldType<?> t = fieldType();
-                HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
-                FieldDeclaration<?, ?> f = null;
+        // we pass the size by adding null's for each expected field in the stream because AL.clear does not return
+        // its backing array, i.e. we will likely not resize it that way
+        int idx = p.dataFields.size();
 
-                while (ki < p.KFN.length) {
-                    // is it the next known field?
-                    if (name == p.KFN[ki]) {
-                        try {
-                            final Class<?> cls = p.KFC[ki++];
-                            if (cls.getSuperclass() == AutoField.class)
-                                throw new ParseException(in, null,
-                                        "File contains a field conflicting with transient field " + p.name + "."
-                                                + name);
+        p.dataFields.clear();
+        while (0 != idx--) {
+            // read field
+            final String name = Strings.r(in);
+            FieldType<?> t = fieldType();
+            HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
+            FieldDeclaration<?, ?> f = null;
+            final String[] KFN = p.KFN;
 
-                            f = (FieldDeclaration<?, ?>) cls.getConstructor(FieldType.class, int.class, p.getClass())
-                                    .newInstance(t, nextFieldID++, p);
-                        } catch (ParseException e) {
-                            throw e;
-                        } catch (Exception e) {
-                            throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
-                        }
-                        break;
-                    }
-
-                    // else, it might be an unknown field
-                    if (name.compareTo(p.KFN[ki]) < 0) {
-                        // create unknown field
-                        f = new LazyField<>(t, name, nextFieldID++, p);
-                        break;
-                    }
-
-                    // else, it is a known fields not contained in the file
+            while (ki < KFN.length) {
+                // is it the next known field?
+                if (name == KFN[ki]) {
                     try {
                         final Class<?> cls = p.KFC[ki++];
-                        // auto fields reside in a separate ID range
-                        if (cls.getSuperclass() == AutoField.class) {
-                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
-                        } else {
-                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                    nextFieldID++, p);
-                        }
+                        if (cls.getSuperclass() == AutoField.class)
+                            throw new ParseException(in, null,
+                                    "File contains a field conflicting with transient field " + p.name + "." + name);
+
+                        f = (FieldDeclaration<?, ?>) cls.getConstructor(FieldType.class, int.class, p.getClass())
+                                .newInstance(t, nextFieldID++, p);
+                    } catch (ParseException e) {
+                        throw e;
                     } catch (Exception e) {
                         throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
                     }
+                    break;
                 }
 
-                if (null == f) {
-                    // no known fields left, so it is obviously unknown
+                // else, it might be an unknown field
+                if (name.compareTo(KFN[ki]) < 0) {
+                    // create unknown field
                     f = new LazyField<>(t, name, nextFieldID++, p);
+                    break;
                 }
 
-                f.addRestriction(rest);
-
-                fields.add(f);
+                // else, it is a known fields not contained in the file
+                try {
+                    final Class<?> cls = p.KFC[ki++];
+                    // auto fields reside in a separate ID range
+                    if (cls.getSuperclass() == AutoField.class) {
+                        cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
+                    } else {
+                        cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
+                                nextFieldID++, p);
+                    }
+                } catch (Exception e) {
+                    throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
+                }
             }
+
+            if (null == f) {
+                // no known fields left, so it is obviously unknown
+                f = new LazyField<>(t, name, nextFieldID++, p);
+            }
+
+            f.addRestriction(rest);
+
+            fields.add(f);
         }
     }
 
@@ -603,15 +603,14 @@ public final class Parser extends StateInitializer {
         int awaitHulls = 0;
 
         while (--remaining >= 0 & !in.eof()) {
-            // get size of the block, which is relative to the position after size
-            final int size = in.v32() + 2;
-            final int position = in.position();
-            final int id = in.v32();
+            // create the map directly and use it for subsequent read-operations to avoid costly position and size
+            // readjustments
+            final MappedInStream map = in.map(in.v32() + 2);
+
+            final int id = map.v32();
             final Object f = fields.get(id);
             // overwrite entry to prevent duplicate read of the same field
             fields.set(id, null);
-
-            final MappedInStream map = in.map(size + position - in.position());
 
             if (f instanceof HullType<?>) {
                 final int count = map.v32();
