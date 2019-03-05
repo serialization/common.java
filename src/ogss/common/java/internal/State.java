@@ -1,6 +1,5 @@
 package ogss.common.java.internal;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,11 +28,6 @@ public abstract class State implements AutoCloseable {
      * the guard of the file must not contain \0-characters.
      */
     public String guard;
-
-    /**
-     * if we are on windows, then we have to change some implementation details
-     */
-    public static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
 
     // types by skill name
     protected final HashMap<String, FieldType<?>> typeByName;
@@ -116,85 +110,7 @@ public abstract class State implements AutoCloseable {
 
         for (Pool<?> p : classes)
             p.owner = this;
-
-        // finalizePools();
     }
-
-    // @SuppressWarnings("unchecked")
-    // private final void finalizePools() {
-    //
-    // // TODO this should be done differently
-    // if (strings.knownStrings.isEmpty()) {
-    // // add all type and field names, if there are no known strings, as they cannot have been read from file
-    // for (Pool<?, ?> p : classes) {
-    // strings.add(p.name);
-    // for (FieldDeclaration<?, ?> f : p.dataFields) {
-    // strings.add(f.name);
-    // }
-    // }
-    // }
-    //
-    // try {
-    //
-    // // allocate instances
-    // final Semaphore barrier = new Semaphore(0, false);
-    // {
-    // int reads = 0;
-    //
-    // HashSet<String> fieldNames = new HashSet<>();
-    // for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
-    //
-    // // set owners
-    // if (p instanceof BasePool<?>) {
-    // ((BasePool<?>) p).owner = this;
-    //
-    // reads += ((BasePool<?>) p).performAllocations(barrier);
-    // }
-    //
-    // // add missing field declarations
-    // fieldNames.clear();
-    // for (ogss.common.java.api.FieldDeclaration<?> f : p.dataFields)
-    // fieldNames.add(f.name());
-    //
-    // // ensure existence of known fields
-    // for (String n : p.knownFields) {
-    // if (!fieldNames.contains(n))
-    // p.addKnownField(n, strings, annotationType);
-    // }
-    // }
-    // barrier.acquire(reads);
-    // }
-    //
-    // // read field data
-    // {
-    // int reads = 0;
-    // // async reads will post their errors in this queue
-    // final ArrayList<SkillException> readErrors = new ArrayList<SkillException>();
-    //
-    // for (Pool<?, ?> p : (ArrayList<Pool<?, ?>>) allTypes()) {
-    // // @note this loop must happen in type order!
-    //
-    // // read known fields
-    //// for (FieldDeclaration<?, ?> f : p.dataFields)
-    //// reads += f.finish(barrier, readErrors, input);
-    // }
-    //
-    // // fix types in the Annotation-runtime type, because we need it
-    // // in offset calculation
-    // this.annotationType.fixTypes(poolByName);
-    //
-    // // await async reads
-    // barrier.acquire(reads);
-    // for (SkillException e : readErrors) {
-    // e.printStackTrace();
-    // }
-    // if (!readErrors.isEmpty())
-    // throw readErrors.get(0);
-    // }
-    // } catch (InterruptedException e) {
-    // e.printStackTrace();
-    // }
-    // }
 
     /**
      * @return true, iff the argument object is managed by this state
@@ -262,6 +178,10 @@ public abstract class State implements AutoCloseable {
      * Force all lazy string and field data to be loaded from disk.
      */
     public final void loadLazyData() {
+        // check if the file input stream is still open
+        if (null == input)
+            return;
+
         // ensure that strings are loaded
         int id = strings.idMap.size();
         while (--id != 0) {
@@ -273,6 +193,14 @@ public abstract class State implements AutoCloseable {
             for (FieldDeclaration<?, ?> f : p.dataFields)
                 if (f instanceof LazyField<?, ?>)
                     ((LazyField<?, ?>) f).ensureLoaded();
+
+        // close the file input stream and ensure that it is not read again
+        try {
+            input.close();
+        } catch (IOException e) {
+            throw new RuntimeException("internal error", e);
+        }
+        input = null;
     }
 
     /**
@@ -328,22 +256,8 @@ public abstract class State implements AutoCloseable {
         try {
             switch (writeMode) {
             case Write:
-                if (isWindows) {
-                    // we have to write into a temporary file and move the file
-                    // afterwards
-                    Path target = path;
-                    File f = File.createTempFile("write", ".sf");
-                    f.createNewFile();
-                    f.deleteOnExit();
-                    changePath(f.toPath());
-                    new Writer(this, new FileOutputStream(makeInStream()));
-                    File targetFile = target.toFile();
-                    if (targetFile.exists())
-                        targetFile.delete();
-                    f.renameTo(targetFile);
-                    changePath(target);
-                } else
-                    new Writer(this, new FileOutputStream(makeInStream()));
+                loadLazyData();
+                new Writer(this, new FileOutputStream(makeInStream()));
                 return;
 
             case ReadOnly:
@@ -351,7 +265,7 @@ public abstract class State implements AutoCloseable {
 
             default:
                 // dead
-                break;
+                return;
             }
         } catch (SkillException e) {
             throw e;
@@ -374,13 +288,15 @@ public abstract class State implements AutoCloseable {
         }
 
         // close file stream to work around issue with broken Windows FS
-        if (null != input)
+        if (null != input) {
             try {
                 input.close();
             } catch (IOException e) {
                 // we don't care
                 e.printStackTrace();
             }
+            input = null;
+        }
     }
 
     /**

@@ -27,7 +27,6 @@ final public class StringPool extends HullType<String> implements StringAccess {
 
     public static final Charset utf8 = Charset.forName("UTF-8");
 
-    private FileInputStream input;
     // workaround for absurdly stupid ByteBuffer implementation
     final private MappedInStream rb;
 
@@ -56,7 +55,6 @@ final public class StringPool extends HullType<String> implements StringAccess {
 
     StringPool(FileInputStream input) {
         super(typeID);
-        this.input = input;
         rb = input.map(-1);
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1, -1));
@@ -280,14 +278,6 @@ final public class StringPool extends HullType<String> implements StringAccess {
     @Override
     public void clear() {
         knownStrings.clear();
-    }
-
-    boolean hasInStream() {
-        return null != input;
-    }
-
-    FileInputStream getInStream() {
-        return input;
     }
 
     @Override

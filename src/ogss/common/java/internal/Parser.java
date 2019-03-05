@@ -274,7 +274,7 @@ public final class Parser extends StateInitializer {
         while (true) {
 
             // check common case, i.e. the next class is the expected one
-            if (classNames[nextKnown] == name) {
+            if (nextKnown < classNames.length && classNames[nextKnown] == name) {
                 try {
                     result = (Pool<T>) knownClasses[nextKnown].getConstructors()[0].newInstance(classes, superDef);
                     SIFA[nextKnown] = result;
@@ -448,35 +448,37 @@ public final class Parser extends StateInitializer {
                 }
 
                 // construct known containers not present in the file
-                int cmp;
-                while ((cmp = name.compareTo(kccs[ki].name)) > 0) {
-                    KCC c = kccs[ki++];
-                    HullType<?> r;
-                    switch (c.kind) {
-                    case 0:
-                        r = new ArrayType<>(tid++, typeByName.get(c.b1));
-                        break;
-                    case 1:
-                        r = new ListType<>(tid++, typeByName.get(c.b1));
-                        break;
-                    case 2:
-                        r = new SetType<>(tid++, typeByName.get(c.b1));
-                        break;
+                {
+                    int cmp = -1;
+                    while (ki < kccs.length && (cmp = name.compareTo(kccs[ki].name)) > 0) {
+                        KCC c = kccs[ki++];
+                        HullType<?> r;
+                        switch (c.kind) {
+                        case 0:
+                            r = new ArrayType<>(tid++, typeByName.get(c.b1));
+                            break;
+                        case 1:
+                            r = new ListType<>(tid++, typeByName.get(c.b1));
+                            break;
+                        case 2:
+                            r = new SetType<>(tid++, typeByName.get(c.b1));
+                            break;
 
-                    case 3:
-                        r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
-                        break;
+                        case 3:
+                            r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
+                            break;
 
-                    default:
-                        throw new SkillException("Illegal container constructor ID: " + c.kind);
+                        default:
+                            throw new SkillException("Illegal container constructor ID: " + c.kind);
+                        }
+                        typeByName.put(r.toString(), r);
+                        r.fieldID = nextFieldID++;
+                        containers.add(r);
                     }
-                    typeByName.put(r.toString(), r);
-                    r.fieldID = nextFieldID++;
-                    containers.add(r);
-                }
-                // construct an expected container
-                if (0 == cmp) {
-                    ki++;
+                    // construct an expected container
+                    if (0 == cmp) {
+                        ki++;
+                    }
                 }
                 HullType<?> r;
                 switch (kind) {
