@@ -41,10 +41,10 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
     /**
      * the enclosing storage pool
      */
-    protected final Pool<Ref> owner;
+    protected final Pool<Ref, ?> owner;
 
     @Override
-    public Pool<Ref> owner() {
+    public Pool<Ref, ?> owner() {
         return owner;
     }
 
@@ -73,7 +73,7 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
                         r.check(get(x));
     }
 
-    protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Ref> owner) {
+    protected FieldDeclaration(FieldType<T> type, String name, int id, Pool<Ref, ?> owner) {
         this.type = type;
         this.name = name;
         this.owner = owner;

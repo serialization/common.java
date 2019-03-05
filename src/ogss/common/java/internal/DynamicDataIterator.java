@@ -10,7 +10,7 @@ import java.util.Iterator;
  */
 public final class DynamicDataIterator<T extends Obj> implements Iterator<T> {
 
-    Pool<? extends T> p;
+    Pool<? extends T, ?> p;
 
     final int endHeight;
     int index;
@@ -18,7 +18,7 @@ public final class DynamicDataIterator<T extends Obj> implements Iterator<T> {
     // true if in second phase
     boolean second;
 
-    public DynamicDataIterator(Pool<T> storagePool) {
+    public DynamicDataIterator(Pool<T, ?> storagePool) {
         p = storagePool;
         endHeight = p.THH;
         // other fields are zero-allocated
@@ -67,7 +67,7 @@ public final class DynamicDataIterator<T extends Obj> implements Iterator<T> {
             return r;
         }
 
-        T r = p.newObject(index);
+        T r = p.newObjects.get(index);
         index++;
         if (index == last) {
             do {
@@ -87,7 +87,7 @@ public final class DynamicDataIterator<T extends Obj> implements Iterator<T> {
 
     private void nextP() {
         @SuppressWarnings("unchecked")
-        final Pool<? extends T> n = (Pool<? extends T>) p.next;
+        final Pool<? extends T, ?> n = (Pool<? extends T, ?>) p.next;
         if (null != n && endHeight < n.THH)
             p = n;
         else

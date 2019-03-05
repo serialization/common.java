@@ -3,22 +3,20 @@ package ogss.common.java.internal;
 import java.util.Iterator;
 
 /**
- * Iterates efficiently over dynamic new instances of a pool.
- *
- * Like second phase of dynamic data iterator.
+ * Iterates efficiently over dynamic new instances of a pool. Like second phase of dynamic data iterator.
  *
  * @author Timm Felden
  */
 public final class DynamicNewInstancesIterator<T extends Obj> implements Iterator<T> {
 
-    final TypeHierarchyIterator<T> ts;
+    final TypeHierarchyIterator<T, ?> ts;
 
     int index;
     int last;
 
-    public DynamicNewInstancesIterator(Pool<T> storagePool) {
-        ts = new TypeHierarchyIterator<>(storagePool);
-        last = storagePool.newObjects.size();
+    public DynamicNewInstancesIterator(Pool<T, ?> pool) {
+        ts = new TypeHierarchyIterator<>(pool);
+        last = pool.newObjects.size();
 
         while (0 == last && ts.hasNext()) {
             ts.next();
@@ -36,7 +34,7 @@ public final class DynamicNewInstancesIterator<T extends Obj> implements Iterato
 
     @Override
     public T next() {
-        T rval = ts.get().newObject(index);
+        T rval = ts.get().newObjects.get(index);
         index++;
         if (index == last && ts.hasNext()) {
             index = last = 0;

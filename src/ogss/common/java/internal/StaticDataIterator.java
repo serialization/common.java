@@ -10,14 +10,14 @@ import java.util.Iterator;
 public class StaticDataIterator<T extends Obj> implements Iterator<T> {
 
     // ! target pool
-    final Pool<T> p;
+    final Pool<T, ?> p;
 
     int index;
     int last;
 
     boolean second;
 
-    public StaticDataIterator(Pool<T> storagePool) {
+    public StaticDataIterator(Pool<T, ?> storagePool) {
         p = storagePool;
         // @note other members are zero-allocated
 
@@ -52,7 +52,7 @@ public class StaticDataIterator<T extends Obj> implements Iterator<T> {
             return r;
         }
 
-        T r = p.newObject(index);
+        T r = p.newObjects.get(index);
         index++;
         return r;
     }

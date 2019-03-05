@@ -29,12 +29,12 @@ public abstract class StateInitializer {
     final StringPool Strings;
 
     // types
-    final ArrayList<Pool<?>> classes;
+    final ArrayList<Pool<?, ?>> classes;
     final ArrayList<HullType<?>> containers;
     final HashMap<String, FieldType<?>> typeByName = new HashMap<>();
     final AnyRefType Annotation;
 
-    final Class<Pool<?>>[] knownClasses;
+    final PD[] knownClasses;
     /**
      * State Initialization of Fields Array. In C++, it should be possible to memcpy this array into the first field to
      * achieve state initialization.
@@ -42,9 +42,7 @@ public abstract class StateInitializer {
      * @note invariant: ∀i. SIFA[i].getClass == knownClasses[i]
      * @note this is essentially the SKilL/Java large spec passing mode, except that the name binding happens implicitly
      */
-    public final Pool<?>[] SIFA;
-
-    final String[] classNames;
+    public final Pool<?, ?>[] SIFA;
     final KCC[] kccs;
 
     /**
@@ -57,10 +55,8 @@ public abstract class StateInitializer {
      */
     protected int nextFieldID = 1;
 
-
-    StateInitializer(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
+    StateInitializer(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
         this.knownClasses = knownClasses;
-        this.classNames = classNames;
         this.kccs = kccs;
         SIFA = new Pool[knownClasses.length];
 
@@ -71,7 +67,6 @@ public abstract class StateInitializer {
         containers = new ArrayList<>();
 
         Annotation = new AnyRefType(classes, typeByName);
-
 
         typeByName.put("bool", BoolType.get());
         typeByName.put("i8", I8.get());
@@ -92,5 +87,24 @@ public abstract class StateInitializer {
      */
     public void awaitResults() {
         // nothing by default
+    }
+
+    /**
+     * Find a super pool if only its name is known. This is called by generated constructors to allow correct
+     * instantiation of types from the tool specification
+     */
+    @SuppressWarnings("unchecked")
+    protected <T extends Obj, B extends Builder<T>> Pool<? super T, ? super B> findSuperPool(String name) {
+        if (name == null)
+            return null;
+
+        int i = classes.size();
+        // perform reverse search, because it is likely the last seen pool
+        while (--i >= 0) {
+            Pool<?, ?> r = classes.get(i);
+            if (r.name == name)
+                return (Pool<? super T, ? super B>) r;
+        }
+        throw new Error("internal error");
     }
 }

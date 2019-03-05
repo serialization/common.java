@@ -4,14 +4,13 @@ package ogss.common.java.internal;
  * Builder for new instances of the pool.
  * 
  * @author Timm Felden
- * @todo revisit implementation after the pool is completely implemented. Having an instance as constructor argument is
- *       questionable.
+ * @note the generic co-hierarchy is used to compress the builder hierarchy where possible
  */
-public abstract class Builder<T extends Obj> {
-    protected Pool<T> p;
+public class Builder<T extends Obj> {
+    private Pool<T, ?> p;
     public final T self;
 
-    protected Builder(Pool<T> pool, T self) {
+    protected Builder(Pool<T, ?> pool, T self) {
         this.p = pool;
         this.self = self;
     }

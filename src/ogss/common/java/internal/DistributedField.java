@@ -13,7 +13,7 @@ import ogss.common.streams.MappedInStream;
  */
 public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Ref> {
 
-    public DistributedField(FieldType<T> type, String name, int id, Pool<Ref> owner) {
+    public DistributedField(FieldType<T> type, String name, int id, Pool<Ref, ?> owner) {
         super(type, name, id, owner);
     }
 

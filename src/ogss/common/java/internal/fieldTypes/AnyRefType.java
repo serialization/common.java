@@ -26,7 +26,7 @@ public final class AnyRefType extends ByRefType<Object> {
      */
     public static final int typeID = 8;
 
-    private final ArrayList<Pool<?>> types;
+    private final ArrayList<Pool<?, ?>> types;
 
     private final HashMap<String, FieldType<?>> typeByName;
 
@@ -37,7 +37,7 @@ public final class AnyRefType extends ByRefType<Object> {
      *       implement reflective annotation parsing correctly.
      * @note can not take a state as argument, because it may not exist yet
      */
-    public AnyRefType(ArrayList<Pool<?>> types, HashMap<String, FieldType<?>> typeByName) {
+    public AnyRefType(ArrayList<Pool<?, ?>> types, HashMap<String, FieldType<?>> typeByName) {
         super(typeID);
         this.types = types;
         this.typeByName = typeByName;

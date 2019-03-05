@@ -15,7 +15,7 @@ import ogss.common.streams.MappedInStream;
  * @author Timm Felden
  */
 public abstract class AutoField<T, Ref extends Obj> extends FieldDeclaration<T, Ref> implements KnownField<T, Obj> {
-    protected AutoField(FieldType<T> type, String name, int index, Pool<Ref> owner) {
+    protected AutoField(FieldType<T> type, String name, int index, Pool<Ref, ?> owner) {
         super(type, name, index, owner);
     }
 

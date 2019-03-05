@@ -10,10 +10,10 @@ import java.util.Iterator;
  */
 public final class StaticFieldIterator implements Iterator<FieldDeclaration<?, ?>> {
 
-    private Pool<?> p;
+    private Pool<?, ?> p;
     private int i;
 
-    StaticFieldIterator(Pool<?> p) {
+    StaticFieldIterator(Pool<?, ?> p) {
         if (p.autoFields.length == 0 && 0 == p.dataFields.size()) {
             this.p = null;
             this.i = 0;

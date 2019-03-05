@@ -15,7 +15,7 @@ import ogss.common.streams.MappedInStream;
  */
 public final class LazyField<T, Ref extends Obj> extends DistributedField<T, Ref> {
 
-    public LazyField(FieldType<T> type, String name, int id, Pool<Ref> owner) {
+    public LazyField(FieldType<T> type, String name, int id, Pool<Ref, ?> owner) {
         super(type, name, id, owner);
     }
 

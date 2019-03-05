@@ -39,6 +39,8 @@ public final class Parser extends StateInitializer {
 
     // the index of the next known class
     private int nextKnown;
+    // the next PD, null if there is no next PD
+    private PD nextPD;
 
     /**
      * name of all known classes to distinguish between known and unknown classes from the file spec
@@ -63,8 +65,8 @@ public final class Parser extends StateInitializer {
 
     public SkillException readErrors;
 
-    public Parser(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
-        super(in, knownClasses, classNames, kccs);
+    public Parser(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
+        super(in, knownClasses, kccs);
 
         // G
         {
@@ -251,7 +253,7 @@ public final class Parser extends StateInitializer {
         }
 
         // super
-        final Pool<? super T> superDef;
+        final Pool<? super T, ?> superDef;
         final int bpo;
         {
             final int superID = in.v32();
@@ -264,29 +266,37 @@ public final class Parser extends StateInitializer {
                                 + "          found: %d; current number of other types %d",
                         name, superID, classes.size());
             else {
-                superDef = (Pool<? super T>) classes.get(superID - 1);
+                superDef = (Pool<? super T, ?>) classes.get(superID - 1);
                 bpo = in.v32();
             }
         }
 
         // allocate pool
-        final Pool<T> result;
+        final Pool<T, ?> result;
         while (true) {
 
             // check common case, i.e. the next class is the expected one
-            if (nextKnown < classNames.length && classNames[nextKnown] == name) {
+            if (null != nextPD && nextPD.name == name) {
+
+                // check superType and replace it in PD afterwards
+                String superName = null == superDef ? null : superDef.name;
+                if (nextPD.superName != superName) {
+                    throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
+                            name, superName);
+                }
+
                 try {
-                    result = (Pool<T>) knownClasses[nextKnown].getConstructors()[0].newInstance(classes, superDef);
+                    synchronized (nextPD) {
+                        nextPD.superPool = superDef;
+                        result = new Pool<>(classes.size(), nextPD);
+                    }
                     SIFA[nextKnown] = result;
                 } catch (Exception e) {
                     throw new ParseException(in, e, "Failed to instantiate known class " + name);
                 }
 
-                if (result.superPool != superDef)
-                    throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
-                            name, superDef.name);
-
-                nextKnown++;
+                // move on
+                nextPD = ++nextKnown == knownClasses.length ? null : knownClasses[nextKnown];
 
             } else {
                 // ensure that the name has not been used before
@@ -296,34 +306,33 @@ public final class Parser extends StateInitializer {
 
                 // ensure that knownNames is filled with known names
                 if (null == knownNames) {
-                    knownNames = new HashSet<>(classNames.length * 2);
-                    for (String n : classNames)
-                        knownNames.add(n);
+                    knownNames = new HashSet<>(knownClasses.length * 2);
+                    for (PD p : knownClasses)
+                        knownNames.add(p.name);
                 }
 
                 final boolean known = knownNames.contains(name);
                 if (known) {
                     // the class has a known name, has not been declared before and is not the expected class
                     // therefore, we have to allocate all classes
-                    while (classNames[nextKnown] != name) {
+                    // @note nextPD cannot be null here, because there still is a known class which is not a duplicate
+                    while (nextPD.name != name) {
 
-                        // @note: we do not know, which parameters to pass the constructor; therefore, the generated
-                        // constructor will calculate its super type if null is passed as super type
-                        Pool<?> p;
-                        try {
-                            p = (Pool<?>) knownClasses[nextKnown].getConstructors()[0].newInstance(classes, null);
-                            SIFA[nextKnown] = p;
-                        } catch (Exception e) {
-                            throw new ParseException(in, e,
-                                    "Failed to instantiate known class " + classNames[nextKnown]);
+                        // create p from nextPD and our current state
+                        Pool<?, ?> p;
+                        synchronized (nextPD) {
+                            nextPD.superPool = findSuperPool(nextPD.superName);
+                            p = new Pool<>(classes.size(), nextPD);
                         }
+                        SIFA[nextKnown] = p;
 
                         // note: p will not receive data fields; this is exactly, what we intend here
                         // note: bpo/sizes are not set, because zero-allocation is correct there
 
                         classes.add(p);
                         typeByName.put(p.name, p);
-                        nextKnown++;
+                        // move on
+                        nextPD = ++nextKnown == knownClasses.length ? null : knownClasses[nextKnown];
                     }
                     // the next class is that obtained from file, so jump back to the start of the loop
                     continue;
@@ -333,9 +342,9 @@ public final class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    result = new Pool(idx, name, null, Pool.myKFN, Pool.myKFC, 0);
+                    result = new Pool(idx, new PD(name, UnknownObject.class, null));
                 } else {
-                    result = (Pool<T>) superDef.makeSubPool(idx, name);
+                    result = (Pool<T, ?>) superDef.makeSubPool(idx, name);
                 }
             }
 
@@ -362,6 +371,7 @@ public final class Parser extends StateInitializer {
         /**
          * *************** * T Class * ****************
          */
+        nextPD = knownClasses.length != 0 ? knownClasses[0] : null;
         for (int count = in.v32(); count != 0; count--)
             typeDefinition();
 
@@ -371,7 +381,7 @@ public final class Parser extends StateInitializer {
             if (0 != cs) {
                 int i = cs - 2;
                 if (i >= 0) {
-                    Pool<?> n, p = classes.get(i + 1);
+                    Pool<?, ?> n, p = classes.get(i + 1);
                     // propagate information in reverse order
                     // i is the pool where next is set, hence we skip the last pool
                     do {
@@ -395,7 +405,7 @@ public final class Parser extends StateInitializer {
                 // allocate data and start instance allocation jobs
                 Obj[] d = null;
                 while (++i < cs) {
-                    final Pool<?> p = classes.get(i);
+                    final Pool<?, ?> p = classes.get(i);
                     if (null == p.superPool) {
                         // create new d, because we are in a new type hierarchy
                         d = new Obj[p.cachedSize];
@@ -517,12 +527,12 @@ public final class Parser extends StateInitializer {
         /**
          * *************** * F * ****************
          */
-        for (Pool<?> p : classes) {
+        for (Pool<?, ?> p : classes) {
             readFields(p);
         }
     }
 
-    private void readFields(Pool<?> p) {
+    private void readFields(Pool<?, ?> p) {
         // we have not yet seen a known field
         int ki = 0;
         // we have to count seen auto fields
@@ -686,7 +696,7 @@ public final class Parser extends StateInitializer {
         @Override
         public void run() {
             SkillException ex = null;
-            final Pool<?> owner = f.owner;
+            final Pool<?, ?> owner = f.owner;
             final int bpo = owner.bpo;
             final int end = bpo + owner.cachedSize;
             try {

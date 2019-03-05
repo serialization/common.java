@@ -7,13 +7,13 @@ import java.util.Iterator;
  * 
  * @author Timm Felden
  */
-public class TypeHierarchyIterator<T extends Obj>
-        implements Iterator<Pool<? extends T>>, Iterable<Pool<? extends T>> {
+public class TypeHierarchyIterator<T extends Obj, B extends Builder<? extends T>>
+        implements Iterator<Pool<? extends T, ? extends B>>, Iterable<Pool<? extends T, ? extends B>> {
 
-    Pool<? extends T> p;
+    Pool<? extends T, ? extends B> p;
     final int end;
 
-    public TypeHierarchyIterator(Pool<? extends T> pool) {
+    public TypeHierarchyIterator(Pool<? extends T, ? extends B> pool) {
         p = pool;
         end = pool.THH;
     }
@@ -24,10 +24,10 @@ public class TypeHierarchyIterator<T extends Obj>
     }
 
     @Override
-    public Pool<? extends T> next() {
-        final Pool<? extends T> r = p;
+    public Pool<? extends T, ? extends B> next() {
+        final Pool<? extends T, ? extends B> r = p;
         @SuppressWarnings("unchecked")
-        final Pool<? extends T> n = (Pool<? extends T>) p.next;
+        final Pool<? extends T, ? extends B> n = (Pool<? extends T, ? extends B>) p.next;
         if (null != n && end < n.THH)
             p = n;
         else
@@ -39,12 +39,12 @@ public class TypeHierarchyIterator<T extends Obj>
      * @note valid, iff hasNext
      * @return the current element
      */
-    public Pool<? extends T> get() {
+    public Pool<? extends T, ? extends B> get() {
         return p;
     }
 
     @Override
-    public Iterator<Pool<? extends T>> iterator() {
+    public Iterator<Pool<? extends T, ? extends B>> iterator() {
         return this;
     }
 

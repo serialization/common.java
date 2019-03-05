@@ -21,8 +21,8 @@ import ogss.common.streams.OutStream;
 final public class InterfacePool<T, B extends Obj> extends FieldType<T> implements GeneralAccess<T> {
 
     final private String name;
-    final public Pool<? extends Obj> superPool;
-    final private Pool<? extends B>[] realizations;
+    final public Pool<? extends Obj, ?> superPool;
+    final private Pool<? extends B, ?>[] realizations;
 
     /**
      * Construct an interface pool.
@@ -30,7 +30,7 @@ final public class InterfacePool<T, B extends Obj> extends FieldType<T> implemen
      * @note realizations must be in type order
      */
     @SafeVarargs
-    public InterfacePool(String name, Pool<B> superPool, Pool<? extends B>... realizations) {
+    public InterfacePool(String name, Pool<B, ?> superPool, Pool<? extends B, ?>... realizations) {
         super(superPool.typeID);
         this.name = name;
         this.superPool = superPool;
@@ -40,7 +40,7 @@ final public class InterfacePool<T, B extends Obj> extends FieldType<T> implemen
     @Override
     public int size() {
         int rval = 0;
-        for (Pool<? extends B> p : realizations) {
+        for (Pool<? extends B, ?> p : realizations) {
             rval += p.size();
         }
         return rval;
@@ -52,7 +52,7 @@ final public class InterfacePool<T, B extends Obj> extends FieldType<T> implemen
     @SuppressWarnings("unchecked")
     @Override
     final public InterfaceIterator<T> iterator() {
-        return new InterfaceIterator<T>((Pool<Obj>[]) realizations);
+        return new InterfaceIterator<T>((Pool<Obj, ?>[]) realizations);
     }
 
     @Override

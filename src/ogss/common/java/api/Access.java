@@ -1,12 +1,13 @@
 package ogss.common.java.api;
 
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 import ogss.common.java.internal.FieldIterator;
 import ogss.common.java.internal.Obj;
+import ogss.common.java.internal.Pool;
 import ogss.common.java.internal.StaticDataIterator;
 import ogss.common.java.internal.StaticFieldIterator;
+import ogss.common.java.internal.TypeOrderIterator;
 
 /**
  * Access to class type <T>.
@@ -22,14 +23,15 @@ public interface Access<T extends Obj> extends GeneralAccess<T> {
 
     /**
      * @return a type ordered Container iterator over all instances of T
-     * @note do not invoke this function, if you do not know what "type order"
-     *       means
+     * @note do not invoke this function, if you do not know what "type order" means
      */
-    public Iterator<T> typeOrderIterator();
+    @SuppressWarnings("unchecked")
+    public default TypeOrderIterator<T> typeOrderIterator() {
+        return new TypeOrderIterator<>((Pool<T, ?>) this);
+    }
 
     /**
-     * @return an iterator over all instances of the type represented by this
-     *         access not including instances of subtypes
+     * @return an iterator over all instances of the type represented by this access not including instances of subtypes
      */
     public StaticDataIterator<T> staticInstances();
 
@@ -44,18 +46,15 @@ public interface Access<T extends Obj> extends GeneralAccess<T> {
     public StaticFieldIterator fields();
 
     /**
-     * @return an iterator over all fields of T including fields declared in
-     *         super types
+     * @return an iterator over all fields of T including fields declared in super types
      */
     public FieldIterator allFields();
 
     /**
      * @return a new T instance with default field values
      * @throws SkillException
-     *             if no instance can be created. This is either caused by
-     *             restrictions, such as @singleton, or by invocation on unknown
-     *             types, which are implicitly unmodifiable in this
-     *             SKilL-implementation.
+     *             if no instance can be created. This is either caused by restrictions, such as @singleton, or by
+     *             invocation on unknown types, which are implicitly unmodifiable in this SKilL-implementation.
      */
     public T make() throws SkillException;
 }

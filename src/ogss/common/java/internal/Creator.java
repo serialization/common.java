@@ -19,15 +19,17 @@ import ogss.common.streams.FileInputStream;
  */
 final public class Creator extends StateInitializer {
 
-    public Creator(FileInputStream in, Class<Pool<?>>[] knownClasses, String[] classNames, KCC[] kccs) {
-        super(in, knownClasses, classNames, kccs);
+    public Creator(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
+        super(in, knownClasses, kccs);
 
         guard = "";
 
         try {
             // Create Classes
             for (int i = 0; i < knownClasses.length; i++) {
-                Pool<?> p = (Pool<?>) knownClasses[i].getConstructors()[0].newInstance(classes, null);
+                PD desc = knownClasses[i];
+                desc.superPool = findSuperPool(desc.superName);
+                Pool<?, ?> p = new Pool<>(classes.size(), desc);
                 SIFA[i] = p;
                 classes.add(p);
                 typeByName.put(p.name, p);
@@ -64,7 +66,7 @@ final public class Creator extends StateInitializer {
             }
 
             // Create Fields
-            for (Pool<?> p : classes) {
+            for (Pool<?, ?> p : classes) {
                 int ki = 0;
                 int af = -1;
                 for (String f : p.KFN) {
@@ -90,7 +92,7 @@ final public class Creator extends StateInitializer {
         {
             int i = classes.size() - 2;
             if (i >= 0) {
-                Pool<?> n, p = classes.get(i + 1);
+                Pool<?, ?> n, p = classes.get(i + 1);
                 // propagate information in reverse order
                 // i is the pool where next is set, hence we skip the last pool
                 do {

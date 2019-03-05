@@ -1,6 +1,7 @@
 package ogss.common.java.internal;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Stream;
@@ -20,11 +21,30 @@ import ogss.common.streams.OutStream;
  *            static type of instances
  * @note Storage pools are created by a StateInitializer, only
  */
-public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
+public final class Pool<T extends Obj, B extends Builder<? extends T>> extends ByRefType<T> implements Access<T> {
 
     public final String name;
 
-    protected State owner = null;
+    /**
+     * the class of objects of type T
+     */
+    private final Class<?> t;
+
+    /**
+     * the class of objects of type T subtypes
+     * 
+     * @note this is a sub pool if t == sub
+     */
+    private final Class<?> sub;
+
+    /**
+     * the class of objects of type B
+     * 
+     * @note null for sub pools
+     */
+    private final Class<?> builder;
+
+    protected State owner;
 
     @Override
     public final State owner() {
@@ -32,25 +52,15 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
     }
 
     // type hierarchy
-    public final Pool<? super T> superPool, basePool;
+    public final Pool<? super T, ? super B> superPool, basePool;
     /**
      * the number of super pools aka the height of the type hierarchy
      */
     public final int THH;
 
-    /**
-     * Find a super pool if only its name is known. This is called by generated constructors to allow correct
-     * instantiation of types from the tool specification
-     */
-    @SuppressWarnings("unchecked")
-    protected static <T extends Obj> Pool<? super T> findSuperPool(ArrayList<Pool<?>> types, String name) {
-        int i = types.size();
-        while (--i >= 0) {
-            Pool<?> r = types.get(i);
-            if (r.name == name)
-                return (Pool<? super T>) r;
-        }
-        throw new Error("internal error");
+    @Override
+    final public Pool<? super T, ? super B> superType() {
+        return superPool;
     }
 
     /**
@@ -59,37 +69,29 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
      * @note on setting nextPool, the bpo of nextPool will be adjusted iff it is 0 to allow insertion of types from the
      *       tool specification
      */
-    Pool<?> next;
-
-    /**
-     * @return next pool of this hierarchy in weak type order
-     */
-    public Pool<?> next() {
-        return next;
-    }
+    Pool<?, ?> next;
 
     /**
      * pointer to base-pool-managed data array
      */
-    protected Obj[] data;
+    Obj[] data;
+
+    /**
+     * internal use only!
+     */
+    public Obj[] data() {
+        return data;
+    }
 
     /**
      * names of known fields, the actual field information is given in the generated addKnownFiled method.
      */
     public final String[] KFN;
-    public static final String[] myKFN = new String[0];
 
     /**
      * Classes of known fields used to allocate them
      */
     public final Class<FieldDeclaration<?, T>>[] KFC;
-
-    /**
-     * magic trick using static name resolution; KFC should be a class val, but that's not possible in java, so we use
-     * static fields instead and pass them; if no KFC is specified, the empty pool myKFC wins resolution.
-     */
-    @SuppressWarnings("rawtypes")
-    public static final Class[] myKFC = new Class[0];
 
     /**
      * all fields that are declared as auto, including skillID
@@ -126,24 +128,13 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
     /**
      * The BPO of this pool relative to data.
      */
-    protected int bpo;
+    int bpo;
 
     /**
      * All stored objects, which have exactly the type T. Objects are stored as arrays of field entries. The types of
      * the respective fields can be retrieved using the fieldTypes map.
      */
-    final ArrayList<T> newObjects = new ArrayList<>();
-
-    /**
-     * retrieve a new object
-     * 
-     * @param index
-     *            in [0;{@link #newObjectsSize()}[
-     * @return the new object at the given position
-     */
-    public final T newObject(int index) {
-        return newObjects.get(index);
-    }
+    final ArrayList<T> newObjects;
 
     /**
      * Ensures that at least capacity many new objects can be stored in this pool without moving references.
@@ -152,23 +143,10 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
         newObjects.ensureCapacity(capacity);
     }
 
-    protected final DynamicNewInstancesIterator<T> newDynamicInstances() {
-        return new DynamicNewInstancesIterator<>(this);
-    }
-
-    protected final int newDynamicInstancesSize() {
-        int rval = 0;
-        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
-        while (ts.hasNext())
-            rval += ts.next().newObjects.size();
-
-        return rval;
-    }
-
     /**
      * Number of static instances of T in data. Managed by read/compress.
      */
-    protected int staticDataInstances;
+    int staticDataInstances;
 
     /**
      * the number of instances of exactly this type, excluding sub-types
@@ -194,16 +172,11 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
     /**
      * number of deleted objects in this state
      */
-    protected int deletedCount = 0;
+    int deletedCount = 0;
 
     @Override
     final public String name() {
         return name;
-    }
-
-    @Override
-    final public Pool<? super T> superType() {
-        return superPool;
     }
 
     /**
@@ -211,12 +184,15 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
      *       the base pool can not be an argument to the constructor. The cast will never fail anyway.
      */
     @SuppressWarnings("unchecked")
-    protected Pool(int poolIndex, String name, Pool<? super T> superPool, String[] knownFields,
-            Class<FieldDeclaration<?, T>>[] KFC, int autoFields) {
+    Pool(int poolIndex, PD desc) {
         super(10 + poolIndex);
-        this.name = name;
+        name = desc.name;
 
-        this.superPool = superPool;
+        t = desc.t;
+        sub = desc.sub;
+        builder = desc.builder;
+
+        superPool = (Pool<? super T, ? super B>) desc.superPool;
         if (null == superPool) {
             this.THH = 0;
             this.basePool = this;
@@ -224,10 +200,13 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
             this.THH = superPool.THH + 1;
             this.basePool = superPool.basePool;
         }
-        this.KFN = knownFields;
-        this.KFC = KFC;
-        dataFields = new ArrayList<>(knownFields.length);
-        this.autoFields = 0 == autoFields ? (AutoField[]) noAutoFields : new AutoField[autoFields];
+
+        KFN = desc.KFN;
+        KFC = (Class<FieldDeclaration<?, T>>[]) desc.KFC;
+        dataFields = new ArrayList<>(KFN.length);
+        this.autoFields = 0 == desc.autoFields ? (AutoField[]) noAutoFields : new AutoField[desc.autoFields];
+
+        this.newObjects = new ArrayList<>();
     }
 
     /**
@@ -268,7 +247,7 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
     @Override
     final public int size() {
         int size = 0;
-        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
+        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
         while (ts.hasNext())
             size += ts.next().staticSize();
         return size;
@@ -318,14 +297,34 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
         return new DynamicDataIterator<>(this);
     }
 
-    @Override
-    final public TypeOrderIterator<T> typeOrderIterator() {
-        return new TypeOrderIterator<T>(this);
-    }
-
+    @SuppressWarnings("unchecked")
     @Override
     public T make() throws SkillException {
-        throw new SkillException("We prevent reflective creation of new instances, because it is bad style!");
+        if (null == builder)
+            throw new SkillException("We consider allocation of unknown subtypes an error.");
+
+        try {
+            T rval = (T) t.getConstructor(int.class).newInstance(0);
+            add(rval);
+            return rval;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public B build() {
+        if (null == builder)
+            throw new SkillException("We consider allocation of unknown subtypes an error.");
+
+        try {
+            return (B) builder.getConstructor(Pool.class, t).newInstance(this,
+                    t.getConstructor(int.class).newInstance(0));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**
@@ -333,20 +332,33 @@ public class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
      * 
      * @note defaults to unknown objects to reduce code size
      */
-    protected void allocateInstances() {
+    @SuppressWarnings("unchecked")
+    final void allocateInstances() {
         int i = bpo, j;
         final int high = i + staticDataInstances;
-        while (i < high) {
-            data[i] = new UnknownObject(this, j = (i + 1));
-            i = j;
+        try {
+            if (null == builder) {
+                final Constructor<T> make = (Constructor<T>) t.getConstructor(Pool.class, int.class);
+                while (i < high) {
+                    data[i] = make.newInstance(this, j = (i + 1));
+                    i = j;
+                }
+            } else {
+                final Constructor<T> make = (Constructor<T>) t.getConstructor(int.class);
+                while (i < high) {
+                    data[i] = make.newInstance(j = (i + 1));
+                    i = j;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     /**
      * used internally for type forest construction
      */
-    @SuppressWarnings("unchecked")
-    protected Pool<? extends T> makeSubPool(int index, String name) {
-        return new Pool<>(index, name, this, myKFN, myKFC, 0);
+    protected Pool<? extends T, ? extends B> makeSubPool(int index, String name) {
+        return new Pool<>(index, new PD(name, sub, this));
     }
 }
