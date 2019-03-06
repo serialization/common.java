@@ -28,7 +28,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     public static final Charset utf8 = Charset.forName("UTF-8");
 
     // workaround for absurdly stupid ByteBuffer implementation
-    final private MappedInStream rb;
+    private MappedInStream rb;
 
     /**
      * the set of all known strings, i.e. strings which do not have an ID as well as strings that already have one
@@ -38,7 +38,8 @@ final public class StringPool extends HullType<String> implements StringAccess {
     /**
      * ID ⇀ (absolute offset, length) will be used if idMap contains a null reference
      *
-     * @note there is a fake entry at ID 0 TODO replace by long[]; add a second array for hullStrings
+     * @note there is a fake entry at ID 0
+     * TODO replace by long[]; add a second array for hullStrings
      */
     final ArrayList<Position> stringPositions;
 
@@ -55,9 +56,22 @@ final public class StringPool extends HullType<String> implements StringAccess {
 
     StringPool(FileInputStream input) {
         super(typeID);
-        rb = input.map(-1);
+        rb = null == input ? null : input.map(-1);
         stringPositions = new ArrayList<>();
         stringPositions.add(new Position(-1, -1));
+    }
+
+    void loadLazyData() {
+        if (null == rb)
+            return;
+
+        int id = idMap.size();
+        while (--id != 0) {
+            if (null == idMap.get(id))
+                get(id);
+        }
+
+        rb = null;
     }
 
     /**
@@ -148,7 +162,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
     protected void allocateInstances(int count, MappedInStream in) {
         S(count, in);
     }
-    
+
     /**
      * Read a string block
      * 
@@ -171,7 +185,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
             idMap.add(null);
             last += off;
         }
-        
+
         return last;
     }
 

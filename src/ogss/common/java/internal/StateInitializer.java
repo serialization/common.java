@@ -1,8 +1,13 @@
 package ogss.common.java.internal;
 
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import ogss.common.java.api.Mode;
+import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldTypes.AnyRefType;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
@@ -20,7 +25,31 @@ import ogss.common.streams.FileInputStream;
  * @author Timm Felden
  */
 public abstract class StateInitializer {
+
+    public static StateInitializer make(Path path, PD[] knownPools, KCC[] kccs, Mode... mode) throws IOException {
+        final StateInitializer init;
+        ActualMode modes = new ActualMode(mode);
+        if (modes.create)
+            init = new Creator(knownPools, kccs);
+        else {
+            FileInputStream fs = FileInputStream.open(path);
+            try {
+                if (fs.size() < Parser.SEQ_LIMIT)
+                    init = new SeqParser(fs, knownPools, kccs);
+                else
+                    init = new ParParser(fs, knownPools, kccs);
+            } catch (BufferUnderflowException e) {
+                throw new SkillException("unexpected EOF", e);
+            }
+        }
+        init.path = path;
+        init.canWrite = modes.write;
+        return init;
+    }
+
+    Path path;
     final FileInputStream in;
+    boolean canWrite;
 
     // guard from file
     String guard;
@@ -56,11 +85,12 @@ public abstract class StateInitializer {
     protected int nextFieldID = 1;
 
     StateInitializer(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
+        this.in = in;
+
         this.knownClasses = knownClasses;
         this.kccs = kccs;
         SIFA = new Pool[knownClasses.length];
 
-        this.in = in;
         Strings = new StringPool(in);
 
         classes = new ArrayList<>(knownClasses.length);

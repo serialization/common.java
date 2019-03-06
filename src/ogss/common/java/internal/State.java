@@ -37,9 +37,9 @@ public abstract class State implements AutoCloseable {
     }
 
     /**
-     * write mode this state is operating on
+     * True iff the state can perform write operations.
      */
-    private Mode writeMode;
+    private boolean canWrite;
     /**
      * path that will be targeted as binary file
      */
@@ -98,15 +98,15 @@ public abstract class State implements AutoCloseable {
     /**
      * Path and mode management can be done for arbitrary states.
      */
-    protected State(StateInitializer initial, Mode mode) {
-        this.strings = initial.Strings;
-        this.path = initial.in.path();
-        this.input = initial.in;
-        this.writeMode = mode;
-        this.classes = initial.classes;
-        this.containers = initial.containers;
-        this.typeByName = initial.typeByName;
-        this.annotationType = initial.Annotation;
+    protected State(StateInitializer init) {
+        this.strings = init.Strings;
+        this.path = init.path;
+        this.input = init.in;
+        this.canWrite = init.canWrite;
+        this.classes = init.classes;
+        this.containers = init.containers;
+        this.typeByName = init.typeByName;
+        this.annotationType = init.Annotation;
 
         for (Pool<?, ?> p : classes)
             p.owner = this;
@@ -147,11 +147,11 @@ public abstract class State implements AutoCloseable {
     /**
      * Set a new output path for the file. This will influence the next flush/close operation.
      * 
-     * @note The mode will be set to Write, if it was ReadOnly before.
+     * @note The mode will be set to Write.
      * @note (on implementation) memory maps for lazy evaluation must have been created before invocation of this method
      */
     final public void changePath(Path path) {
-        this.writeMode = Mode.Write;
+        this.canWrite = true;
         this.path = path;
     }
 
@@ -167,10 +167,10 @@ public abstract class State implements AutoCloseable {
      */
     final public void changeMode(Mode writeMode) {
         // check illegal change
-        if (this.writeMode != writeMode && this.writeMode == Mode.ReadOnly)
+        if (!canWrite)
             throw new IllegalArgumentException("Cannot change from read only, to a write mode.");
 
-        this.writeMode = writeMode;
+        this.canWrite = Mode.Write == writeMode;
         return;
     }
 
@@ -183,10 +183,7 @@ public abstract class State implements AutoCloseable {
             return;
 
         // ensure that strings are loaded
-        int id = strings.idMap.size();
-        while (--id != 0) {
-            strings.get(0);
-        }
+        strings.loadLazyData();
 
         // ensure that lazy fields have been loaded
         for (Pool<?, ?> p : classes)
@@ -253,20 +250,12 @@ public abstract class State implements AutoCloseable {
      *             if check fails
      */
     public void flush() throws SkillException {
+        if (!canWrite)
+            throw new SkillException("Cannot flush a read only file. Note: close will turn a file into read only.");
         try {
-            switch (writeMode) {
-            case Write:
-                loadLazyData();
-                new Writer(this, new FileOutputStream(makeInStream()));
-                return;
-
-            case ReadOnly:
-                throw new SkillException("Cannot flush a read only file. Note: close will turn a file into read only.");
-
-            default:
-                // dead
-                return;
-            }
+            loadLazyData();
+            new Writer(this, new FileOutputStream(path));
+            return;
         } catch (SkillException e) {
             throw e;
         } catch (IOException e) {
@@ -282,9 +271,9 @@ public abstract class State implements AutoCloseable {
     @Override
     public void close() throws SkillException {
         // flush if required
-        if (Mode.ReadOnly != writeMode) {
+        if (canWrite) {
             flush();
-            this.writeMode = Mode.ReadOnly;
+            this.canWrite = false;
         }
 
         // close file stream to work around issue with broken Windows FS
@@ -296,62 +285,6 @@ public abstract class State implements AutoCloseable {
                 e.printStackTrace();
             }
             input = null;
-        }
-    }
-
-    /**
-     * @return the file input stream matching our current status
-     */
-    private FileInputStream makeInStream() throws IOException {
-        if (null == input || !path.equals(input.path()))
-            input = FileInputStream.open(path, false);
-
-        return input;
-    }
-
-    /**
-     * Actual mode after processing.
-     * 
-     * @author Timm Felden
-     */
-    protected static final class ActualMode {
-        public final Mode open;
-        public final Mode close;
-
-        public ActualMode(Mode... modes) throws IOException {
-            // determine open mode
-            // @note read is preferred over create, because empty files are
-            // legal and the file has been created by now if it did not exist
-            // yet
-            // @note write is preferred over append, because usage is more
-            // inuitive
-            Mode openMode = null, closeMode = null;
-            for (Mode m : modes)
-                switch (m) {
-                case Create:
-                case Read:
-                    if (null == openMode)
-                        openMode = m;
-                    else if (openMode != m)
-                        throw new IOException("You can either create or read a file.");
-                    break;
-                case ReadOnly:
-                case Write:
-                    if (null == closeMode)
-                        closeMode = m;
-                    else if (closeMode != m)
-                        throw new IOException("You can use either write or readOnly.");
-                    break;
-                default:
-                    break;
-                }
-            if (null == openMode)
-                openMode = Mode.Read;
-            if (null == closeMode)
-                closeMode = Mode.Write;
-
-            this.open = openMode;
-            this.close = closeMode;
         }
     }
 }

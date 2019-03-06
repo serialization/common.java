@@ -1,5 +1,6 @@
 package ogss.common.java.internal;
 
+import java.nio.file.Path;
 import java.util.HashMap;
 
 import ogss.common.java.api.SkillException;
@@ -9,7 +10,6 @@ import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
-import ogss.common.streams.FileInputStream;
 
 /**
  * Create an empty state. The approach here is different from the generated initialization code in SKilL to reduce the
@@ -19,8 +19,8 @@ import ogss.common.streams.FileInputStream;
  */
 final public class Creator extends StateInitializer {
 
-    public Creator(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
-        super(in, knownClasses, kccs);
+    Creator(PD[] knownClasses, KCC[] kccs) {
+        super(null, knownClasses, kccs);
 
         guard = "";
 
