@@ -1,9 +1,9 @@
 package ogss.common.java.internal.fieldDeclarations;
 
 /**
- * Generic field access.
+ * Marker interface for known fields.
  * 
  * @author Timm Felden
  */
-public interface KnownField<R, T> {
+public interface KnownField {
 }

@@ -1,9 +1,7 @@
 package ogss.common.java.internal;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 
 import ogss.common.java.api.SkillException;
@@ -35,10 +33,12 @@ abstract class Parser extends StateInitializer {
      */
     public static int SEQ_LIMIT = 512000;
 
+    final private PoolBuilder pb;
+
     // the index of the next known class
-    protected int nextKnown;
-    // the next PD, null if there is no next PD
-    protected PD nextPD;
+    protected int nextID;
+    // the nextName, null if there is no next PD
+    protected String nextName;
 
     /**
      * name of all known classes to distinguish between known and unknown classes from the file spec
@@ -60,8 +60,10 @@ abstract class Parser extends StateInitializer {
 
     public SkillException readErrors;
 
-    Parser(FileInputStream in, PD[] knownClasses, KCC[] kccs) throws IOException {
-        super(in, knownClasses, kccs);
+    Parser(FileInputStream in, int sifaSize, PoolBuilder pb, KCC[] kccs) {
+        super(in, sifaSize, kccs);
+        this.pb = pb;
+        nextName = pb.name(0);
 
         // G
         {
@@ -225,9 +227,7 @@ abstract class Parser extends StateInitializer {
         return rval;
     }
 
-    // TODO remove type arguments?
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    final <T extends Obj> void typeDefinition() {
+    final void typeDefinition() {
 
         // name
         final String name = Strings.r(in);
@@ -248,7 +248,7 @@ abstract class Parser extends StateInitializer {
         }
 
         // super
-        final Pool<? super T, ?> superDef;
+        final Pool<?> superDef;
         final int bpo;
         {
             final int superID = in.v32();
@@ -261,49 +261,43 @@ abstract class Parser extends StateInitializer {
                                 + "          found: %d; current number of other types %d",
                         name, superID, classes.size());
             else {
-                superDef = (Pool<? super T, ?>) classes.get(superID - 1);
+                superDef = classes.get(superID - 1);
                 bpo = in.v32();
             }
         }
 
         // allocate pool
-        final Pool<T, ?> result;
+        final Pool<?> result;
         while (true) {
 
             // check common case, i.e. the next class is the expected one
-            if (null != nextPD && nextPD.name == name) {
-
-                // check superType and replace it in PD afterwards
-                String superName = null == superDef ? null : superDef.name;
-                if (nextPD.superName != superName) {
-                    throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
-                            name, superName);
-                }
+            if (nextName == name) {
 
                 try {
-                    synchronized (nextPD) {
-                        nextPD.superPool = superDef;
-                        result = new Pool<>(classes.size(), nextPD);
-                    }
-                    SIFA[nextKnown] = result;
+                    SIFA[nextID] = result = pb.make(nextID, classes, superDef);
                 } catch (Exception e) {
                     throw new ParseException(in, e, "Failed to instantiate known class " + name);
                 }
+                if (superDef != result.superPool) {
+                    throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
+                            name, superDef.name);
+                }
 
                 // move on
-                nextPD = ++nextKnown == knownClasses.length ? null : knownClasses[nextKnown];
+                nextName = pb.name(++nextID);
 
             } else {
                 // ensure that the name has not been used before
-                if (typeByName.containsKey(name)) {
+                if (TBN.containsKey(name)) {
                     throw new ParseException(in, null, "Duplicate definition of class " + name);
                 }
 
                 // ensure that knownNames is filled with known names
                 if (null == knownNames) {
-                    knownNames = new HashSet<>(knownClasses.length * 2);
-                    for (PD p : knownClasses)
-                        knownNames.add(p.name);
+                    knownNames = new HashSet<>();
+                    String n;
+                    for (int i = 0; null != (n = pb.name(i)); i++)
+                        knownNames.add(n);
                 }
 
                 final boolean known = knownNames.contains(name);
@@ -311,23 +305,20 @@ abstract class Parser extends StateInitializer {
                     // the class has a known name, has not been declared before and is not the expected class
                     // therefore, we have to allocate all classes
                     // @note nextPD cannot be null here, because there still is a known class which is not a duplicate
-                    while (nextPD.name != name) {
+                    while (nextName != name) {
+                        Strings.add(nextName);
 
                         // create p from nextPD and our current state
-                        Pool<?, ?> p;
-                        synchronized (nextPD) {
-                            nextPD.superPool = findSuperPool(nextPD.superName);
-                            p = new Pool<>(classes.size(), nextPD);
-                        }
-                        SIFA[nextKnown] = p;
+                        Pool<?> p = pb.make(nextID, classes, null);
+                        SIFA[nextID] = p;
 
                         // note: p will not receive data fields; this is exactly, what we intend here
                         // note: bpo/sizes are not set, because zero-allocation is correct there
 
                         classes.add(p);
-                        typeByName.put(p.name, p);
+                        TBN.put(p.name, p);
                         // move on
-                        nextPD = ++nextKnown == knownClasses.length ? null : knownClasses[nextKnown];
+                        nextName = pb.name(++nextID);
                     }
                     // the next class is that obtained from file, so jump back to the start of the loop
                     continue;
@@ -337,15 +328,15 @@ abstract class Parser extends StateInitializer {
                 // the pool is not known
                 final int idx = classes.size();
                 if (null == superDef) {
-                    result = new Pool(idx, new PD(name, UnknownObject.class, null));
+                    result = new SubPool<>(idx, name, UnknownObject.class, null);
                 } else {
-                    result = (Pool<T, ?>) superDef.makeSubPool(idx, name);
+                    result = superDef.makeSubPool(idx, name);
                 }
             }
 
             udts.add(result);
             classes.add(result);
-            typeByName.put(name, result);
+            TBN.put(name, result);
             break;
         }
 
@@ -363,7 +354,7 @@ abstract class Parser extends StateInitializer {
      */
     abstract void typeBlock();
 
-    final void readFields(Pool<?, ?> p) {
+    final void readFields(Pool<?> p) {
         // we have not yet seen a known field
         int ki = 0;
         // we have to count seen auto fields
@@ -380,47 +371,33 @@ abstract class Parser extends StateInitializer {
             FieldType<?> t = fieldType();
             HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
             FieldDeclaration<?, ?> f = null;
-            final String[] KFN = p.KFN;
 
-            while (ki < KFN.length) {
+            String kfn;
+
+            while (null != (kfn = p.KFN(ki))) {
                 // is it the next known field?
-                if (name == KFN[ki]) {
-                    try {
-                        final Class<?> cls = p.KFC[ki++];
-                        if (cls.getSuperclass() == AutoField.class)
-                            throw new ParseException(in, null,
-                                    "File contains a field conflicting with transient field " + p.name + "." + name);
+                if (name == kfn) {
+                    if ((f = p.KFC(ki++, TBN, af, nextFieldID++)) instanceof AutoField)
+                        throw new ParseException(in, null,
+                                "File contains a field conflicting with transient field " + p.name + "." + name);
 
-                        f = (FieldDeclaration<?, ?>) cls.getConstructor(FieldType.class, int.class, p.getClass())
-                                .newInstance(t, nextFieldID++, p);
-                    } catch (ParseException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
-                    }
                     break;
                 }
 
                 // else, it might be an unknown field
-                if (name.compareTo(KFN[ki]) < 0) {
+                if (name.compareTo(kfn) < 0) {
                     // create unknown field
                     f = new LazyField<>(t, name, nextFieldID++, p);
                     break;
                 }
 
                 // else, it is a known fields not contained in the file
-                try {
-                    final Class<?> cls = p.KFC[ki++];
-                    // auto fields reside in a separate ID range
-                    if (cls.getSuperclass() == AutoField.class) {
-                        cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
-                    } else {
-                        cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                nextFieldID++, p);
-                    }
-                } catch (Exception e) {
-                    throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + name);
-                }
+                Strings.add(kfn);
+
+                if (p.KFC(ki++, TBN, af, nextFieldID) instanceof AutoField)
+                    af--;
+                else
+                    nextFieldID++;
             }
 
             if (null == f) {

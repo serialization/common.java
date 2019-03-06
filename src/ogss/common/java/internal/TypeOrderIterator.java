@@ -11,13 +11,13 @@ import java.util.Iterator;
 @SuppressWarnings("unchecked")
 public class TypeOrderIterator<T extends Obj> implements Iterator<T> {
 
-    final TypeHierarchyIterator<T, ?> ts;
+    final TypeHierarchyIterator<T> ts;
     StaticDataIterator<T> is;
 
-    public TypeOrderIterator(Pool<T, ?> pool) {
+    public TypeOrderIterator(Pool<T> pool) {
         ts = new TypeHierarchyIterator<>(pool);
         while (ts.hasNext()) {
-            Pool<T, ?> t = (Pool<T, ?>) ts.next();
+            Pool<T> t = (Pool<T>) ts.next();
             if (0 != t.staticSize()) {
                 is = new StaticDataIterator<T>(t);
                 break;
@@ -35,7 +35,7 @@ public class TypeOrderIterator<T extends Obj> implements Iterator<T> {
         T result = is.next();
         if (!is.hasNext()) {
             while (ts.hasNext()) {
-                Pool<T, ?> t = (Pool<T, ?>) ts.next();
+                Pool<T> t = (Pool<T>) ts.next();
                 if (0 != t.staticSize()) {
                     is = new StaticDataIterator<T>(t);
                     break;

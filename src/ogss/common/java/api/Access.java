@@ -25,9 +25,8 @@ public interface Access<T extends Obj> extends GeneralAccess<T> {
      * @return a type ordered Container iterator over all instances of T
      * @note do not invoke this function, if you do not know what "type order" means
      */
-    @SuppressWarnings("unchecked")
     public default TypeOrderIterator<T> typeOrderIterator() {
-        return new TypeOrderIterator<>((Pool<T, ?>) this);
+        return new TypeOrderIterator<>((Pool<T>) this);
     }
 
     /**

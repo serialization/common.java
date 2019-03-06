@@ -26,18 +26,18 @@ import ogss.common.streams.FileInputStream;
  */
 public abstract class StateInitializer {
 
-    public static StateInitializer make(Path path, PD[] knownPools, KCC[] kccs, Mode... mode) throws IOException {
+    public static StateInitializer make(Path path, int sifaSize, PoolBuilder pb, KCC[] kccs, Mode... mode) throws IOException {
         final StateInitializer init;
         ActualMode modes = new ActualMode(mode);
         if (modes.create)
-            init = new Creator(knownPools, kccs);
+            init = new Creator(sifaSize, pb, kccs);
         else {
             FileInputStream fs = FileInputStream.open(path);
             try {
                 if (fs.size() < Parser.SEQ_LIMIT)
-                    init = new SeqParser(fs, knownPools, kccs);
+                    init = new SeqParser(fs, sifaSize, pb, kccs);
                 else
-                    init = new ParParser(fs, knownPools, kccs);
+                    init = new ParParser(fs, sifaSize, pb, kccs);
             } catch (BufferUnderflowException e) {
                 throw new SkillException("unexpected EOF", e);
             }
@@ -58,12 +58,11 @@ public abstract class StateInitializer {
     final StringPool Strings;
 
     // types
-    final ArrayList<Pool<?, ?>> classes;
+    final ArrayList<Pool<?>> classes;
     final ArrayList<HullType<?>> containers;
-    final HashMap<String, FieldType<?>> typeByName = new HashMap<>();
+    final HashMap<String, FieldType<?>> TBN = new HashMap<>();
     final AnyRefType Annotation;
 
-    final PD[] knownClasses;
     /**
      * State Initialization of Fields Array. In C++, it should be possible to memcpy this array into the first field to
      * achieve state initialization.
@@ -71,7 +70,7 @@ public abstract class StateInitializer {
      * @note invariant: ∀i. SIFA[i].getClass == knownClasses[i]
      * @note this is essentially the SKilL/Java large spec passing mode, except that the name binding happens implicitly
      */
-    public final Pool<?, ?>[] SIFA;
+    public final Pool<?>[] SIFA;
     final KCC[] kccs;
 
     /**
@@ -84,31 +83,30 @@ public abstract class StateInitializer {
      */
     protected int nextFieldID = 1;
 
-    StateInitializer(FileInputStream in, PD[] knownClasses, KCC[] kccs) {
+    StateInitializer(FileInputStream in, int sifaSize, KCC[] kccs) {
         this.in = in;
 
-        this.knownClasses = knownClasses;
         this.kccs = kccs;
-        SIFA = new Pool[knownClasses.length];
+        SIFA = new Pool[sifaSize];
 
         Strings = new StringPool(in);
 
-        classes = new ArrayList<>(knownClasses.length);
+        classes = new ArrayList<>(sifaSize);
         containers = new ArrayList<>();
 
-        Annotation = new AnyRefType(classes, typeByName);
+        Annotation = new AnyRefType(classes, TBN);
 
-        typeByName.put("bool", BoolType.get());
-        typeByName.put("i8", I8.get());
-        typeByName.put("i16", I16.get());
-        typeByName.put("i32", I32.get());
-        typeByName.put("i64", I64.get());
-        typeByName.put("v64", V64.get());
-        typeByName.put("f32", F32.get());
-        typeByName.put("f64", F64.get());
+        TBN.put("bool", BoolType.get());
+        TBN.put("i8", I8.get());
+        TBN.put("i16", I16.get());
+        TBN.put("i32", I32.get());
+        TBN.put("i64", I64.get());
+        TBN.put("v64", V64.get());
+        TBN.put("f32", F32.get());
+        TBN.put("f64", F64.get());
 
-        typeByName.put(Annotation.name(), Annotation);
-        typeByName.put(Strings.name(), Strings);
+        TBN.put(Annotation.name(), Annotation);
+        TBN.put(Strings.name(), Strings);
     }
 
     /**
@@ -117,24 +115,5 @@ public abstract class StateInitializer {
      */
     public void awaitResults() {
         // nothing by default
-    }
-
-    /**
-     * Find a super pool if only its name is known. This is called by generated constructors to allow correct
-     * instantiation of types from the tool specification
-     */
-    @SuppressWarnings("unchecked")
-    protected <T extends Obj, B extends Builder<T>> Pool<? super T, ? super B> findSuperPool(String name) {
-        if (name == null)
-            return null;
-
-        int i = classes.size();
-        // perform reverse search, because it is likely the last seen pool
-        while (--i >= 0) {
-            Pool<?, ?> r = classes.get(i);
-            if (r.name == name)
-                return (Pool<? super T, ? super B>) r;
-        }
-        throw new Error("internal error");
     }
 }

@@ -7,6 +7,8 @@ package ogss.common.java.internal;
  * 
  * @note construction is done by the user.
  * @author Timm Felden
+ * @TODO should be int: kind|2 + sifaID|15 + sifaID|15; typeID in terms of the original state (there is SIFA anyway)
+ *       (note: has to include low IDs)
  */
 public final class KCC {
 
@@ -15,7 +17,6 @@ public final class KCC {
         this.kind = kind;
         b1 = base;
         b2 = null;
-
     }
 
     public KCC(String name, String k, String v) {

@@ -1,14 +1,13 @@
 package ogss.common.java.internal;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import ogss.common.java.api.Access;
-import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
@@ -21,28 +20,9 @@ import ogss.common.streams.OutStream;
  *            static type of instances
  * @note Storage pools are created by a StateInitializer, only
  */
-public final class Pool<T extends Obj, B extends Builder<? extends T>> extends ByRefType<T> implements Access<T> {
+public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
 
     public final String name;
-
-    /**
-     * the class of objects of type T
-     */
-    private final Class<?> t;
-
-    /**
-     * the class of objects of type T subtypes
-     * 
-     * @note this is a sub pool if t == sub
-     */
-    private final Class<?> sub;
-
-    /**
-     * the class of objects of type B
-     * 
-     * @note null for sub pools
-     */
-    private final Class<?> builder;
 
     protected State owner;
 
@@ -52,14 +32,14 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
     }
 
     // type hierarchy
-    public final Pool<? super T, ? super B> superPool, basePool;
+    public final Pool<? super T> superPool, basePool;
     /**
      * the number of super pools aka the height of the type hierarchy
      */
     public final int THH;
 
     @Override
-    final public Pool<? super T, ? super B> superType() {
+    final public Pool<? super T> superType() {
         return superPool;
     }
 
@@ -69,29 +49,26 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
      * @note on setting nextPool, the bpo of nextPool will be adjusted iff it is 0 to allow insertion of types from the
      *       tool specification
      */
-    Pool<?, ?> next;
+    Pool<?> next;
 
     /**
      * pointer to base-pool-managed data array
      */
-    Obj[] data;
-
-    /**
-     * internal use only!
-     */
-    public Obj[] data() {
-        return data;
-    }
+    protected Obj[] data;
 
     /**
      * names of known fields, the actual field information is given in the generated addKnownFiled method.
      */
-    public final String[] KFN;
+    protected String KFN(int id) {
+        return null;
+    }
 
     /**
-     * Classes of known fields used to allocate them
+     * construct the known field with the given id
      */
-    public final Class<FieldDeclaration<?, T>>[] KFC;
+    protected FieldDeclaration<?, T> KFC(int id, HashMap<String, FieldType<?>> TBN, int af, int nextFID) {
+        return null;
+    }
 
     /**
      * all fields that are declared as auto, including skillID
@@ -128,7 +105,7 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
     /**
      * The BPO of this pool relative to data.
      */
-    int bpo;
+    protected int bpo;
 
     /**
      * All stored objects, which have exactly the type T. Objects are stored as arrays of field entries. The types of
@@ -146,7 +123,7 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
     /**
      * Number of static instances of T in data. Managed by read/compress.
      */
-    int staticDataInstances;
+    protected int staticDataInstances;
 
     /**
      * the number of instances of exactly this type, excluding sub-types
@@ -184,15 +161,11 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
      *       the base pool can not be an argument to the constructor. The cast will never fail anyway.
      */
     @SuppressWarnings("unchecked")
-    Pool(int poolIndex, PD desc) {
+    protected Pool(int poolIndex, String name, Pool<? super T> superPool, int afSize) {
         super(10 + poolIndex);
-        name = desc.name;
+        this.name = name;
 
-        t = desc.t;
-        sub = desc.sub;
-        builder = desc.builder;
-
-        superPool = (Pool<? super T, ? super B>) desc.superPool;
+        this.superPool = superPool;
         if (null == superPool) {
             this.THH = 0;
             this.basePool = this;
@@ -201,13 +174,13 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
             this.basePool = superPool.basePool;
         }
 
-        KFN = desc.KFN;
-        KFC = (Class<FieldDeclaration<?, T>>[]) desc.KFC;
-        dataFields = new ArrayList<>(KFN.length);
-        this.autoFields = 0 == desc.autoFields ? (AutoField[]) noAutoFields : new AutoField[desc.autoFields];
+        dataFields = new ArrayList<>();
+        this.autoFields = 0 == afSize ? (AutoField[]) noAutoFields : new AutoField[afSize];
 
         this.newObjects = new ArrayList<>();
     }
+
+    protected abstract void allocateInstances();
 
     /**
      * @return the instance matching argument object id
@@ -247,7 +220,7 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
     @Override
     final public int size() {
         int size = 0;
-        TypeHierarchyIterator<T, B> ts = new TypeHierarchyIterator<>(this);
+        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
         while (ts.hasNext())
             size += ts.next().staticSize();
         return size;
@@ -297,68 +270,12 @@ public final class Pool<T extends Obj, B extends Builder<? extends T>> extends B
         return new DynamicDataIterator<>(this);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public T make() throws SkillException {
-        if (null == builder)
-            throw new SkillException("We consider allocation of unknown subtypes an error.");
-
-        try {
-            T rval = (T) t.getConstructor(int.class).newInstance(0);
-            add(rval);
-            return rval;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public B build() {
-        if (null == builder)
-            throw new SkillException("We consider allocation of unknown subtypes an error.");
-
-        try {
-            return (B) builder.getConstructor(Pool.class, t).newInstance(this,
-                    t.getConstructor(int.class).newInstance(0));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * insert new T instances with default values based on the last block info
-     * 
-     * @note defaults to unknown objects to reduce code size
-     */
-    @SuppressWarnings("unchecked")
-    final void allocateInstances() {
-        int i = bpo, j;
-        final int high = i + staticDataInstances;
-        try {
-            if (null == builder) {
-                final Constructor<T> make = (Constructor<T>) t.getConstructor(Pool.class, int.class);
-                while (i < high) {
-                    data[i] = make.newInstance(this, j = (i + 1));
-                    i = j;
-                }
-            } else {
-                final Constructor<T> make = (Constructor<T>) t.getConstructor(int.class);
-                while (i < high) {
-                    data[i] = make.newInstance(j = (i + 1));
-                    i = j;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * used internally for type forest construction
      */
-    protected Pool<? extends T, ? extends B> makeSubPool(int index, String name) {
-        return new Pool<>(index, new PD(name, sub, this));
+    @SuppressWarnings("unchecked")
+    protected Pool<? extends T> makeSubPool(int index, String name) {
+        return (Pool<? extends T>) new SubPool<UnknownObject>(index, name, UnknownObject.class,
+                (Pool<? super UnknownObject>) this);
     }
 }

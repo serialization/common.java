@@ -9,12 +9,12 @@ import java.util.Iterator;
  */
 public final class DynamicNewInstancesIterator<T extends Obj> implements Iterator<T> {
 
-    final TypeHierarchyIterator<T, ?> ts;
+    final TypeHierarchyIterator<T> ts;
 
     int index;
     int last;
 
-    public DynamicNewInstancesIterator(Pool<T, ?> pool) {
+    public DynamicNewInstancesIterator(Pool<T> pool) {
         ts = new TypeHierarchyIterator<>(pool);
         last = pool.newObjects.size();
 

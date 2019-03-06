@@ -1,10 +1,6 @@
 package ogss.common.java.internal;
 
-import java.nio.file.Path;
-import java.util.HashMap;
-
 import ogss.common.java.api.SkillException;
-import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
@@ -19,20 +15,18 @@ import ogss.common.java.internal.fieldTypes.SetType;
  */
 final public class Creator extends StateInitializer {
 
-    Creator(PD[] knownClasses, KCC[] kccs) {
-        super(null, knownClasses, kccs);
+    Creator(int sifaSize, PoolBuilder pb, KCC[] kccs) {
+        super(null, sifaSize, kccs);
 
         guard = "";
 
         try {
             // Create Classes
-            for (int i = 0; i < knownClasses.length; i++) {
-                PD desc = knownClasses[i];
-                desc.superPool = findSuperPool(desc.superName);
-                Pool<?, ?> p = new Pool<>(classes.size(), desc);
+            for (int i = 0; null != pb.name(i); i++) {
+                Pool<?> p = pb.make(i, classes, null);
                 SIFA[i] = p;
                 classes.add(p);
-                typeByName.put(p.name, p);
+                TBN.put(p.name, p);
                 Strings.add(p.name);
             }
 
@@ -43,45 +37,39 @@ final public class Creator extends StateInitializer {
                     HullType<?> r;
                     switch (c.kind) {
                     case 0:
-                        r = new ArrayType<>(tid++, typeByName.get(c.b1));
+                        r = new ArrayType<>(tid++, TBN.get(c.b1));
                         break;
                     case 1:
-                        r = new ListType<>(tid++, typeByName.get(c.b1));
+                        r = new ListType<>(tid++, TBN.get(c.b1));
                         break;
                     case 2:
-                        r = new SetType<>(tid++, typeByName.get(c.b1));
+                        r = new SetType<>(tid++, TBN.get(c.b1));
                         break;
 
                     case 3:
-                        r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
+                        r = new MapType<>(tid++, TBN.get(c.b1), TBN.get(c.b2));
                         break;
 
                     default:
                         throw new SkillException("Illegal container constructor ID: " + c.kind);
                     }
-                    typeByName.put(r.toString(), r);
+                    TBN.put(r.toString(), r);
                     r.fieldID = nextFieldID++;
                     containers.add(r);
                 }
             }
 
             // Create Fields
-            for (Pool<?, ?> p : classes) {
-                int ki = 0;
+            for (Pool<?> p : classes) {
                 int af = -1;
-                for (String f : p.KFN) {
+                String f;
+                for (int i = 0; null != (f = p.KFN(i)); i++) {
                     Strings.add(f);
-                    try {
-                        final Class<?> cls = p.KFC[ki++];
-                        if (cls.getSuperclass() == AutoField.class) {
-                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName, af--, p);
-                        } else {
-                            cls.getConstructor(HashMap.class, int.class, p.getClass()).newInstance(typeByName,
-                                    nextFieldID++, p);
-                        }
-                    } catch (Exception e) {
-                        throw new ParseException(in, e, "Failed to instantiate known field " + p.name + "." + f);
-                    }
+
+                    if (p.KFC(i, TBN, af, nextFieldID) instanceof AutoField)
+                        af--;
+                    else
+                        nextFieldID++;
                 }
             }
         } catch (Exception e) {
@@ -92,7 +80,7 @@ final public class Creator extends StateInitializer {
         {
             int i = classes.size() - 2;
             if (i >= 0) {
-                Pool<?, ?> n, p = classes.get(i + 1);
+                Pool<?> n, p = classes.get(i + 1);
                 // propagate information in reverse order
                 // i is the pool where next is set, hence we skip the last pool
                 do {

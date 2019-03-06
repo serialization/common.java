@@ -11,11 +11,11 @@ import java.util.Iterator;
  */
 public final class InterfaceIterator<T> implements Iterator<T> {
 
-    private final Pool<Obj, ?>[] ps;
+    private final Pool<Obj>[] ps;
     private int i;
     private DynamicDataIterator<Obj> xs;
 
-    public InterfaceIterator(Pool<Obj, ?>[] realizations) {
+    public InterfaceIterator(Pool<Obj>[] realizations) {
         ps = realizations;
         while (i < ps.length) {
             xs = ps[i++].iterator();

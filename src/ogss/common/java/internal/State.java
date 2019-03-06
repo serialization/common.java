@@ -32,8 +32,8 @@ public abstract class State implements AutoCloseable {
     // types by skill name
     protected final HashMap<String, FieldType<?>> typeByName;
 
-    public Pool<?, ?> pool(String name) {
-        return (Pool<?, ?>) typeByName.get(name);
+    public Pool<?> pool(String name) {
+        return (Pool<?>) typeByName.get(name);
     }
 
     /**
@@ -80,7 +80,7 @@ public abstract class State implements AutoCloseable {
     // TODO add BasePool[] and use it!
 
     // types in type order
-    final protected ArrayList<Pool<?, ?>> classes;
+    final protected ArrayList<Pool<?>> classes;
     final protected ArrayList<HullType<?>> containers;
 
     /**
@@ -105,10 +105,10 @@ public abstract class State implements AutoCloseable {
         this.canWrite = init.canWrite;
         this.classes = init.classes;
         this.containers = init.containers;
-        this.typeByName = init.typeByName;
+        this.typeByName = init.TBN;
         this.annotationType = init.Annotation;
 
-        for (Pool<?, ?> p : classes)
+        for (Pool<?> p : classes)
             p.owner = this;
     }
 
@@ -121,11 +121,11 @@ public abstract class State implements AutoCloseable {
         if (null != target)
             try {
                 if (0 < target.ID)
-                    return target == ((Pool<?, ?>) typeByName.get(target.typeName())).get(target.ID);
+                    return target == ((Pool<?>) typeByName.get(target.typeName())).get(target.ID);
                 else if (0 == target.ID)
                     return true; // will evaluate to a null pointer if stored
 
-                return ((Pool<?, ?>) typeByName.get(target.typeName())).newObjects.contains(target);
+                return ((Pool<?>) typeByName.get(target.typeName())).newObjects.contains(target);
             } catch (Exception e) {
                 // out of bounds or similar mean its not one of ours
                 return false;
@@ -140,7 +140,7 @@ public abstract class State implements AutoCloseable {
      */
     final public void delete(Obj target) {
         if (null != target && target.ID != 0) {
-            ((Pool<?, ?>) typeByName.get(target.typeName())).delete(target);
+            ((Pool<?>) typeByName.get(target.typeName())).delete(target);
         }
     }
 
@@ -186,7 +186,7 @@ public abstract class State implements AutoCloseable {
         strings.loadLazyData();
 
         // ensure that lazy fields have been loaded
-        for (Pool<?, ?> p : classes)
+        for (Pool<?> p : classes)
             for (FieldDeclaration<?, ?> f : p.dataFields)
                 if (f instanceof LazyField<?, ?>)
                     ((LazyField<?, ?>) f).ensureLoaded();
@@ -213,7 +213,7 @@ public abstract class State implements AutoCloseable {
         // TODO make pools check fields, because they can optimize checks per
         // instance and remove redispatching, if no
         // restrictions apply anyway
-        for (Pool<?, ?> p : classes)
+        for (Pool<?> p : classes)
             for (FieldDeclaration<?, ?> f : p.dataFields)
                 try {
                     f.check();

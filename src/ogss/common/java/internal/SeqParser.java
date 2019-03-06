@@ -19,8 +19,8 @@ import ogss.common.streams.MappedInStream;
  */
 public final class SeqParser extends Parser {
 
-    SeqParser(FileInputStream in, PD[] knownClasses, KCC[] kccs) throws IOException {
-        super(in, knownClasses, kccs);
+    SeqParser(FileInputStream in, int sifaSize, PoolBuilder pb, KCC[] kccs) throws IOException {
+        super(in, sifaSize, pb, kccs);
     }
 
     /**
@@ -32,7 +32,6 @@ public final class SeqParser extends Parser {
         /**
          * *************** * T Class * ****************
          */
-        nextPD = knownClasses.length != 0 ? knownClasses[0] : null;
         for (int count = in.v32(); count != 0; count--)
             typeDefinition();
 
@@ -42,7 +41,7 @@ public final class SeqParser extends Parser {
             if (0 != cs) {
                 int i = cs - 2;
                 if (i >= 0) {
-                    Pool<?, ?> n, p = classes.get(i + 1);
+                    Pool<?> n, p = classes.get(i + 1);
                     // propagate information in reverse order
                     // i is the pool where next is set, hence we skip the last pool
                     do {
@@ -66,7 +65,7 @@ public final class SeqParser extends Parser {
                 // allocate data and start instance allocation jobs
                 Obj[] d = null;
                 while (++i < cs) {
-                    final Pool<?, ?> p = classes.get(i);
+                    final Pool<?> p = classes.get(i);
                     if (null == p.superPool) {
                         // create new d, because we are in a new type hierarchy
                         d = new Obj[p.cachedSize];
@@ -117,23 +116,23 @@ public final class SeqParser extends Parser {
                         HullType<?> r;
                         switch (c.kind) {
                         case 0:
-                            r = new ArrayType<>(tid++, typeByName.get(c.b1));
+                            r = new ArrayType<>(tid++, TBN.get(c.b1));
                             break;
                         case 1:
-                            r = new ListType<>(tid++, typeByName.get(c.b1));
+                            r = new ListType<>(tid++, TBN.get(c.b1));
                             break;
                         case 2:
-                            r = new SetType<>(tid++, typeByName.get(c.b1));
+                            r = new SetType<>(tid++, TBN.get(c.b1));
                             break;
 
                         case 3:
-                            r = new MapType<>(tid++, typeByName.get(c.b1), typeByName.get(c.b2));
+                            r = new MapType<>(tid++, TBN.get(c.b1), TBN.get(c.b2));
                             break;
 
                         default:
                             throw new SkillException("Illegal container constructor ID: " + c.kind);
                         }
-                        typeByName.put(r.toString(), r);
+                        TBN.put(r.toString(), r);
                         r.fieldID = nextFieldID++;
                         containers.add(r);
                     }
@@ -162,7 +161,7 @@ public final class SeqParser extends Parser {
                     throw new SkillException("Illegal container constructor ID: " + kind);
                 }
 
-                typeByName.put(r.toString(), r);
+                TBN.put(r.toString(), r);
                 r.fieldID = nextFieldID++;
                 fields.add(r);
                 udts.add(r);
@@ -179,7 +178,7 @@ public final class SeqParser extends Parser {
         /**
          * *************** * F * ****************
          */
-        for (Pool<?, ?> p : classes) {
+        for (Pool<?> p : classes) {
             readFields(p);
         }
     }
@@ -257,7 +256,7 @@ public final class SeqParser extends Parser {
         }
 
         void run() {
-            final Pool<?, ?> owner = f.owner;
+            final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
             final int end = bpo + owner.cachedSize;
             try {
