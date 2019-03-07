@@ -22,12 +22,20 @@ public abstract class HullType<T> extends ByRefType<T> {
     int fieldID;
 
     /**
-     * The number of other fields currently depending on this type.
+     * The number of other fields currently depending on this type. It is set by Writer on serialization in Tco.
      * 
      * @note If another field reduces deps to 0 it has to start a write job for this type.
      * @note This is in essence reference counting on an acyclic graph while writing data to disk.
      */
     int deps = 0;
+
+    /**
+     * The maximal, i.e. static, number of serialized fields depending on this type.
+     * 
+     * @note Can be 0.
+     * @note If 0, the HullType is excluded from serialization.
+     */
+    int maxDeps = 0;
 
     /**
      * get object by ID

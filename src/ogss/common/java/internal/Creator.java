@@ -1,11 +1,11 @@
 package ogss.common.java.internal;
 
-import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
+import ogss.common.java.internal.fieldTypes.SingleArgumentType;
 
 /**
  * Create an empty state. The approach here is different from the generated initialization code in SKilL to reduce the
@@ -15,8 +15,8 @@ import ogss.common.java.internal.fieldTypes.SetType;
  */
 final public class Creator extends StateInitializer {
 
-    Creator(int sifaSize, PoolBuilder pb, KCC[] kccs) {
-        super(null, sifaSize, kccs);
+    Creator(PoolBuilder pb) {
+        super(null, pb);
 
         guard = "";
 
@@ -24,7 +24,7 @@ final public class Creator extends StateInitializer {
             // Create Classes
             for (int i = 0; null != pb.name(i); i++) {
                 Pool<?> p = pb.make(i, classes, null);
-                SIFA[i] = p;
+                SIFA[nsID++] = p;
                 classes.add(p);
                 TBN.put(p.name, p);
                 Strings.add(p.name);
@@ -33,26 +33,28 @@ final public class Creator extends StateInitializer {
             // Execute known container constructors
             {
                 int tid = 10 + classes.size();
-                for (KCC c : kccs) {
+                int kcc;
+                for (int i = 0; -1 != (kcc = pb.kcc(i)); i++) {
                     HullType<?> r;
-                    switch (c.kind) {
+                    switch ((kcc >> 30) & 3) {
                     case 0:
-                        r = new ArrayType<>(tid++, TBN.get(c.b1));
+                        r = new ArrayType<>(tid++, SIFA[kcc & 0x7FFF]);
                         break;
                     case 1:
-                        r = new ListType<>(tid++, TBN.get(c.b1));
+                        r = new ListType<>(tid++, SIFA[kcc & 0x7FFF]);
                         break;
                     case 2:
-                        r = new SetType<>(tid++, TBN.get(c.b1));
+                        r = new SetType<>(tid++, SIFA[kcc & 0x7FFF]);
                         break;
 
                     case 3:
-                        r = new MapType<>(tid++, TBN.get(c.b1), TBN.get(c.b2));
+                        r = new MapType<>(tid++, SIFA[kcc & 0x7FFF], SIFA[(kcc >> 15) & 0x7FFF]);
                         break;
 
                     default:
-                        throw new SkillException("Illegal container constructor ID: " + c.kind);
+                        throw new Error(); // dead
                     }
+                    SIFA[nsID++] = r;
                     TBN.put(r.toString(), r);
                     r.fieldID = nextFieldID++;
                     containers.add(r);
@@ -66,15 +68,25 @@ final public class Creator extends StateInitializer {
                 for (int i = 0; null != (f = p.KFN(i)); i++) {
                     Strings.add(f);
 
-                    if (p.KFC(i, TBN, af, nextFieldID) instanceof AutoField)
+                    final FieldDeclaration<?, ?> fd = p.KFC(i, SIFA, af, nextFieldID);
+
+                    if (fd instanceof AutoField)
                         af--;
-                    else
+                    else {
                         nextFieldID++;
+
+                        // increase maxDeps
+                        if (fd.type instanceof HullType<?>) {
+                            ((HullType<?>) fd.type).maxDeps++;
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
             throw new Error("failed to create state", e);
         }
+
+        fixContainerMD();
 
         // set next for all pools
         {

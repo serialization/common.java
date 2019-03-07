@@ -161,12 +161,6 @@ final public class Writer {
                 // add field to queues for description and data tasks
                 for (FieldDeclaration<?, ?> f : p.dataFields) {
                     fieldQueue.add(f);
-                    if (f.type instanceof HullType<?>) {
-                        ((HullType<?>) f.type).deps++;
-                        if (f.type instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
-                    }
                 }
             }
 
@@ -178,59 +172,43 @@ final public class Writer {
 
         // write count of the type block
         {
-            int count = state.containers.size();
+            int count = 0;
+            // set deps and calculate count
+            for (HullType<?> c : state.containers) {
+                if (c.maxDeps != 0) {
+                    c.deps = c.maxDeps;
+                    count++;
+                }
+            }
+            if (string.maxDeps != 0) {
+                awaitHulls = 1;
+                string.deps = string.maxDeps;
+            }
+            awaitHulls += count;
+
             out.v64(count);
             for (HullType<?> c : state.containers) {
-                if (c instanceof ArrayType<?>) {
-                    ArrayType<?> t = (ArrayType<?>) c;
-                    out.i8((byte) 0);
-                    out.v64(t.base.typeID);
-                    if (t.base instanceof HullType<?>) {
-                        ((HullType<?>) t.base).deps++;
-                        if (t.base instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
-                    }
-                } else if (c instanceof ListType<?>) {
-                    ListType<?> t = (ListType<?>) c;
-                    out.i8((byte) 1);
-                    out.v64(t.base.typeID);
-                    if (t.base instanceof HullType<?>) {
-                        ((HullType<?>) t.base).deps++;
-                        if (t.base instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
-                    }
-                } else if (c instanceof SetType<?>) {
-                    SetType<?> t = (SetType<?>) c;
-                    out.i8((byte) 2);
-                    out.v64(t.base.typeID);
-                    if (t.base instanceof HullType<?>) {
-                        ((HullType<?>) t.base).deps++;
-                        if (t.base instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
-                    }
-                } else if (c instanceof MapType<?, ?>) {
-                    MapType<?, ?> t = (MapType<?, ?>) c;
-                    out.i8((byte) 3);
-                    out.v64(t.keyType.typeID);
-                    if (t.keyType instanceof HullType<?>) {
-                        ((HullType<?>) t.keyType).deps++;
-                        if (t.keyType instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
-                    }
-                    out.v64(t.valueType.typeID);
-                    if (t.valueType instanceof HullType<?>) {
-                        ((HullType<?>) t.valueType).deps++;
-                        if (t.valueType instanceof StringPool) {
-                            awaitHulls = 1;
-                        }
+                if (c.maxDeps != 0) {
+                    if (c instanceof ArrayType<?>) {
+                        ArrayType<?> t = (ArrayType<?>) c;
+                        out.i8((byte) 0);
+                        out.v64(t.base.typeID);
+                    } else if (c instanceof ListType<?>) {
+                        ListType<?> t = (ListType<?>) c;
+                        out.i8((byte) 1);
+                        out.v64(t.base.typeID);
+                    } else if (c instanceof SetType<?>) {
+                        SetType<?> t = (SetType<?>) c;
+                        out.i8((byte) 2);
+                        out.v64(t.base.typeID);
+                    } else if (c instanceof MapType<?, ?>) {
+                        MapType<?, ?> t = (MapType<?, ?>) c;
+                        out.i8((byte) 3);
+                        out.v64(t.keyType.typeID);
+                        out.v64(t.valueType.typeID);
                     }
                 }
             }
-            awaitHulls += count;
         }
 
         // note: we cannot start field jobs immediately because they could decrement deps to 0 multiple times in that

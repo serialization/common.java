@@ -66,7 +66,7 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     /**
      * construct the known field with the given id
      */
-    protected FieldDeclaration<?, T> KFC(int id, HashMap<String, FieldType<?>> TBN, int af, int nextFID) {
+    protected FieldDeclaration<?, T> KFC(int id, FieldType<?>[] SIFA, int af, int nextFID) {
         return null;
     }
 

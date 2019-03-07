@@ -1,15 +1,10 @@
 package ogss.common.java.internal;
 
-import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
-import ogss.common.java.internal.fieldTypes.ArrayType;
-import ogss.common.java.internal.fieldTypes.ListType;
-import ogss.common.java.internal.fieldTypes.MapType;
-import ogss.common.java.internal.fieldTypes.SetType;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.MappedInStream;
 
@@ -25,8 +20,8 @@ public final class ParParser extends Parser {
 
     SkillException readErrors;
 
-    ParParser(FileInputStream in, int sifaSize, PoolBuilder pb, KCC[] kccs) throws IOException {
-        super(in, sifaSize, pb, kccs);
+    ParParser(FileInputStream in, PoolBuilder pb) {
+        super(in, pb);
     }
 
     /**
@@ -98,93 +93,7 @@ public final class ParParser extends Parser {
         /**
          * *************** * T Container * ****************
          */
-        {
-            // next type ID
-            int tid = 10 + classes.size();
-            // KCC index
-            int ki = 0;
-            for (int count = in.v32(); count != 0; count--) {
-                final int kind = in.i8();
-                final FieldType<?> b1 = fieldType();
-                final FieldType<?> b2 = (3 == kind) ? fieldType() : null;
-                final String name;
-                switch (kind) {
-                case 0:
-                    name = b1 + "[]";
-                    break;
-                case 1:
-                    name = "list<" + b1 + ">";
-                    break;
-                case 2:
-                    name = "set<" + b1 + ">";
-                    break;
-                case 3:
-                    name = "map<" + b1 + "," + b2 + ">";
-                    break;
-                default:
-                    throw new IllegalStateException();
-                }
-
-                // construct known containers not present in the file
-                {
-                    int cmp = -1;
-                    while (ki < kccs.length && (cmp = name.compareTo(kccs[ki].name)) > 0) {
-                        KCC c = kccs[ki++];
-                        HullType<?> r;
-                        switch (c.kind) {
-                        case 0:
-                            r = new ArrayType<>(tid++, TBN.get(c.b1));
-                            break;
-                        case 1:
-                            r = new ListType<>(tid++, TBN.get(c.b1));
-                            break;
-                        case 2:
-                            r = new SetType<>(tid++, TBN.get(c.b1));
-                            break;
-
-                        case 3:
-                            r = new MapType<>(tid++, TBN.get(c.b1), TBN.get(c.b2));
-                            break;
-
-                        default:
-                            throw new SkillException("Illegal container constructor ID: " + c.kind);
-                        }
-                        TBN.put(r.toString(), r);
-                        r.fieldID = nextFieldID++;
-                        containers.add(r);
-                    }
-                    // construct an expected container
-                    if (0 == cmp) {
-                        ki++;
-                    }
-                }
-                HullType<?> r;
-                switch (kind) {
-                case 0:
-                    r = new ArrayType<>(tid++, b1);
-                    break;
-                case 1:
-                    r = new ListType<>(tid++, b1);
-                    break;
-                case 2:
-                    r = new SetType<>(tid++, b1);
-                    break;
-
-                case 3:
-                    r = new MapType<>(tid++, b1, b2);
-                    break;
-
-                default:
-                    throw new SkillException("Illegal container constructor ID: " + kind);
-                }
-
-                TBN.put(r.toString(), r);
-                r.fieldID = nextFieldID++;
-                fields.add(r);
-                udts.add(r);
-                containers.add(r);
-            }
-        }
+        TContainer();
 
         /**
          * *************** * T Enum * ****************

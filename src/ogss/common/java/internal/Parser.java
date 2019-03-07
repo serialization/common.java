@@ -7,6 +7,7 @@ import java.util.HashSet;
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
+import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -14,6 +15,9 @@ import ogss.common.java.internal.fieldTypes.I16;
 import ogss.common.java.internal.fieldTypes.I32;
 import ogss.common.java.internal.fieldTypes.I64;
 import ogss.common.java.internal.fieldTypes.I8;
+import ogss.common.java.internal.fieldTypes.ListType;
+import ogss.common.java.internal.fieldTypes.MapType;
+import ogss.common.java.internal.fieldTypes.SetType;
 import ogss.common.java.internal.fieldTypes.V64;
 import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.java.restrictions.NonNull;
@@ -33,7 +37,7 @@ abstract class Parser extends StateInitializer {
      */
     public static int SEQ_LIMIT = 512000;
 
-    final private PoolBuilder pb;
+    final protected PoolBuilder pb;
 
     // the index of the next known class
     protected int nextID;
@@ -60,8 +64,8 @@ abstract class Parser extends StateInitializer {
 
     public SkillException readErrors;
 
-    Parser(FileInputStream in, int sifaSize, PoolBuilder pb, KCC[] kccs) {
-        super(in, sifaSize, kccs);
+    Parser(FileInputStream in, PoolBuilder pb) {
+        super(in, pb);
         this.pb = pb;
         nextName = pb.name(0);
 
@@ -103,6 +107,8 @@ abstract class Parser extends StateInitializer {
         // T
         typeBlock();
 
+        fixContainerMD();
+
         // HD
         processData();
 
@@ -141,6 +147,30 @@ abstract class Parser extends StateInitializer {
         default:
             return udts.get(typeID - 10);
         }
+    }
+
+    /**
+     * @return the matching container name
+     */
+    static final String name(int kind, FieldType<?> b1, FieldType<?> b2) {
+        final String name;
+        switch (kind) {
+        case 0:
+            name = b1 + "[]";
+            break;
+        case 1:
+            name = "list<" + b1 + ">";
+            break;
+        case 2:
+            name = "set<" + b1 + ">";
+            break;
+        case 3:
+            name = "map<" + b1 + "," + b2 + ">";
+            break;
+        default:
+            throw new IllegalStateException();
+        }
+        return name;
     }
 
     final HashSet<TypeRestriction> typeRestrictions(int i) {
@@ -274,7 +304,7 @@ abstract class Parser extends StateInitializer {
             if (nextName == name) {
 
                 try {
-                    SIFA[nextID] = result = pb.make(nextID, classes, superDef);
+                    SIFA[nsID++] = result = pb.make(nextID, classes, superDef);
                 } catch (Exception e) {
                     throw new ParseException(in, e, "Failed to instantiate known class " + name);
                 }
@@ -300,6 +330,11 @@ abstract class Parser extends StateInitializer {
                         knownNames.add(n);
                 }
 
+                // TODO THH-compare to decide where to insert types into SIFA (the code below is likely not correct
+                // anyway)
+                // wo ist das compare?!?
+                // -> nur wenn superDef == null! ?!?
+
                 final boolean known = knownNames.contains(name);
                 if (known) {
                     // the class has a known name, has not been declared before and is not the expected class
@@ -310,7 +345,7 @@ abstract class Parser extends StateInitializer {
 
                         // create p from nextPD and our current state
                         Pool<?> p = pb.make(nextID, classes, null);
-                        SIFA[nextID] = p;
+                        SIFA[nsID++] = p;
 
                         // note: p will not receive data fields; this is exactly, what we intend here
                         // note: bpo/sizes are not set, because zero-allocation is correct there
@@ -349,6 +384,123 @@ abstract class Parser extends StateInitializer {
             result.dataFields.add(null);
     }
 
+    final void TContainer() {
+        // next type ID
+        int tid = 10 + classes.size();
+        // KCC index
+        int ki = 0;
+        // @note it is always possible to construct the next kcc from SIFA
+        int kcc = pb.kcc(ki);
+        int kkind = 0;
+        FieldType<?> kb1 = null, kb2 = null;
+        String kname = null;
+        if (-1 != kcc) {
+            kkind = (kcc >> 30) & 3;
+            kb1 = SIFA[kcc & 0x7FFF];
+            kb2 = 3 == kkind ? SIFA[(kcc >> 15) & 0x7FFF] : null;
+            kname = name(kkind, kb1, kb2);
+        }
+
+        for (int count = in.v32(); count != 0; count--) {
+            final int kind = in.i8();
+            final FieldType<?> b1 = fieldType();
+            final FieldType<?> b2 = (3 == kind) ? fieldType() : null;
+            final String name = name(kind, b1, b2);
+
+            HullType<?> r = null;
+            int cmp = -1;
+
+            // construct known containers until we hit the state of the file
+            while (-1 != kcc && (cmp = compare(name, kname)) >= 0) {
+                switch (kkind) {
+                case 0:
+                    r = new ArrayType<>(tid++, kb1);
+                    break;
+                case 1:
+                    r = new ListType<>(tid++, kb1);
+                    break;
+                case 2:
+                    r = new SetType<>(tid++, kb1);
+                    break;
+
+                case 3:
+                    r = new MapType<>(tid++, kb1, kb2);
+                    break;
+
+                default:
+                    throw new Error(); // dead
+                }
+                SIFA[nsID++] = r;
+                TBN.put(kname, r);
+                r.fieldID = nextFieldID++;
+                containers.add(r);
+
+                // move to next kcc
+                kcc = pb.kcc(++ki);
+                if (-1 != kcc) {
+                    kkind = (kcc >> 30) & 3;
+                    kb1 = SIFA[kcc & 0x7FFF];
+                    kb2 = 3 == kkind ? SIFA[(kcc >> 15) & 0x7FFF] : null;
+                    kname = name(kkind, kb1, kb2);
+                }
+
+                // break loop for perfect matches after the first iteration
+                if (0 == cmp)
+                    break;
+            }
+
+            // the last constructed kcc was not the type from the file
+            if (0 != cmp) {
+                switch (kind) {
+                case 0:
+                    r = new ArrayType<>(tid++, b1);
+                    break;
+                case 1:
+                    r = new ListType<>(tid++, b1);
+                    break;
+                case 2:
+                    r = new SetType<>(tid++, b1);
+                    break;
+
+                case 3:
+                    r = new MapType<>(tid++, b1, b2);
+                    break;
+
+                default:
+                    throw new SkillException("Illegal container constructor ID: " + kind);
+                }
+
+                TBN.put(name, r);
+                r.fieldID = nextFieldID++;
+                containers.add(r);
+            }
+            fields.add(r);
+            udts.add(r);
+        }
+    }
+
+    /**
+     * Correct and more efficient string compare.
+     */
+    public static int compare(String L, String R) {
+        final int len1 = L.length();
+        final int len2 = R.length();
+        if (len1 != len2)
+            return len1 - len2;
+
+        char v1[] = L.toCharArray();
+        char v2[] = R.toCharArray();
+
+        for (int i = 0; i < len1; i++) {
+            char c1 = v1[i];
+            char c2 = v2[i];
+            if (c1 != c2) {
+                return c1 - c2;
+            }
+        }
+        return 0;
+    }
+
     /**
      * parse T and F
      */
@@ -377,7 +529,7 @@ abstract class Parser extends StateInitializer {
             while (null != (kfn = p.KFN(ki))) {
                 // is it the next known field?
                 if (name == kfn) {
-                    if ((f = p.KFC(ki++, TBN, af, nextFieldID++)) instanceof AutoField)
+                    if ((f = p.KFC(ki++, SIFA, af, nextFieldID)) instanceof AutoField)
                         throw new ParseException(in, null,
                                 "File contains a field conflicting with transient field " + p.name + "." + name);
 
@@ -385,24 +537,39 @@ abstract class Parser extends StateInitializer {
                 }
 
                 // else, it might be an unknown field
-                if (name.compareTo(kfn) < 0) {
+                if (compare(name, kfn) < 0) {
                     // create unknown field
-                    f = new LazyField<>(t, name, nextFieldID++, p);
+                    f = new LazyField<>(t, name, nextFieldID, p);
                     break;
                 }
 
                 // else, it is a known fields not contained in the file
                 Strings.add(kfn);
 
-                if (p.KFC(ki++, TBN, af, nextFieldID) instanceof AutoField)
+                f = p.KFC(ki++, SIFA, af, nextFieldID);
+                if (f instanceof AutoField)
                     af--;
-                else
+                else {
                     nextFieldID++;
+
+                    // increase maxDeps
+                    if (f.type instanceof HullType<?>) {
+                        ((HullType<?>) f.type).maxDeps++;
+                    }
+                }
+                f = null;
             }
 
             if (null == f) {
                 // no known fields left, so it is obviously unknown
-                f = new LazyField<>(t, name, nextFieldID++, p);
+                f = new LazyField<>(t, name, nextFieldID, p);
+            }
+
+            nextFieldID++;
+
+            // increase maxDeps
+            if (f.type instanceof HullType<?>) {
+                ((HullType<?>) f.type).maxDeps++;
             }
 
             f.addRestriction(rest);

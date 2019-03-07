@@ -23,6 +23,23 @@ public abstract class PoolBuilder {
         throw new Error("internal error");
     }
 
+    protected PoolBuilder(int sifaSize) {
+        this.sifaSize = sifaSize;
+    }
+
+    /**
+     * The size of sifa as constructed by this PoolBuilder.
+     */
+    final int sifaSize;
+
+    /**
+     * Known Container Constructor. Coded as kind|2 + sifaID|15 + sifaID|15. The IDs are relative to SIFA rather than
+     * udts (note: has to include low IDs, i.e. sifaID is a shifted index)
+     * 
+     * @return -1 if there are no more KCCs
+     */
+    protected abstract int kcc(int id);
+
     /**
      * @return the name of the pool corresponding to the argument known id; return null if not a valid id
      */
