@@ -63,16 +63,13 @@ final public class Creator extends StateInitializer {
 
             // Create Fields
             for (Pool<?> p : classes) {
-                int af = -1;
                 String f;
                 for (int i = 0; null != (f = p.KFN(i)); i++) {
                     Strings.add(f);
 
-                    final FieldDeclaration<?, ?> fd = p.KFC(i, SIFA, af, nextFieldID);
+                    final FieldDeclaration<?, ?> fd = p.KFC(i, SIFA, nextFieldID);
 
-                    if (fd instanceof AutoField)
-                        af--;
-                    else {
+                    if (!(fd instanceof AutoField)) {
                         nextFieldID++;
 
                         // increase maxDeps

@@ -509,14 +509,13 @@ abstract class Parser extends StateInitializer {
     final void readFields(Pool<?> p) {
         // we have not yet seen a known field
         int ki = 0;
-        // we have to count seen auto fields
-        int af = -1;
 
         // we pass the size by adding null's for each expected field in the stream because AL.clear does not return
         // its backing array, i.e. we will likely not resize it that way
         int idx = p.dataFields.size();
 
         p.dataFields.clear();
+        String kfn = p.KFN(0);
         while (0 != idx--) {
             // read field
             final String name = Strings.r(in);
@@ -524,14 +523,15 @@ abstract class Parser extends StateInitializer {
             HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
             FieldDeclaration<?, ?> f = null;
 
-            String kfn;
-
             while (null != (kfn = p.KFN(ki))) {
                 // is it the next known field?
                 if (name == kfn) {
-                    if ((f = p.KFC(ki++, SIFA, af, nextFieldID)) instanceof AutoField)
-                        throw new ParseException(in, null,
-                                "File contains a field conflicting with transient field " + p.name + "." + name);
+                    if ((f = p.KFC(ki++, SIFA, nextFieldID)) instanceof AutoField)
+                        throw new ParseException(in, null, "Found transient field %s.%s in the file.", p.name, name);
+
+                    if (f.type != t)
+                        throw new ParseException(in, null, "Field %s should have type %s.%s but has type %s", p.name,
+                                f.name, f.type, t);
 
                     break;
                 }
@@ -546,10 +546,8 @@ abstract class Parser extends StateInitializer {
                 // else, it is a known fields not contained in the file
                 Strings.add(kfn);
 
-                f = p.KFC(ki++, SIFA, af, nextFieldID);
-                if (f instanceof AutoField)
-                    af--;
-                else {
+                f = p.KFC(ki++, SIFA, nextFieldID);
+                if (!(f instanceof AutoField)) {
                     nextFieldID++;
 
                     // increase maxDeps
@@ -576,6 +574,13 @@ abstract class Parser extends StateInitializer {
 
             fields.add(f);
         }
+
+        // create remaining auto fields
+        if (kfn != null)
+            do {
+                // nextID wont be used anyway
+                p.KFC(ki, SIFA, 0);
+            } while (null != p.KFN(++ki));
     }
 
     /**
