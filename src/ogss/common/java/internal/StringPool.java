@@ -2,7 +2,6 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -36,29 +35,15 @@ final public class StringPool extends HullType<String> implements StringAccess {
     final HashSet<String> knownStrings = new HashSet<>();
 
     /**
-     * ID ⇀ (absolute offset, length) will be used if idMap contains a null reference
+     * ID ⇀ (absolute offset|32, length|32) will be used if idMap contains a null reference
      *
      * @note there is a fake entry at ID 0
-     * TODO replace by long[]; add a second array for hullStrings
      */
-    final ArrayList<Position> stringPositions;
-
-    // TODO replace by a single long
-    final static class Position {
-        public Position(int l, int i) {
-            absoluteOffset = l;
-            length = i;
-        }
-
-        public int absoluteOffset;
-        public int length;
-    }
+    long[] positions;
 
     StringPool(FileInputStream input) {
         super(typeID);
         rb = null == input ? null : input.map(-1);
-        stringPositions = new ArrayList<>();
-        stringPositions.add(new Position(-1, -1));
     }
 
     void loadLazyData() {
@@ -169,21 +154,37 @@ final public class StringPool extends HullType<String> implements StringAccess {
      * @return the position behind the string block
      */
     int S(int count, InStream in) {
+        if (0 == count)
+            return in.position();
+
         // read offsets
         int[] offsets = new int[count];
         for (int i = 0; i < count; i++) {
             offsets[i] = in.v32();
         }
 
+        // resize string positions
+        int spi;
+        if (null == positions) {
+            positions = new long[1 + count];
+            positions[0] = -1L;
+            spi = 1;
+        } else {
+            spi = positions.length;
+            long[] sp = new long[spi + count];
+            System.arraycopy(positions, 0, sp, 0, spi);
+            positions = sp;
+        }
+
         // store offsets
         // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
         // is done using absolute sizes
-        int last = in.position(), off;
+        int last = in.position(), len;
         for (int i = 0; i < count; i++) {
-            off = offsets[i];
-            stringPositions.add(new StringPool.Position(last, off));
+            len = offsets[i];
+            positions[spi++] = (((long) last) << 32L) | len;
             idMap.add(null);
-            last += off;
+            last += len;
         }
 
         return last;
@@ -216,14 +217,14 @@ final public class StringPool extends HullType<String> implements StringAccess {
             try {
                 result = idMap.get(index);
             } catch (IndexOutOfBoundsException e) {
-                throw new InvalidPoolIndexException(index, stringPositions.size(), "string", e);
+                throw new InvalidPoolIndexException(index, positions.length, "string", e);
             }
             if (null != result)
                 return result;
 
             // we have to load the string from disk
-            Position off = stringPositions.get(index);
-            byte[] chars = rb.bytes(off.absoluteOffset, off.length);
+            long off = positions[index];
+            byte[] chars = rb.bytes((int) (off >> 32L), (int) off);
 
             result = new String(chars, utf8).intern();
             idMap.set(index, result);

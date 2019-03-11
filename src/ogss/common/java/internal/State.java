@@ -13,7 +13,6 @@ import ogss.common.java.api.Access;
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.SkillException;
 import ogss.common.java.api.StringAccess;
-import ogss.common.java.internal.fieldTypes.AnyRefType;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
 
@@ -30,10 +29,17 @@ public abstract class State implements AutoCloseable {
     public String guard;
 
     // types by skill name
-    protected final HashMap<String, FieldType<?>> typeByName;
+    private HashMap<String, FieldType<?>> TBN;
 
     public Pool<?> pool(String name) {
-        return (Pool<?>) typeByName.get(name);
+        if(null == TBN) {
+            TBN = new HashMap<>();
+            
+            for(Pool<?> p : classes) {
+                TBN.put(p.name, p);
+            }
+        }
+        return (Pool<?>) TBN.get(name);
     }
 
     /**
@@ -105,8 +111,8 @@ public abstract class State implements AutoCloseable {
         this.canWrite = init.canWrite;
         this.classes = init.classes;
         this.containers = init.containers;
-        this.typeByName = init.TBN;
         this.annotationType = init.Annotation;
+        annotationType.owner = this;
 
         for (Pool<?> p : classes)
             p.owner = this;
@@ -121,11 +127,11 @@ public abstract class State implements AutoCloseable {
         if (null != target)
             try {
                 if (0 < target.ID)
-                    return target == ((Pool<?>) typeByName.get(target.typeName())).get(target.ID);
+                    return target == ((Pool<?>) TBN.get(target.typeName())).get(target.ID);
                 else if (0 == target.ID)
                     return true; // will evaluate to a null pointer if stored
 
-                return ((Pool<?>) typeByName.get(target.typeName())).newObjects.contains(target);
+                return ((Pool<?>) TBN.get(target.typeName())).newObjects.contains(target);
             } catch (Exception e) {
                 // out of bounds or similar mean its not one of ours
                 return false;
@@ -140,7 +146,7 @@ public abstract class State implements AutoCloseable {
      */
     final public void delete(Obj target) {
         if (null != target && target.ID != 0) {
-            ((Pool<?>) typeByName.get(target.typeName())).delete(target);
+            ((Pool<?>) TBN.get(target.typeName())).delete(target);
         }
     }
 

@@ -1,16 +1,10 @@
-package ogss.common.java.internal.fieldTypes;
+package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import ogss.common.java.internal.ByRefType;
-import ogss.common.java.internal.FieldType;
-import ogss.common.java.internal.Obj;
-import ogss.common.java.internal.Pool;
-import ogss.common.java.internal.State;
-import ogss.common.java.internal.StringPool;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 
@@ -28,7 +22,7 @@ public final class AnyRefType extends ByRefType<Object> {
 
     private final ArrayList<Pool<?>> types;
 
-    private final HashMap<String, FieldType<?>> typeByName;
+    State owner;
 
     /**
      * @param types
@@ -37,10 +31,9 @@ public final class AnyRefType extends ByRefType<Object> {
      *       implement reflective annotation parsing correctly.
      * @note can not take a state as argument, because it may not exist yet
      */
-    public AnyRefType(ArrayList<Pool<?>> types, HashMap<String, FieldType<?>> typeByName) {
+    public AnyRefType(ArrayList<Pool<?>> types) {
         super(typeID);
         this.types = types;
-        this.typeByName = typeByName;
     }
 
     @Override
@@ -51,7 +44,7 @@ public final class AnyRefType extends ByRefType<Object> {
 
         final int f = in.v32();
         if (1 == t)
-            return ((StringPool) typeByName.get("string")).get(f);
+            return owner.Strings().get(f);
 
         // TODO fix this!
         return types.get(t - 2).get(f);
@@ -66,11 +59,11 @@ public final class AnyRefType extends ByRefType<Object> {
         }
 
         if (ref instanceof Obj) {
-            out.v64(typeByName.get(((Obj) ref).typeName()).typeID() - typeID);
+            out.v64(owner.pool(((Obj) ref).typeName()).typeID() - typeID);
             out.v64(((Obj) ref).ID());
         } else if (ref instanceof String) {
             out.i8((byte) 1);
-            out.v64(((StringPool) typeByName.get("string")).id((String) ref));
+            out.v64(owner.strings.id((String) ref));
         } else {
             throw new Error("TODO");
         }
@@ -96,7 +89,7 @@ public final class AnyRefType extends ByRefType<Object> {
 
     @Override
     public State owner() {
-        throw new Error("TODO");
+        return owner;
     }
 
     @Override

@@ -46,9 +46,9 @@ public abstract class PoolBuilder {
     protected abstract String name(int id);
 
     /**
-     * @param pass
-     *            superDef, if known; if a check is required, is has to be performed by the caller!
+     * Create a new base pool.
+     * 
      * @return an instance of the pool corresponding to the argument known id
      */
-    protected abstract Pool<?> make(int id, ArrayList<Pool<?>> classes, Pool<?> superDef);
+    protected abstract Pool<?> make(int id, int index);
 }

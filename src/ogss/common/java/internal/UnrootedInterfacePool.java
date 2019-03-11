@@ -3,7 +3,6 @@ package ogss.common.java.internal;
 import java.io.IOException;
 
 import ogss.common.java.api.GeneralAccess;
-import ogss.common.java.internal.fieldTypes.AnyRefType;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
 

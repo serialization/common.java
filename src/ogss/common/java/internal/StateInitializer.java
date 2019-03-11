@@ -8,7 +8,6 @@ import java.util.HashMap;
 
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.SkillException;
-import ogss.common.java.internal.fieldTypes.AnyRefType;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -62,7 +61,6 @@ public abstract class StateInitializer {
     // types
     final ArrayList<Pool<?>> classes;
     final ArrayList<HullType<?>> containers;
-    final HashMap<String, FieldType<?>> TBN = new HashMap<>();
     final AnyRefType Annotation;
 
     /**
@@ -99,7 +97,8 @@ public abstract class StateInitializer {
         classes = new ArrayList<>(pb.sifaSize);
         containers = new ArrayList<>();
 
-        Annotation = new AnyRefType(classes, TBN);
+        // TODO sane allocation / implementation of AnyRefType
+        Annotation = new AnyRefType(classes);
 
         SIFA[0] = BoolType.get();
         SIFA[1] = I8.get();

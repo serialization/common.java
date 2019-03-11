@@ -5,7 +5,6 @@ import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
-import ogss.common.java.internal.fieldTypes.SingleArgumentType;
 
 /**
  * Create an empty state. The approach here is different from the generated initialization code in SKilL to reduce the
@@ -22,12 +21,49 @@ final public class Creator extends StateInitializer {
 
         try {
             // Create Classes
-            for (int i = 0; null != pb.name(i); i++) {
-                Pool<?> p = pb.make(i, classes, null);
-                SIFA[nsID++] = p;
-                classes.add(p);
-                TBN.put(p.name, p);
-                Strings.add(p.name);
+            {
+                int index = 0;
+                int THH = 0;
+                // the index of the next known class at index THH
+                // @note to self: in C++ this should be string*[32]
+                final int[] nextID = new int[32];
+                String nextName = pb.name(0);
+
+                Pool<?> p = null, last = null;
+                while (null != nextName) {
+                    if (0 == THH) {
+                        last = null;
+                        p = pb.make(nextID[0]++, index++);
+                    } else {
+                        p = p.makeSub(nextID[THH]++, index++);
+                    }
+
+                    SIFA[nsID++] = p;
+                    classes.add(p);
+                    Strings.add(p.name);
+
+                    // set next
+                    if (null != last) {
+                        last.next = p;
+                    }
+                    last = p;
+
+                    // move to next pool
+                    {
+                        // try to move down to our first child
+                        nextName = p.nameSub(nextID[++THH] = 0);
+
+                        // move up until we find a next pool
+                        while (null == nextName && THH != 1) {
+                            p = p.superPool;
+                            nextName = p.nameSub(nextID[--THH]);
+                        }
+                        // check at base type level
+                        if (null == nextName) {
+                            nextName = pb.name(nextID[--THH]);
+                        }
+                    }
+                }
             }
 
             // Execute known container constructors
@@ -55,7 +91,6 @@ final public class Creator extends StateInitializer {
                         throw new Error(); // dead
                     }
                     SIFA[nsID++] = r;
-                    TBN.put(r.toString(), r);
                     r.fieldID = nextFieldID++;
                     containers.add(r);
                 }
@@ -84,28 +119,6 @@ final public class Creator extends StateInitializer {
         }
 
         fixContainerMD();
-
-        // set next for all pools
-        {
-            int i = classes.size() - 2;
-            if (i >= 0) {
-                Pool<?> n, p = classes.get(i + 1);
-                // propagate information in reverse order
-                // i is the pool where next is set, hence we skip the last pool
-                do {
-                    n = p;
-                    p = classes.get(i);
-
-                    // by compactness, if n has a super pool, p is the previous pool
-                    if (null != n.superPool) {
-                        // raw cast, because we cannot prove here that it is B, because wo do not want to introduce a
-                        // function as quantifier which would not provide any benefit anyway
-                        p.next = n;
-                    }
-
-                } while (--i >= 0);
-            }
-        }
     }
 
 }

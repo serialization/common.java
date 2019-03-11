@@ -9,7 +9,7 @@ import ogss.common.java.api.SkillException;
  * 
  * @author Timm Felden
  */
-public class SubPool<T extends Obj> extends Pool<T> {
+public final class SubPool<T extends Obj> extends Pool<T> {
     /**
      * The class of instances of this pool
      */
@@ -21,7 +21,7 @@ public class SubPool<T extends Obj> extends Pool<T> {
     }
 
     @Override
-    protected SubPool<T> makeSubPool(int index, String name) {
+    protected SubPool<T> makeSub(int index, String name) {
         return new SubPool<>(index, name, cls, this);
     }
 

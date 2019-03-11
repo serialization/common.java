@@ -3,6 +3,7 @@ package ogss.common.java.internal;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 
 import ogss.common.java.api.SkillException;
 import ogss.common.java.internal.exceptions.ParseException;
@@ -39,22 +40,10 @@ abstract class Parser extends StateInitializer {
 
     final protected PoolBuilder pb;
 
-    // the index of the next known class
-    protected int nextID;
-    // the nextName, null if there is no next PD
-    protected String nextName;
-
-    /**
-     * name of all known classes to distinguish between known and unknown classes from the file spec
-     * 
-     * @note created on first use
-     */
-    protected HashSet<String> knownNames;
-
     /**
      * This buffer provides the association of file fieldID to field.
      */
-    protected ArrayList<Object> fields = new ArrayList<>();
+    protected final ArrayList<Object> fields = new ArrayList<>();
 
     /**
      * User defined types. This array is used to resolve type IDs while parsing. The type IDs assigned to created
@@ -67,7 +56,6 @@ abstract class Parser extends StateInitializer {
     Parser(FileInputStream in, PoolBuilder pb) {
         super(in, pb);
         this.pb = pb;
-        nextName = pb.name(0);
 
         // G
         {
@@ -257,131 +245,188 @@ abstract class Parser extends StateInitializer {
         return rval;
     }
 
-    final void typeDefinition() {
+    /**
+     * Parse type definitions and merge them into the known type hierarchy
+     */
+    final void typeDefinitions() {
+        int index = 0;
+        int THH = 0;
+        // the index of the next known class at index THH
+        final int[] nextID = new int[32];
+        // the nextName, null if there is no next PD
+        String nextName = pb.name(0);
 
-        // name
-        final String name = Strings.r(in);
-        if (null == name)
-            throw new ParseException(in, null, "corrupted file: nullptr in type name");
+        Pool<?> p = null, last = null;
+        Pool<?> result = null;
 
-        // static size
-        final int count = in.v32();
+        // Name of all seen class names to prevent duplicate allocation of the same pool.
+        final IdentityHashMap<String, Object> seenNames = new IdentityHashMap<>();
+        int TCls = in.v32();
 
-        // attr
-        final HashSet<TypeRestriction> attr;
-        {
-            final int rc = in.v32();
-            if (0 == rc)
-                attr = new HashSet<>();
-            else
-                attr = typeRestrictions(rc);
-        }
+        // file state
+        String name = null;
+        int count = 0;
+        Pool<?> superDef = null;
+        int bpo = 0;
 
-        // super
-        final Pool<?> superDef;
-        final int bpo;
-        {
-            final int superID = in.v32();
-            if (0 == superID) {
-                superDef = null;
-                bpo = 0;
-            } else if (superID > classes.size())
-                throw new ParseException(in, null,
-                        "Type %s refers to an ill-formed super type.\n"
-                                + "          found: %d; current number of other types %d",
-                        name, superID, classes.size());
-            else {
-                superDef = classes.get(superID - 1);
-                bpo = in.v32();
-            }
-        }
+        for (boolean moreFile = TCls > 0; (moreFile = TCls > 0) || null != nextName; TCls--) {
+            // read next pool from file if required
+            if (moreFile) {
+                // name
+                name = Strings.r(in);
+                if (null == name)
+                    throw new ParseException(in, null, "corrupted file: nullptr in type name");
 
-        // allocate pool
-        final Pool<?> result;
-        while (true) {
+                // static size
+                count = in.v32();
 
-            // check common case, i.e. the next class is the expected one
-            if (nextName == name) {
-
-                try {
-                    SIFA[nsID++] = result = pb.make(nextID, classes, superDef);
-                } catch (Exception e) {
-                    throw new ParseException(in, e, "Failed to instantiate known class " + name);
-                }
-                if (superDef != result.superPool) {
-                    throw new ParseException(in, null, "Class %s has no super type but the file defines super type %s",
-                            name, superDef.name);
+                // attr
+                final HashSet<TypeRestriction> attr;
+                {
+                    final int rc = in.v32();
+                    if (0 == rc)
+                        attr = new HashSet<>();
+                    else
+                        attr = typeRestrictions(rc);
                 }
 
-                // move on
-                nextName = pb.name(++nextID);
-
-            } else {
-                // ensure that the name has not been used before
-                if (TBN.containsKey(name)) {
-                    throw new ParseException(in, null, "Duplicate definition of class " + name);
-                }
-
-                // ensure that knownNames is filled with known names
-                if (null == knownNames) {
-                    knownNames = new HashSet<>();
-                    String n;
-                    for (int i = 0; null != (n = pb.name(i)); i++)
-                        knownNames.add(n);
-                }
-
-                // TODO THH-compare to decide where to insert types into SIFA (the code below is likely not correct
-                // anyway)
-                // wo ist das compare?!?
-                // -> nur wenn superDef == null! ?!?
-
-                final boolean known = knownNames.contains(name);
-                if (known) {
-                    // the class has a known name, has not been declared before and is not the expected class
-                    // therefore, we have to allocate all classes
-                    // @note nextPD cannot be null here, because there still is a known class which is not a duplicate
-                    while (nextName != name) {
-                        Strings.add(nextName);
-
-                        // create p from nextPD and our current state
-                        Pool<?> p = pb.make(nextID, classes, null);
-                        SIFA[nsID++] = p;
-
-                        // note: p will not receive data fields; this is exactly, what we intend here
-                        // note: bpo/sizes are not set, because zero-allocation is correct there
-
-                        classes.add(p);
-                        TBN.put(p.name, p);
-                        // move on
-                        nextName = pb.name(++nextID);
+                // super
+                {
+                    final int superID = in.v32();
+                    if (0 == superID) {
+                        superDef = null;
+                        bpo = 0;
+                    } else if (superID > classes.size())
+                        throw new ParseException(in, null,
+                                "Type %s refers to an ill-formed super type.\n"
+                                        + "          found: %d; current number of other types %d",
+                                name, superID, classes.size());
+                    else {
+                        superDef = classes.get(superID - 1);
+                        bpo = in.v32();
                     }
-                    // the next class is that obtained from file, so jump back to the start of the loop
-                    continue;
-
-                }
-
-                // the pool is not known
-                final int idx = classes.size();
-                if (null == superDef) {
-                    result = new SubPool<>(idx, name, UnknownObject.class, null);
-                } else {
-                    result = superDef.makeSubPool(idx, name);
                 }
             }
 
-            udts.add(result);
-            classes.add(result);
-            TBN.put(name, result);
-            break;
+            // allocate pool
+            boolean keepKnown, keepFile = true;
+            // TODO do while -> keepFile = TCls != 0
+            do {
+                keepKnown = null == nextName;
+
+                if (moreFile) {
+                    // check common case, i.e. the next class is the expected one
+                    if (!keepKnown) {
+                        if (superDef == p) {
+                            if (name == nextName) {
+                                // the next pool is the expected one
+                                keepFile = keepKnown = false;
+
+                            } else if (compare(name, nextName) < 0) {
+                                // we have to advance the file pool
+                                keepFile = false;
+                                keepKnown = true;
+
+                            } else {
+                                // we have to advance known pools
+                                keepKnown = false;
+                            }
+                        } else {
+
+                            // depending on the files super THH, we can decide if we have to process the files type or
+                            // our
+                            // type first;
+                            // invariant: p != superDef ⇒ superDef.THH != THH
+                            // invariant: ∀p. p.next.THH <= p.THH + 1
+                            // invariant: ∀p. p.Super = null <=> p.THH = 0
+                            if (null != superDef && superDef.THH < THH) {
+                                // we have to advance known pools
+                                keepKnown = false;
+
+                            } else {
+                                // we have to advance the file pool
+                                keepFile = false;
+                                keepKnown = true;
+                            }
+                        }
+                    } else {
+                        // there are no more known pools
+                        keepFile = false;
+                    }
+                } else if (keepKnown) {
+                    // we are done
+                    return;
+                }
+
+                // create the next pool
+                if (keepKnown) {
+                    // an unknown pool has to be created
+                    if (null == superDef) {
+                        last = null;
+                        result = new SubPool<>(index++, name, UnknownObject.class, null);
+                    } else {
+                        result = superDef.makeSub(index++, name);
+                    }
+                    result.bpo = bpo;
+                    udts.add(result);
+                    classes.add(result);
+
+                    // set next
+                    if (null != last) {
+                        last.next = result;
+                    }
+                    last = result;
+                } else {
+                    if (null == p) {
+                        last = null;
+                        p = pb.make(nextID[0]++, index++);
+                    } else {
+                        p = p.makeSub(nextID[THH]++, index++);
+                    }
+                    // @note this is sane, because it is 0 if p is not part of the type hierarchy of superDef
+                    p.bpo = bpo;
+                    SIFA[nsID++] = p;
+                    classes.add(p);
+
+                    if (!keepFile) {
+                        result = p;
+                        udts.add(result);
+                    } else
+                        Strings.add(p.name);
+
+                    // set next
+                    if (null != last) {
+                        last.next = p;
+                    }
+                    last = p;
+
+                    // move to next pool
+                    {
+                        // try to move down to our first child
+                        nextName = p.nameSub(nextID[++THH] = 0);
+
+                        // move up until we find a next pool
+                        while (null == nextName && THH != 1) {
+                            p = p.superPool;
+                            nextName = p.nameSub(nextID[--THH]);
+                        }
+                        // check at base type level
+                        if (null == nextName) {
+                            p = null;
+                            nextName = pb.name(nextID[THH = 0]);
+                        }
+                    }
+                }
+            } while (keepFile);
+
+            result.cachedSize = result.staticDataInstances = count;
+
+            // add a null value for each data field to ensure that the temporary size of data fields matches those
+            // from file
+            int fields = in.v32();
+            while (fields-- != 0)
+                result.dataFields.add(null);
         }
-
-        result.bpo = bpo;
-        result.cachedSize = result.staticDataInstances = count;
-
-        // add a null value for each data field to ensure that the temporary size of data fields matches those from file
-        int fields = in.v32();
-        while (fields-- != 0)
-            result.dataFields.add(null);
     }
 
     final void TContainer() {
@@ -431,7 +476,6 @@ abstract class Parser extends StateInitializer {
                     throw new Error(); // dead
                 }
                 SIFA[nsID++] = r;
-                TBN.put(kname, r);
                 r.fieldID = nextFieldID++;
                 containers.add(r);
 
@@ -470,7 +514,6 @@ abstract class Parser extends StateInitializer {
                     throw new SkillException("Illegal container constructor ID: " + kind);
                 }
 
-                TBN.put(name, r);
                 r.fieldID = nextFieldID++;
                 containers.add(r);
             }

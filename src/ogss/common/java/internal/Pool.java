@@ -3,7 +3,6 @@ package ogss.common.java.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -271,10 +270,24 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     }
 
     /**
-     * used internally for type forest construction
+     * Get the name of known sub pool with argument local id. Return null, if id is invalid.
+     */
+    protected String nameSub(int id) {
+        return null;
+    }
+
+    /**
+     * Create the known sub pool with argument local id. Return null, if id is invalid.
+     */
+    protected Pool<? extends T> makeSub(int id, int index) {
+        return null;
+    }
+
+    /**
+     * Create an unknown sub pool with the argument name
      */
     @SuppressWarnings("unchecked")
-    protected Pool<? extends T> makeSubPool(int index, String name) {
+    protected Pool<? extends T> makeSub(int index, String name) {
         return (Pool<? extends T>) new SubPool<UnknownObject>(index, name, UnknownObject.class,
                 (Pool<? super UnknownObject>) this);
     }

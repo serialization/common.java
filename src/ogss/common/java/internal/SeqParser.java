@@ -27,8 +27,7 @@ public final class SeqParser extends Parser {
         /**
          * *************** * T Class * ****************
          */
-        for (int count = in.v32(); count != 0; count--)
-            typeDefinition();
+        typeDefinitions();
 
         // calculate cached size and next for all pools
         {
@@ -45,13 +44,7 @@ public final class SeqParser extends Parser {
 
                         // by compactness, if n has a super pool, p is the previous pool
                         if (null != n.superPool) {
-                            // raw cast, because we cannot prove here that it is B, because we do not want to introduce
-                            // a function as quantifier which would not provide any benefit anyway
-                            p.next = n;
                             n.superPool.cachedSize += n.cachedSize;
-                            if (0 == n.bpo) {
-                                n.bpo = p.bpo;
-                            }
                         }
 
                     } while (--i >= 0);
