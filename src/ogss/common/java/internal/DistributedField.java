@@ -25,15 +25,8 @@ public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Re
     @Override
     protected void read(int i, final int h, MappedInStream in) {
         final Obj[] d = owner.basePool.data;
-        if (type instanceof BoolType) {
-            System.err.println("TODO bool in wrapper");
-            for (; i != h; i++) {
-                data.put(d[i], type.r(in));
-            }
-        } else {
-            for (; i != h; i++) {
-                data.put(d[i], type.r(in));
-            }
+        for (; i != h; i++) {
+            data.put(d[i], type.r(in));
         }
     }
 
