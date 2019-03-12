@@ -25,7 +25,7 @@ public final class EnumPool<T extends Enum<T>> extends FieldType {
     /**
      * values from the perspective of the files specification, i.e. this table is used to decode values from disc
      */
-    private final EnumProxy<T>[] fileValues;
+    final EnumProxy<T>[] fileValues;
 
     /**
      * values from the perspective of the tools specification, i.e. this table is used to convert enum values to proxies
@@ -41,8 +41,8 @@ public final class EnumPool<T extends Enum<T>> extends FieldType {
 
         if (null == values) {
             // only known values, none from file
-            this.fileValues = null;
-            this.values = this.staticValues = new EnumProxy[known.length];
+            // @note we set file values anyway to get sane default values
+            this.fileValues = this.values = this.staticValues = new EnumProxy[known.length];
             for (int ki = 0; ki < known.length; ki++) {
                 staticValues[ki] = new EnumProxy<T>(known[ki], this, known[ki].toString(), ki);
             }

@@ -62,10 +62,33 @@ public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Re
 
     @Override
     public T get(Obj ref) {
-        if (-1 == ref.ID)
+        if (ref.ID < 0)
             return newData.get(ref);
 
-        return data.get(ref);
+        T r = data.get(ref);
+        // fix returned values for dropped distributed fields
+        if (null == r) {
+            switch (type.typeID) {
+            case 0:
+                return (T) Boolean.FALSE;
+            case 1:
+                return (T) (Byte) (byte) 0;
+            case 2:
+                return (T) (Short) (short) 0;
+            case 3:
+                return (T) (Integer) 0;
+            case 4:
+            case 5:
+                return (T) (Long) 0L;
+            case 6:
+                return (T) (Float) 0f;
+            case 7:
+                return (T) (Double) 0.0;
+            }
+            if (type instanceof EnumPool<?>)
+                return (T) ((EnumPool<?>) type).fileValues[0];
+        }
+        return r;
     }
 
     @Override

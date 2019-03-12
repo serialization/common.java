@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.util.Iterator;
 
-public final class FieldIterator implements Iterator<FieldDeclaration<?, ?>> {
+public final class FieldIterator implements Iterator<FieldDeclaration<?, ?>>, Iterable<FieldDeclaration<?, ?>> {
 
     private Pool<?> p;
     private int i;
@@ -34,6 +34,11 @@ public final class FieldIterator implements Iterator<FieldDeclaration<?, ?>> {
             } while (p != null && i == 0 && 0 == p.dataFields.size());
         }
         return f;
+    }
+
+    @Override
+    public Iterator<FieldDeclaration<?, ?>> iterator() {
+        return this;
     }
 
 }

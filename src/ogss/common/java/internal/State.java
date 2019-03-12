@@ -31,6 +31,9 @@ public abstract class State implements AutoCloseable {
     // types by skill name
     private HashMap<String, FieldType<?>> TBN;
 
+    /**
+     * @return pool for a given type name
+     */
     public Pool<?> pool(String name) {
         if (null == TBN) {
             TBN = new HashMap<>();
@@ -40,6 +43,18 @@ public abstract class State implements AutoCloseable {
             }
         }
         return (Pool<?>) TBN.get(name);
+    }
+
+    /**
+     * @return the pool corresponding to the dynamic type of the argument Obj
+     */
+    public Pool<?> pool(Obj ref) {
+        if (null == ref) {
+            return null;
+        } else if (ref instanceof NamedObj)
+            return ((NamedObj) ref).τp();
+        else
+            return (Pool<?>) SIFA[ref.stid()];
     }
 
     /**
@@ -89,10 +104,7 @@ public abstract class State implements AutoCloseable {
      * @return the type name of the type of an object.
      */
     public final String typeName(Obj ref) {
-        int stid = ref.stid();
-        if (-1 != stid)
-            return ((Pool<?>) SIFA[stid]).name;
-        return ((NamedObj) ref).τp().name;
+        return pool(ref).name;
     }
 
     // types in type order
@@ -139,8 +151,7 @@ public abstract class State implements AutoCloseable {
     public final boolean contains(Obj ref) {
         if (null != ref || 0 == ref.ID)
             try {
-                int stid = ref.stid();
-                Pool<?> p = -1 != stid ? (Pool<?>) SIFA[stid] : ((NamedObj) ref).τp();
+                Pool<?> p = pool(ref);
 
                 if (0 < ref.ID)
                     return ref == p.data[ref.ID - 1];
@@ -160,9 +171,7 @@ public abstract class State implements AutoCloseable {
      */
     final public void delete(Obj ref) {
         if (null != ref && ref.ID != 0) {
-            int stid = ref.stid();
-            Pool<?> p = -1 != stid ? (Pool<?>) SIFA[stid] : ((NamedObj) ref).τp();
-            p.delete(ref);
+            pool(ref).delete(ref);
         }
     }
 

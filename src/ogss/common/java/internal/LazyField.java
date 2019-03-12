@@ -3,15 +3,11 @@ package ogss.common.java.internal;
 import ogss.common.streams.MappedInStream;
 
 /**
- * The field is distributed and loaded on demand. Unknown fields are lazy as
- * well.
+ * The field is distributed and loaded on demand. Unknown fields are lazy as well.
  *
  * @author Timm Felden
- * @note implementation abuses a distributed field that can be accessed iff
- *       there are no data chunks to be processed
- * 
- * @note offset and write methods will not be overwritten, because forcing has
- *       to happen even before resetChunks
+ * @note implementation abuses a distributed field that can be accessed iff there are no data chunks to be processed
+ * @note offset and write methods will not be overwritten, because forcing has to happen even before resetChunks
  */
 public final class LazyField<T, Ref extends Obj> extends DistributedField<T, Ref> {
 
@@ -46,7 +42,7 @@ public final class LazyField<T, Ref extends Obj> extends DistributedField<T, Ref
 
     @Override
     public T get(Obj ref) {
-        if (-1 == ref.ID)
+        if (ref.ID < 0)
             return newData.get(ref);
 
         if (null != buffer)
