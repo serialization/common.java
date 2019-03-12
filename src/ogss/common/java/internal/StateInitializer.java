@@ -61,6 +61,7 @@ public abstract class StateInitializer {
     // types
     final ArrayList<Pool<?>> classes;
     final ArrayList<HullType<?>> containers;
+    final ArrayList<EnumPool<?>> enums;
     final AnyRefType Annotation;
 
     /**
@@ -96,6 +97,7 @@ public abstract class StateInitializer {
 
         classes = new ArrayList<>(pb.sifaSize);
         containers = new ArrayList<>();
+        enums = new ArrayList<>();
 
         // TODO sane allocation / implementation of AnyRefType
         Annotation = new AnyRefType(classes);

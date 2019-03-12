@@ -67,8 +67,8 @@ final public class Creator extends StateInitializer {
             }
 
             // Execute known container constructors
+            int tid = 10 + classes.size();
             {
-                int tid = 10 + classes.size();
                 int kcc;
                 for (int i = 0; -1 != (kcc = pb.kcc(i)); i++) {
                     HullType<?> r;
@@ -93,6 +93,24 @@ final public class Creator extends StateInitializer {
                     SIFA[nsID++] = r;
                     r.fieldID = nextFieldID++;
                     containers.add(r);
+                }
+            }
+
+            // Construct known enums
+            {
+                int ki = 0;
+                EnumPool<?> r;
+                String nextName = pb.enumName(ki);
+                // create remaining known enums
+                while (null != nextName) {
+                    r = new EnumPool(tid++, nextName, null, pb.enumMake(ki++));
+                    Strings.add(r.name);
+                    for (EnumProxy<?> n : r.values) {
+                        Strings.add(n.name);
+                    }
+                    enums.add(r);
+                    SIFA[nsID++] = r;
+                    nextName = pb.enumName(ki);
                 }
             }
 

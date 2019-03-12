@@ -124,7 +124,7 @@ final public class Writer {
 
         // calculate new bpos, sizes, object IDs and compress data arrays
         {
-            final int[] bpos = new int[state.classes.size()];
+            final int[] bpos = new int[state.classes.length];
             int bases = 0;
             for (Pool<?> p : state.classes) {
                 if (null == p.superPool) {
@@ -134,10 +134,10 @@ final public class Writer {
             }
 
             // write count of the type block
-            out.v64(state.classes.size());
+            out.v64(state.classes.length);
 
             // initialize local state before waiting for compress
-            fieldQueue = new ArrayList<>(2 * state.classes.size());
+            fieldQueue = new ArrayList<>(2 * state.classes.length);
             string = state.strings;
 
             barrier.acquire(bases);
@@ -222,8 +222,14 @@ final public class Writer {
          */
 
         // write count of the type block
-        out.v64(0);
-        // TODO enum write implementation
+        out.v64(state.enums.length);
+        for (EnumPool<?> p : state.enums) {
+            out.v64(string.id(p.name));
+            out.v64(p.values.length);
+            for (EnumProxy<?> v : p.values) {
+                out.v64(string.id(v.name));
+            }
+        }
 
         /**
          * *************** * F * ****************

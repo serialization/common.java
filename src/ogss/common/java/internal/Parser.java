@@ -269,7 +269,7 @@ abstract class Parser extends StateInitializer {
         Pool<?> superDef = null;
         int bpo = 0;
 
-        for (boolean moreFile = TCls > 0; (moreFile = TCls > 0) || null != nextName; TCls--) {
+        for (boolean moreFile = TCls > 0; (moreFile = TCls > 0) | null != nextName; TCls--) {
             // read next pool from file if required
             if (moreFile) {
                 // name
@@ -309,8 +309,7 @@ abstract class Parser extends StateInitializer {
             }
 
             // allocate pool
-            boolean keepKnown, keepFile = true;
-            // TODO do while -> keepFile = TCls != 0
+            boolean keepKnown, keepFile = !moreFile;
             do {
                 keepKnown = null == nextName;
 
@@ -320,33 +319,32 @@ abstract class Parser extends StateInitializer {
                         if (superDef == p) {
                             if (name == nextName) {
                                 // the next pool is the expected one
-                                keepFile = keepKnown = false;
+                                keepFile = false;
 
                             } else if (compare(name, nextName) < 0) {
                                 // we have to advance the file pool
-                                keepFile = false;
                                 keepKnown = true;
+                                keepFile = false;
 
                             } else {
                                 // we have to advance known pools
-                                keepKnown = false;
+                                keepFile = true;
                             }
                         } else {
 
                             // depending on the files super THH, we can decide if we have to process the files type or
-                            // our
-                            // type first;
+                            // our type first;
                             // invariant: p != superDef ⇒ superDef.THH != THH
                             // invariant: ∀p. p.next.THH <= p.THH + 1
                             // invariant: ∀p. p.Super = null <=> p.THH = 0
                             if (null != superDef && superDef.THH < THH) {
                                 // we have to advance known pools
-                                keepKnown = false;
+                                keepFile = true;
 
                             } else {
                                 // we have to advance the file pool
-                                keepFile = false;
                                 keepKnown = true;
+                                keepFile = false;
                             }
                         }
                     } else {
@@ -361,11 +359,11 @@ abstract class Parser extends StateInitializer {
                 // create the next pool
                 if (keepKnown) {
                     // an unknown pool has to be created
-                    if (null == superDef) {
+                    if (null != superDef) {
+                        result = superDef.makeSub(index++, name);
+                    } else {
                         last = null;
                         result = new SubPool<>(index++, name, UnknownObject.class, null);
-                    } else {
-                        result = superDef.makeSub(index++, name);
                     }
                     result.bpo = bpo;
                     udts.add(result);
@@ -377,22 +375,23 @@ abstract class Parser extends StateInitializer {
                     }
                     last = result;
                 } else {
-                    if (null == p) {
+                    if (null != p) {
+                        p = p.makeSub(nextID[THH]++, index++);
+                    } else {
                         last = null;
                         p = pb.make(nextID[0]++, index++);
-                    } else {
-                        p = p.makeSub(nextID[THH]++, index++);
                     }
                     // @note this is sane, because it is 0 if p is not part of the type hierarchy of superDef
                     p.bpo = bpo;
                     SIFA[nsID++] = p;
                     classes.add(p);
 
-                    if (!keepFile) {
+                    if (keepFile) {
+                        Strings.add(p.name);
+                    } else {
                         result = p;
                         udts.add(result);
-                    } else
-                        Strings.add(p.name);
+                    }
 
                     // set next
                     if (null != last) {
@@ -406,7 +405,7 @@ abstract class Parser extends StateInitializer {
                         nextName = p.nameSub(nextID[++THH] = 0);
 
                         // move up until we find a next pool
-                        while (null == nextName && THH != 1) {
+                        while (null == nextName & THH != 1) {
                             p = p.superPool;
                             nextName = p.nameSub(nextID[--THH]);
                         }
@@ -417,6 +416,11 @@ abstract class Parser extends StateInitializer {
                         }
                     }
                 }
+                // check for duplicate adds
+                if (seenNames.containsKey(last.name)) {
+                    throw new SkillException("duplicate definition of type " + last.name);
+                }
+                seenNames.put(last.name, null);
             } while (keepFile);
 
             result.cachedSize = result.staticDataInstances = count;
@@ -522,10 +526,64 @@ abstract class Parser extends StateInitializer {
         }
     }
 
+    final void TEnum() {
+        // next type ID
+        int tid = 10 + classes.size() + containers.size();
+
+        int ki = 0;
+        String nextName = pb.enumName(ki);
+        EnumPool<?> r;
+        // create enums from file
+        for (int count = in.v32(); count != 0; count--) {
+            String name = Strings.get(in.v32());
+            int vcount = in.v32();
+            if (vcount <= 0)
+                throw new ParseException(in, null, "Enum %s is too small.", name);
+
+            String[] vs = new String[vcount];
+            for (int i = 0; i < vcount; i++) {
+                vs[i] = Strings.get(in.v32());
+            }
+
+            int cmp = null != nextName ? compare(name, nextName) : -1;
+
+            while (true) {
+                if (0 == cmp) {
+                    r = new EnumPool(tid++, name, vs, pb.enumMake(ki++));
+                    enums.add(r);
+                    udts.add(r);
+                    SIFA[nsID++] = r;
+                    nextName = pb.enumName(ki);
+                    break;
+
+                } else if (cmp < 1) {
+                    r = new EnumPool(tid++, name, vs, null);
+                    enums.add(r);
+                    udts.add(r);
+                    break;
+                }
+
+                r = new EnumPool(tid++, nextName, null, pb.enumMake(ki++));
+                enums.add(r);
+                SIFA[nsID++] = r;
+                nextName = pb.enumName(ki);
+                cmp = null != nextName ? compare(name, nextName) : -1;
+            }
+        }
+        // create remaining known enums
+        while (null != nextName) {
+            enums.add(new EnumPool(tid++, nextName, null, pb.enumMake(ki++)));
+            nextName = pb.enumName(ki);
+        }
+    }
+
     /**
      * Correct and more efficient string compare.
      */
     public static int compare(String L, String R) {
+        if (L == R)
+            return 0;
+
         final int len1 = L.length();
         final int len2 = R.length();
         if (len1 != len2)

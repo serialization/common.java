@@ -5,17 +5,22 @@ package ogss.common.java.internal;
  * 
  * @author Timm Felden
  */
-public final class UnknownObject extends Obj {
+public final class UnknownObject extends Obj implements NamedObj {
 
-    transient public final Pool<?> τPool;
+    transient public final Pool<?> τp;
 
-    public UnknownObject(Pool<?> τPool, int ID) {
+    public UnknownObject(Pool<?> τp, int ID) {
         super(ID);
-        this.τPool = τPool;
+        this.τp = τp;
     }
 
     @Override
-    public String typeName() {
-        return τPool.name;
+    public int stid() {
+        return -1;
+    }
+
+    @Override
+    public Pool<?> τp() {
+        return τp;
     }
 }

@@ -20,10 +20,10 @@ public abstract class Obj {
     }
 
     /**
-     * @return the type name of this object
+     * @return the SIFA type id of the type of this object or -1 if none is available
      * @note this should be a class val
      */
-    public abstract String typeName();
+    public abstract int stid();
 
     /**
      * negative for new objects<br>
@@ -53,7 +53,7 @@ public abstract class Obj {
      */
     public final String prettyString(State sf) {
         StringBuilder sb = new StringBuilder("(this: ").append(this);
-        Pool<?> p = sf.pool(typeName());
+        Pool<?> p = (Pool<?>) sf.SIFA[stid()];
         FieldIterator fieldIterator = p.allFields();
         while (fieldIterator.hasNext()) {
             FieldDeclaration<?> f = fieldIterator.next();

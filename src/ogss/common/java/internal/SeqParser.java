@@ -74,8 +74,7 @@ public final class SeqParser extends Parser {
         /**
          * *************** * T Enum * ****************
          */
-        for (int count = in.v32(); count != 0; count--)
-            throw new Error("TODO");
+        TEnum();
 
         /**
          * *************** * F * ****************

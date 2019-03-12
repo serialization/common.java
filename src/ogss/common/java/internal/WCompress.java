@@ -1,7 +1,5 @@
 package ogss.common.java.internal;
 
-import java.util.ArrayList;
-
 /**
  * A job that performs the (former) compress operation on a base pool.
  * 
@@ -41,10 +39,10 @@ final class WCompress implements Runnable {
 
         // calculate correct dynamic size for all sub pools
         {
-            ArrayList<Pool<?>> cs = base.owner.classes;
-            for (int i = cs.size();;) {
+            Pool<?>[] cs = base.owner.classes;
+            for (int i = cs.length;;) {
                 --i;
-                Pool<?> p = cs.get(i);
+                Pool<?> p = cs[i];
                 if (base == p)
                     break;
                 if (base == p.basePool) {

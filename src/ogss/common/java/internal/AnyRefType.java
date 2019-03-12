@@ -2,7 +2,6 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 
 import ogss.common.streams.InStream;
@@ -59,13 +58,15 @@ public final class AnyRefType extends ByRefType<Object> {
         }
 
         if (ref instanceof Obj) {
-            out.v64(owner.pool(((Obj) ref).typeName()).typeID() - typeID);
+            int stid = ((Obj) ref).stid();
+            Pool<?> p = -1 != stid ? (Pool<?>) owner.SIFA[stid] : ((NamedObj) ref).τp();
+            out.v64(p.typeID() - typeID);
             out.v64(((Obj) ref).ID());
         } else if (ref instanceof String) {
             out.i8((byte) 1);
             out.v64(owner.strings.id((String) ref));
         } else {
-            throw new Error("TODO");
+            throw new Error("cannot store containers in anyRef");
         }
         return false;
     }

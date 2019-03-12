@@ -51,4 +51,14 @@ public abstract class PoolBuilder {
      * @return an instance of the pool corresponding to the argument known id
      */
     protected abstract Pool<?> make(int id, int index);
+
+    /**
+     * @return names of known enums in ascending order
+     */
+    protected abstract String enumName(int id);
+
+    /**
+     * @return values of known enums in ascending order
+     */
+    protected abstract Enum<?>[] enumMake(int id);
 }

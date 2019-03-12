@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -32,10 +32,10 @@ public abstract class State implements AutoCloseable {
     private HashMap<String, FieldType<?>> TBN;
 
     public Pool<?> pool(String name) {
-        if(null == TBN) {
+        if (null == TBN) {
             TBN = new HashMap<>();
-            
-            for(Pool<?> p : classes) {
+
+            for (Pool<?> p : classes) {
                 TBN.put(p.name, p);
             }
         }
@@ -81,19 +81,30 @@ public abstract class State implements AutoCloseable {
         return strings;
     }
 
-    // TODO use counters for classes, enums, containers
-    // TODO use Type[] instead
-    // TODO add BasePool[] and use it!
+    // field types by statically known ID
+    // note to self: try to represent this as 0-size array in C++ to bypass unions or other hacks
+    final protected FieldType<?>[] SIFA;
+
+    /**
+     * @return the type name of the type of an object.
+     */
+    public final String typeName(Obj ref) {
+        int stid = ref.stid();
+        if (-1 != stid)
+            return ((Pool<?>) SIFA[stid]).name;
+        return ((NamedObj) ref).τp().name;
+    }
 
     // types in type order
-    final protected ArrayList<Pool<?>> classes;
-    final protected ArrayList<HullType<?>> containers;
+    final protected Pool<?>[] classes;
+    final protected HullType<?>[] containers;
+    final protected EnumPool<?>[] enums;
 
     /**
      * @return iterator over all user types
      */
     final public Iterable<? extends Access<? extends Obj>> allTypes() {
-        return classes;
+        return Arrays.asList(classes);
     }
 
     /**
@@ -109,8 +120,10 @@ public abstract class State implements AutoCloseable {
         this.path = init.path;
         this.input = init.in;
         this.canWrite = init.canWrite;
-        this.classes = init.classes;
-        this.containers = init.containers;
+        this.SIFA = init.SIFA;
+        this.classes = init.classes.toArray(new Pool[init.classes.size()]);
+        this.containers = init.containers.toArray(new HullType[init.containers.size()]);
+        this.enums = init.enums.toArray(new EnumPool[init.enums.size()]);
         this.annotationType = init.Annotation;
         annotationType.owner = this;
 
@@ -123,15 +136,16 @@ public abstract class State implements AutoCloseable {
      * @note will return true, if argument is null
      * @note this operation is kind of expensive
      */
-    public final boolean contains(Obj target) {
-        if (null != target)
+    public final boolean contains(Obj ref) {
+        if (null != ref || 0 == ref.ID)
             try {
-                if (0 < target.ID)
-                    return target == ((Pool<?>) TBN.get(target.typeName())).get(target.ID);
-                else if (0 == target.ID)
-                    return true; // will evaluate to a null pointer if stored
+                int stid = ref.stid();
+                Pool<?> p = -1 != stid ? (Pool<?>) SIFA[stid] : ((NamedObj) ref).τp();
 
-                return ((Pool<?>) TBN.get(target.typeName())).newObjects.contains(target);
+                if (0 < ref.ID)
+                    return ref == p.data[ref.ID - 1];
+
+                return ref == p.newObjects.get(-1 - ref.ID);
             } catch (Exception e) {
                 // out of bounds or similar mean its not one of ours
                 return false;
@@ -144,9 +158,11 @@ public abstract class State implements AutoCloseable {
      * 
      * @note safe behaviour for null and duplicate delete
      */
-    final public void delete(Obj target) {
-        if (null != target && target.ID != 0) {
-            ((Pool<?>) TBN.get(target.typeName())).delete(target);
+    final public void delete(Obj ref) {
+        if (null != ref && ref.ID != 0) {
+            int stid = ref.stid();
+            Pool<?> p = -1 != stid ? (Pool<?>) SIFA[stid] : ((NamedObj) ref).τp();
+            p.delete(ref);
         }
     }
 
