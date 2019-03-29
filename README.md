@@ -1,4 +1,4 @@
 # javaCommon
-Common implementation to all Java targets
+Common code for all OGSS/Java implementations
 
-This project requires skill.jvm.common.jar to be present in lib/
+This project requires ogss.common.jvm.jar to be present in lib/

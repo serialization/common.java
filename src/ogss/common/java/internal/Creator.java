@@ -7,7 +7,7 @@ import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
 
 /**
- * Create an empty state. The approach here is different from the generated initialization code in SKilL to reduce the
+ * Create an empty state. The approach here is different from the generated initialization code in OGSS to reduce the
  * amount of generated code.
  * 
  * @author Timm Felden

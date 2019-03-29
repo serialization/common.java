@@ -1,6 +1,6 @@
 package ogss.common.java.restrictions;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 
 /**
  * A restriction that can be applied to a field.
@@ -18,5 +18,5 @@ public interface FieldRestriction<T> {
      * @param value
      *            the value to be checked
      */
-    public void check(T value) throws SkillException;
+    public void check(T value) throws OGSSException;
 }

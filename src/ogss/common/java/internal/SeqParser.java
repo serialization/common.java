@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.nio.BufferUnderflowException;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.MappedInStream;
@@ -133,10 +133,10 @@ public final class SeqParser extends Parser {
                     }
                 }
             }
-        } catch (SkillException t) {
+        } catch (OGSSException t) {
             throw t;
         } catch (Throwable t) {
-            throw new SkillException("internal error: unexpected foreign exception", t);
+            throw new OGSSException("internal error: unexpected foreign exception", t);
         }
 
         // TODO start tasks that perform default initialization of fields not obtained from file

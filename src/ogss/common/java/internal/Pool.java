@@ -17,7 +17,7 @@ import ogss.common.streams.OutStream;
  * @author Timm Felden
  * @param <T>
  *            static type of instances
- * @note Storage pools are created by a StateInitializer, only
+ * @note Pools are created by a StateInitializer, only
  */
 public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
 
@@ -70,7 +70,7 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     }
 
     /**
-     * all fields that are declared as auto, including skillID
+     * all fields that are declared as auto, including ObjectID
      * 
      * @note stores fields at index "-f.index"
      * @note sub-constructor adds auto fields from super types to this array; this is an optimization to make iteration
@@ -242,7 +242,7 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     /**
      * Add an existing instance as a new objects.
      * 
-     * @note Do not use objects managed by other skill files.
+     * @note Do not use objects managed by other OGFiles.
      */
     public final boolean add(T e) {
         e.ID = -1 - newObjects.size();
@@ -250,7 +250,7 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     }
 
     /**
-     * Delete shall only be called from skill state
+     * Delete shall only be called from OGSS state
      * 
      * @param target
      *            the object to be deleted

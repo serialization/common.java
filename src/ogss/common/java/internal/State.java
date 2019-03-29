@@ -11,13 +11,13 @@ import java.util.concurrent.TimeUnit;
 
 import ogss.common.java.api.Access;
 import ogss.common.java.api.Mode;
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.api.StringAccess;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
 
 /**
- * Implementation common to all skill states independent of type declarations.
+ * Implementation common to all OGSS states independent of type declarations.
  * 
  * @author Timm Felden
  */
@@ -28,7 +28,7 @@ public abstract class State implements AutoCloseable {
      */
     public String guard;
 
-    // types by skill name
+    // types by OGSS name
     private HashMap<String, FieldType<?>> TBN;
 
     /**
@@ -235,10 +235,10 @@ public abstract class State implements AutoCloseable {
      * Checks consistency of the current state of the file.
      * 
      * @note it is possible to fix the inconsistency and re-check without breaking the on-disk representation
-     * @throws SkillException
+     * @throws OGSSException
      *             if an inconsistency is found
      */
-    public void check() throws SkillException {
+    public void check() throws OGSSException {
         // TODO type checks!
         // TODO type restrictions
         // TODO make pools check fields, because they can optimize checks per
@@ -248,20 +248,20 @@ public abstract class State implements AutoCloseable {
             for (FieldDeclaration<?, ?> f : p.dataFields)
                 try {
                     f.check();
-                } catch (SkillException e) {
-                    throw new SkillException(
+                } catch (OGSSException e) {
+                    throw new OGSSException(
                             String.format("check failed in %s.%s:\n  %s", p.name, f.name, e.getMessage()), e);
                 }
     }
 
     /**
-     * Calculate the closure, like SKilL/Scala.
+     * Calculate a closure.
      * 
      * @todo implement!
-     * @throws SkillException
+     * @throws OGSSException
      */
-    public void closure() throws SkillException {
-        throw new SkillException("TODO");
+    public void closure() throws OGSSException {
+        throw new OGSSException("TODO");
     }
 
     /**
@@ -277,22 +277,22 @@ public abstract class State implements AutoCloseable {
      * Check consistency and write changes to disk.
      * 
      * @note this will not sync the file to disk, but it will block until all in-memory changes are written to buffers.
-     * @throws SkillException
+     * @throws OGSSException
      *             if check fails
      */
-    public void flush() throws SkillException {
+    public void flush() throws OGSSException {
         if (!canWrite)
-            throw new SkillException("Cannot flush a read only file. Note: close will turn a file into read only.");
+            throw new OGSSException("Cannot flush a read only file. Note: close will turn a file into read only.");
         try {
             loadLazyData();
             new Writer(this, new FileOutputStream(path));
             return;
-        } catch (SkillException e) {
+        } catch (OGSSException e) {
             throw e;
         } catch (IOException e) {
-            throw new SkillException("failed to create or complete out stream", e);
+            throw new OGSSException("failed to create or complete out stream", e);
         } catch (Exception e) {
-            throw new SkillException("unexpected exception", e);
+            throw new OGSSException("unexpected exception", e);
         }
     }
 
@@ -300,7 +300,7 @@ public abstract class State implements AutoCloseable {
      * Same as flush, but will also sync and close file, thus the state must not be used afterwards.
      */
     @Override
-    public void close() throws SkillException {
+    public void close() throws OGSSException {
         // flush if required
         if (canWrite) {
             flush();

@@ -51,8 +51,7 @@ abstract class WJob implements Runnable {
             // ensure that writer can terminate, errors will be
             // printed to command line anyway, and we wont
             // be able to recover, because errors can only happen if
-            // the skill implementation itself is
-            // broken
+            // the OGSS implementation itself is broken
             self.barrier.release();
 
             if (null != tail)

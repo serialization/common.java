@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.internal.fieldTypes.ArrayType;
@@ -46,12 +46,12 @@ abstract class Parser extends StateInitializer {
     protected final ArrayList<Object> fields = new ArrayList<>();
 
     /**
-     * User defined types. This array is used to resolve type IDs while parsing. The type IDs assigned to created
-     * entities may not correspond to udts indices (shifted by 10).
+     * File defined types. This array is used to resolve type IDs while parsing. The type IDs assigned to created
+     * entities may not correspond to fdts indices (shifted by 10).
      */
-    final ArrayList<FieldType<?>> udts = new ArrayList<>();
+    final ArrayList<FieldType<?>> fdts = new ArrayList<>();
 
-    public SkillException readErrors;
+    public OGSSException readErrors;
 
     Parser(FileInputStream in, PoolBuilder pb) {
         super(in, pb);
@@ -133,7 +133,7 @@ abstract class Parser extends StateInitializer {
         case 9:
             return Strings;
         default:
-            return udts.get(typeID - 10);
+            return fdts.get(typeID - 10);
         }
     }
 
@@ -366,7 +366,7 @@ abstract class Parser extends StateInitializer {
                         result = new SubPool<>(index++, name, UnknownObject.class, null);
                     }
                     result.bpo = bpo;
-                    udts.add(result);
+                    fdts.add(result);
                     classes.add(result);
 
                     // set next
@@ -390,7 +390,7 @@ abstract class Parser extends StateInitializer {
                         Strings.add(p.name);
                     } else {
                         result = p;
-                        udts.add(result);
+                        fdts.add(result);
                     }
 
                     // set next
@@ -418,7 +418,7 @@ abstract class Parser extends StateInitializer {
                 }
                 // check for duplicate adds
                 if (seenNames.containsKey(last.name)) {
-                    throw new SkillException("duplicate definition of type " + last.name);
+                    throw new OGSSException("duplicate definition of type " + last.name);
                 }
                 seenNames.put(last.name, null);
             } while (keepFile);
@@ -515,14 +515,14 @@ abstract class Parser extends StateInitializer {
                     break;
 
                 default:
-                    throw new SkillException("Illegal container constructor ID: " + kind);
+                    throw new OGSSException("Illegal container constructor ID: " + kind);
                 }
 
                 r.fieldID = nextFieldID++;
                 containers.add(r);
             }
             fields.add(r);
-            udts.add(r);
+            fdts.add(r);
         }
     }
 
@@ -551,7 +551,7 @@ abstract class Parser extends StateInitializer {
                 if (0 == cmp) {
                     r = new EnumPool(tid++, name, vs, pb.enumMake(ki++));
                     enums.add(r);
-                    udts.add(r);
+                    fdts.add(r);
                     SIFA[nsID++] = r;
                     nextName = pb.enumName(ki);
                     break;
@@ -559,7 +559,7 @@ abstract class Parser extends StateInitializer {
                 } else if (cmp < 1) {
                     r = new EnumPool(tid++, name, vs, null);
                     enums.add(r);
-                    udts.add(r);
+                    fdts.add(r);
                     break;
                 }
 

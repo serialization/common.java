@@ -24,7 +24,7 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
     }
 
     /**
-     * skill name of this
+     * OGSS name of this
      */
     final String name;
 

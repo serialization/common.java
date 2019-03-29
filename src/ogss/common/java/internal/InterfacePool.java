@@ -9,7 +9,7 @@ import ogss.common.streams.OutStream;
 /**
  * Holds interface instances. Serves as an API realization. Ensures correctness of reflective type system.
  * 
- * @note unfortunately, one cannot prove that T extends SkillObject. Hence, we cannot inherit from Access<T>
+ * @note unfortunately, one cannot prove that T extends Obj. Hence, we cannot inherit from Access<T>
  * @note typing in this implementation is intentionally incorrect, because java does not permit interfaces to inherit
  *       from classes
  * @param T

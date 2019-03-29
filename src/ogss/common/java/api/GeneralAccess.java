@@ -11,7 +11,7 @@ import ogss.common.java.internal.State;
 public interface GeneralAccess<T> extends Iterable<T> {
 
     /**
-     * @return the skill name of the type
+     * @return the OGSS name of the type
      */
     String name();
 

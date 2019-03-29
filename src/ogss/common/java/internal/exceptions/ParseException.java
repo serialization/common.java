@@ -1,6 +1,6 @@
 package ogss.common.java.internal.exceptions;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.streams.InStream;
 
 /**
@@ -8,8 +8,8 @@ import ogss.common.streams.InStream;
  *
  * @author Timm Felden
  */
-public final class ParseException extends SkillException {
-    public ParseException(SkillException cause, String msg) {
+public final class ParseException extends OGSSException {
+    public ParseException(OGSSException cause, String msg) {
         super(msg, cause);
     }
     

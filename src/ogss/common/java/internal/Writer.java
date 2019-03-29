@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
@@ -95,7 +95,7 @@ final public class Writer {
 
         // report errors
         if (null != writeErrors) {
-            throw new SkillException("write failed", writeErrors);
+            throw new OGSSException("write failed", writeErrors);
         }
     }
 

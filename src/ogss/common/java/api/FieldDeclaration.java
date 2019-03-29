@@ -12,12 +12,12 @@ import ogss.common.java.internal.Obj;
  */
 public abstract class FieldDeclaration<T> {
     /**
-     * @return the skill type of this field
+     * @return the type of this field
      */
     public abstract FieldType<T> type();
 
     /**
-     * @return skill name of this field
+     * @return OGSS name of this field
      */
     public abstract String name();
 

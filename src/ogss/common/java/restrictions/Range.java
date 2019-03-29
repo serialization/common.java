@@ -1,6 +1,6 @@
 package ogss.common.java.restrictions;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.streams.InStream;
 
 /**
@@ -50,7 +50,7 @@ public class Range {
         @Override
         public void check(Byte value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -67,7 +67,7 @@ public class Range {
         @Override
         public void check(Short value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -84,7 +84,7 @@ public class Range {
         @Override
         public void check(Integer value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -101,7 +101,7 @@ public class Range {
         @Override
         public void check(Long value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -118,7 +118,7 @@ public class Range {
         @Override
         public void check(Long value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -135,7 +135,7 @@ public class Range {
         @Override
         public void check(Float value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 
@@ -152,7 +152,7 @@ public class Range {
         @Override
         public void check(Double value) {
             if (value < min || max < value)
-                throw new SkillException(String.format("%s is not in Range(%d, %d)", value, min, max));
+                throw new OGSSException(String.format("%s is not in Range(%d, %d)", value, min, max));
         }
     }
 }

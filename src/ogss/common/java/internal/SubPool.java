@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.lang.reflect.Constructor;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 
 /**
  * A generic sub pool class that creates new objects via reflection to reduce the amount of generated code.
@@ -41,7 +41,7 @@ public final class SubPool<T extends Obj> extends Pool<T> {
     }
 
     @Override
-    public T make() throws SkillException {
-        throw new SkillException("allocation of unknown instances is considered an error");
+    public T make() throws OGSSException {
+        throw new OGSSException("allocation of unknown instances is considered an error");
     }
 }

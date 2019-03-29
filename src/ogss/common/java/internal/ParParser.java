@@ -3,7 +3,7 @@ package ogss.common.java.internal;
 import java.nio.BufferUnderflowException;
 import java.util.concurrent.Semaphore;
 
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.MappedInStream;
@@ -18,7 +18,7 @@ public final class ParParser extends Parser {
     // synchronization of field read jobs
     Semaphore barrier;
 
-    SkillException readErrors;
+    OGSSException readErrors;
 
     ParParser(FileInputStream in, PoolBuilder pb) {
         super(in, pb);
@@ -153,7 +153,7 @@ public final class ParParser extends Parser {
         try {
             barrier.acquire(classes.size() + awaitHulls);
         } catch (InterruptedException e) {
-            throw new SkillException("internal error: unexpected foreign exception", e);
+            throw new OGSSException("internal error: unexpected foreign exception", e);
         }
 
         // start read tasks
@@ -178,7 +178,7 @@ public final class ParParser extends Parser {
         try {
             barrier.acquire(fields.size());
         } catch (InterruptedException e) {
-            throw new SkillException("internal error: unexpected foreign exception", e);
+            throw new OGSSException("internal error: unexpected foreign exception", e);
         }
         if (null != readErrors)
             throw readErrors;
@@ -195,7 +195,7 @@ public final class ParParser extends Parser {
 
         @Override
         public void run() {
-            SkillException ex = null;
+            OGSSException ex = null;
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
             final int end = bpo + owner.cachedSize;
@@ -211,10 +211,10 @@ public final class ParParser extends Parser {
 
             } catch (BufferUnderflowException e) {
                 ex = new PoolSizeMissmatchError(bpo, end, f, e);
-            } catch (SkillException t) {
+            } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {
-                ex = new SkillException("internal error: unexpected foreign exception", t);
+                ex = new OGSSException("internal error: unexpected foreign exception", t);
             } finally {
                 barrier.release();
                 if (null != ex)
@@ -242,13 +242,13 @@ public final class ParParser extends Parser {
 
         @Override
         public void run() {
-            SkillException ex = null;
+            OGSSException ex = null;
             try {
                 t.read();
-            } catch (SkillException t) {
+            } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {
-                ex = new SkillException("internal error: unexpected foreign exception", t);
+                ex = new OGSSException("internal error: unexpected foreign exception", t);
             } finally {
                 barrier.release();
                 if (null != ex)

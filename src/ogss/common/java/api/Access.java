@@ -51,9 +51,9 @@ public interface Access<T extends Obj> extends GeneralAccess<T> {
 
     /**
      * @return a new T instance with default field values
-     * @throws SkillException
-     *             if no instance can be created. This is either caused by restrictions, such as @singleton, or by
-     *             invocation on unknown types, which are implicitly unmodifiable in this SKilL-implementation.
+     * @throws OGSSException
+     *             If no instance can be created. This is either caused by attributes, such as @singleton, or by
+     *             invocation on unknown types, which are implicitly unmodifiable in this OGSS-implementation.
      */
-    public T make() throws SkillException;
+    public T make() throws OGSSException;
 }

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import ogss.common.java.api.Mode;
-import ogss.common.java.api.SkillException;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.BoolType;
 import ogss.common.java.internal.fieldTypes.F32;
 import ogss.common.java.internal.fieldTypes.F64;
@@ -40,7 +40,7 @@ public abstract class StateInitializer {
                 else
                     init = new ParParser(fs, pb);
             } catch (BufferUnderflowException e) {
-                throw new SkillException("unexpected EOF", e);
+                throw new OGSSException("unexpected EOF", e);
             }
         }
         init.path = path;
@@ -69,7 +69,6 @@ public abstract class StateInitializer {
      * achieve state initialization.
      * 
      * @note invariant: ∀i. SIFA[i].name == pb.KCN(i)
-     * @note this is essentially the SKilL/Java large spec passing mode, except that the name binding happens implicitly
      */
     public final FieldType<?>[] SIFA;
 
