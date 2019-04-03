@@ -129,7 +129,7 @@ abstract class Parser extends StateInitializer {
         case 7:
             return F64.get();
         case 8:
-            return Annotation;
+            return AnyRef;
         case 9:
             return Strings;
         default:

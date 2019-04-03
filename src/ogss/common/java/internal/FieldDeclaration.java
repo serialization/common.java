@@ -123,8 +123,6 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
     /**
      * write data into a map at the end of a write/append operation
      * 
-     * @note this will always write the last chunk, as, in contrast to read, it is impossible to write to fields in
-     *       parallel
      * @note only called, if there actually is field data to be written
      * @return true iff the written data contains default values only
      */

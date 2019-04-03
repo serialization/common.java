@@ -136,7 +136,7 @@ public abstract class State implements AutoCloseable {
         this.classes = init.classes.toArray(new Pool[init.classes.size()]);
         this.containers = init.containers.toArray(new HullType[init.containers.size()]);
         this.enums = init.enums.toArray(new EnumPool[init.enums.size()]);
-        this.annotationType = init.Annotation;
+        this.annotationType = init.AnyRef;
         annotationType.owner = this;
 
         for (Pool<?> p : classes)

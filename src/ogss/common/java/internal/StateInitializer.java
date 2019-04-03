@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.OGSSException;
@@ -62,7 +61,7 @@ public abstract class StateInitializer {
     final ArrayList<Pool<?>> classes;
     final ArrayList<HullType<?>> containers;
     final ArrayList<EnumPool<?>> enums;
-    final AnyRefType Annotation;
+    final AnyRefType AnyRef;
 
     /**
      * State Initialization of Fields Array. In C++, it should be possible to memcpy this array into the first field to
@@ -99,7 +98,7 @@ public abstract class StateInitializer {
         enums = new ArrayList<>();
 
         // TODO sane allocation / implementation of AnyRefType
-        Annotation = new AnyRefType(classes);
+        AnyRef = new AnyRefType(classes);
 
         SIFA[0] = BoolType.get();
         SIFA[1] = I8.get();
@@ -109,7 +108,7 @@ public abstract class StateInitializer {
         SIFA[5] = V64.get();
         SIFA[6] = F32.get();
         SIFA[7] = F64.get();
-        SIFA[8] = Annotation;
+        SIFA[8] = AnyRef;
         SIFA[9] = Strings;
 
         nsID = 10;
