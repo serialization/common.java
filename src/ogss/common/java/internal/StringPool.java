@@ -116,7 +116,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
         return writeBarrier;
     }
 
-    int hullOffset;
+    private int hullOffset;
 
     @Override
     protected final boolean write(BufferedOutStream out) throws IOException {

@@ -27,8 +27,6 @@ import ogss.common.java.restrictions.TypeRestriction;
 import ogss.common.streams.FileInputStream;
 
 /**
- * The parser implementation is based on the denotational semantics given in TR14§6.
- *
  * @author Timm Felden
  */
 abstract class Parser extends StateInitializer {
@@ -135,30 +133,6 @@ abstract class Parser extends StateInitializer {
         default:
             return fdts.get(typeID - 10);
         }
-    }
-
-    /**
-     * @return the matching container name
-     */
-    static final String name(int kind, FieldType<?> b1, FieldType<?> b2) {
-        final String name;
-        switch (kind) {
-        case 0:
-            name = b1 + "[]";
-            break;
-        case 1:
-            name = "list<" + b1 + ">";
-            break;
-        case 2:
-            name = "set<" + b1 + ">";
-            break;
-        case 3:
-            name = "map<" + b1 + "," + b2 + ">";
-            break;
-        default:
-            throw new IllegalStateException();
-        }
-        return name;
     }
 
     final HashSet<TypeRestriction> typeRestrictions(int i) {
@@ -296,13 +270,13 @@ abstract class Parser extends StateInitializer {
                     if (0 == superID) {
                         superDef = null;
                         bpo = 0;
-                    } else if (superID > classes.size())
+                    } else if (superID > fdts.size() - 10)
                         throw new ParseException(in, null,
                                 "Type %s refers to an ill-formed super type.\n"
                                         + "          found: %d; current number of other types %d",
-                                name, superID, classes.size());
+                                name, superID, fdts.size() - 10);
                     else {
-                        superDef = classes.get(superID - 1);
+                        superDef = (Pool<?>) fdts.get(superID + 9);
                         bpo = in.v32();
                     }
                 }
@@ -433,6 +407,20 @@ abstract class Parser extends StateInitializer {
         }
     }
 
+    /**
+     * turn kcc into ucc; this is always possible for the next type
+     * 
+     * @return the UCC for a given kcc
+     */
+    final int toUCC(int kind, FieldType<?> b1, FieldType<?> b2) {
+        int baseTID1 = b1.typeID;
+        int baseTID2 = null == b2 ? 0 : b2.typeID;
+        if (baseTID2 < baseTID1)
+            return (baseTID1 << 17) | (kind << 15) | baseTID2;
+
+        return (baseTID2 << 17) | (kind << 15) | baseTID1;
+    }
+
     final void TContainer() {
         // next type ID
         int tid = 10 + classes.size();
@@ -442,25 +430,26 @@ abstract class Parser extends StateInitializer {
         int kcc = pb.kcc(ki);
         int kkind = 0;
         FieldType<?> kb1 = null, kb2 = null;
-        String kname = null;
+        // @note using int here means that UCC may only contain TIDs < 2^14
+        int kucc = 0;
         if (-1 != kcc) {
             kkind = (kcc >> 30) & 3;
             kb1 = SIFA[kcc & 0x7FFF];
             kb2 = 3 == kkind ? SIFA[(kcc >> 15) & 0x7FFF] : null;
-            kname = name(kkind, kb1, kb2);
+            kucc = toUCC(kkind, kb1, kb2);
         }
 
         for (int count = in.v32(); count != 0; count--) {
-            final int kind = in.i8();
-            final FieldType<?> b1 = fieldType();
-            final FieldType<?> b2 = (3 == kind) ? fieldType() : null;
-            final String name = name(kind, b1, b2);
+            final int fkind = in.i8();
+            final FieldType<?> fb1 = fieldType();
+            final FieldType<?> fb2 = (3 == fkind) ? fieldType() : null;
+            final int fucc = toUCC(fkind, fb1, fb2);
 
             HullType<?> r = null;
             int cmp = -1;
 
             // construct known containers until we hit the state of the file
-            while (-1 != kcc && (cmp = compare(name, kname)) >= 0) {
+            while (-1 != kcc && (cmp = (fucc - kucc)) >= 0) {
                 switch (kkind) {
                 case 0:
                     r = new ArrayType<>(tid++, kb1);
@@ -489,7 +478,7 @@ abstract class Parser extends StateInitializer {
                     kkind = (kcc >> 30) & 3;
                     kb1 = SIFA[kcc & 0x7FFF];
                     kb2 = 3 == kkind ? SIFA[(kcc >> 15) & 0x7FFF] : null;
-                    kname = name(kkind, kb1, kb2);
+                    kucc = toUCC(kkind, kb1, kb2);
                 }
 
                 // break loop for perfect matches after the first iteration
@@ -499,23 +488,23 @@ abstract class Parser extends StateInitializer {
 
             // the last constructed kcc was not the type from the file
             if (0 != cmp) {
-                switch (kind) {
+                switch (fkind) {
                 case 0:
-                    r = new ArrayType<>(tid++, b1);
+                    r = new ArrayType<>(tid++, fb1);
                     break;
                 case 1:
-                    r = new ListType<>(tid++, b1);
+                    r = new ListType<>(tid++, fb1);
                     break;
                 case 2:
-                    r = new SetType<>(tid++, b1);
+                    r = new SetType<>(tid++, fb1);
                     break;
 
                 case 3:
-                    r = new MapType<>(tid++, b1, b2);
+                    r = new MapType<>(tid++, fb1, fb2);
                     break;
 
                 default:
-                    throw new OGSSException("Illegal container constructor ID: " + kind);
+                    throw new OGSSException("Illegal container constructor ID: " + fkind);
                 }
 
                 r.fieldID = nextFieldID++;
