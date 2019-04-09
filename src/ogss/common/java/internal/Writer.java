@@ -16,19 +16,19 @@ import ogss.common.streams.OutStream;
 
 final public class Writer {
 
-    protected final State state;
+    private final State state;
 
     /**
      * TODO serialization of restrictions
      */
-    protected static final void restrictions(Pool<?> p, OutStream out) throws IOException {
+    private static final void restrictions(Pool<?> p, OutStream out) throws IOException {
         out.i8((byte) 0);
     }
 
     /**
      * TODO serialization of restrictions
      */
-    protected static final void restrictions(FieldDeclaration<?, ?> f, OutStream out) throws IOException {
+    private static final void restrictions(FieldDeclaration<?, ?> f, OutStream out) throws IOException {
         out.i8((byte) 0);
     }
 
@@ -51,7 +51,13 @@ final public class Writer {
         /**
          * *************** * G * ****************
          */
-        writeGuard(out);
+        if (null == state.guard || state.guard.isEmpty()) {
+            out.i16((short) 0x2622);
+        } else {
+            out.i8((byte) '#');
+            out.put(state.guard.getBytes());
+            out.i8((byte) 0);
+        }
 
         /**
          * *************** * S * ****************
@@ -96,16 +102,6 @@ final public class Writer {
         // report errors
         if (null != writeErrors) {
             throw new OGSSException("write failed", writeErrors);
-        }
-    }
-
-    private void writeGuard(FileOutputStream out) throws IOException {
-        if (null == state.guard || state.guard.isEmpty()) {
-            out.i16((short) 0x2622);
-        } else {
-            out.i8((byte) '#');
-            out.put(state.guard.getBytes());
-            out.i8((byte) 0);
         }
     }
 

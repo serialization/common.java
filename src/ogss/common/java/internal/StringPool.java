@@ -71,10 +71,8 @@ final public class StringPool extends HullType<String> implements StringAccess {
 
         // create inverse map
         for (String s : knownStrings) {
-            if (!IDs.containsKey(s)) {
-                IDs.put(s, idMap.size());
-                idMap.add(s);
-            }
+            IDs.put(s, idMap.size());
+            idMap.add(s);
         }
 
         Semaphore writeBarrier = new Semaphore(0, false);

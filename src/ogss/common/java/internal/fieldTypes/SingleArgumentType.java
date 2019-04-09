@@ -52,7 +52,7 @@ public abstract class SingleArgumentType<T extends Collection<Base>, Base> exten
     }
 
     @Override
-    protected boolean write(BufferedOutStream out) throws IOException {
+    protected final boolean write(BufferedOutStream out) throws IOException {
         final int count = idMap.size() - 1;
         if (0 != count) {
             out.v64(count);
