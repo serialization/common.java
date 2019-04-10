@@ -270,13 +270,13 @@ abstract class Parser extends StateInitializer {
                     if (0 == superID) {
                         superDef = null;
                         bpo = 0;
-                    } else if (superID > fdts.size() - 10)
+                    } else if (superID > fdts.size())
                         throw new ParseException(in, null,
                                 "Type %s refers to an ill-formed super type.\n"
                                         + "          found: %d; current number of other types %d",
-                                name, superID, fdts.size() - 10);
+                                name, superID, fdts.size());
                     else {
-                        superDef = (Pool<?>) fdts.get(superID + 9);
+                        superDef = (Pool<?>) fdts.get(superID - 1);
                         bpo = in.v32();
                     }
                 }
