@@ -32,7 +32,7 @@ final public class UnrootedInterfacePool<T> extends FieldType<T> implements Gene
      */
     @SuppressWarnings("unchecked")
     public UnrootedInterfacePool(String name, AnyRefType superPool, Pool<?>... realizations) {
-        super(superPool.typeID());
+        super(AnyRefType.typeID);
         this.name = name;
         this.superType = superPool;
         this.realizations = (Pool<Obj>[]) realizations;

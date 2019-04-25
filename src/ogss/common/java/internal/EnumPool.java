@@ -129,8 +129,4 @@ public final class EnumPool<T extends Enum<T>> extends FieldType {
     public String toString() {
         return name;
     }
-
-    enum Test {
-        eins, zwei, drei;
-    }
 }

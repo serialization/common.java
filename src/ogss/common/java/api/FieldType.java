@@ -8,15 +8,18 @@ package ogss.common.java.api;
  *            (boxed) runtime type of target objects
  */
 public abstract class FieldType<T> {
-
     /**
-     * @return the ID of this type (respective to the state in which it lives)
+     * the ID of this type (respective to the state it lives in)
      */
-    public abstract int typeID();
+    public final int typeID;
 
     /**
      * @return the human readable type name
      */
     @Override
     public abstract String toString();
+
+    protected FieldType(int typeID) {
+        this.typeID = typeID;
+    }
 }

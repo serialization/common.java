@@ -30,7 +30,7 @@ public final class ObjNode extends Node {
         Pool<?> p = owner.owner.pool(repr);
         for (FieldDeclaration<?, ?> f : p.allFields()) {
             // skip attributes
-            if (f.type.typeID() < 8)
+            if (f.type.typeID < 8)
                 continue;
 
             edges.add(new Edge(this, owner.getNodeFor(f.get(repr)), f instanceof AutoField<?, ?>, f.name()));
@@ -43,7 +43,7 @@ public final class ObjNode extends Node {
         Pool<?> p = owner.owner.pool(repr);
         for (FieldDeclaration<?, ?> f : p.allFields()) {
             // skip edges
-            if (f.type.typeID() >= 8)
+            if (f.type.typeID >= 8)
                 continue;
 
             attributes.add(new Attribute(f.name(), f instanceof AutoField<?, ?>, f.get(repr)));

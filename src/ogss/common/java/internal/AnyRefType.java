@@ -45,7 +45,6 @@ public final class AnyRefType extends ByRefType<Object> {
         if (1 == t)
             return owner.Strings().get(f);
 
-        // TODO fix this!
         return types.get(t - 2).get(f);
     }
 
@@ -60,7 +59,7 @@ public final class AnyRefType extends ByRefType<Object> {
         if (ref instanceof Obj) {
             int stid = ((Obj) ref).stid();
             Pool<?> p = -1 != stid ? (Pool<?>) owner.SIFA[stid] : ((NamedObj) ref).τp();
-            out.v64(p.typeID() - typeID);
+            out.v64(p.typeID - typeID);
             out.v64(((Obj) ref).ID());
         } else if (ref instanceof String) {
             out.i8((byte) 1);

@@ -431,6 +431,7 @@ abstract class Parser extends StateInitializer {
         int kkind = 0;
         FieldType<?> kb1 = null, kb2 = null;
         // @note using int here means that UCC may only contain TIDs < 2^14
+        int lastUCC = 0;
         int kucc = 0;
         if (-1 != kcc) {
             kkind = (kcc >> 30) & 3;
@@ -472,6 +473,12 @@ abstract class Parser extends StateInitializer {
                 r.fieldID = nextFieldID++;
                 containers.add(r);
 
+                // check UCC order
+                if (lastUCC > kucc) {
+                    throw new ParseException(in, null, "File is not UCC-ordered.");
+                }
+                lastUCC = kucc;
+
                 // move to next kcc
                 kcc = pb.kcc(++ki);
                 if (-1 != kcc) {
@@ -509,6 +516,12 @@ abstract class Parser extends StateInitializer {
 
                 r.fieldID = nextFieldID++;
                 containers.add(r);
+
+                // check UCC order
+                if (lastUCC > fucc) {
+                    throw new ParseException(in, null, "File is not UCC-ordered.");
+                }
+                lastUCC = fucc;
             }
             fields.add(r);
             fdts.add(r);
@@ -561,7 +574,9 @@ abstract class Parser extends StateInitializer {
         }
         // create remaining known enums
         while (null != nextName) {
-            enums.add(new EnumPool(tid++, nextName, null, pb.enumMake(ki++)));
+            r = new EnumPool(tid++, nextName, null, pb.enumMake(ki++));
+            enums.add(r);
+            SIFA[nsID++] = r;
             nextName = pb.enumName(ki);
         }
     }

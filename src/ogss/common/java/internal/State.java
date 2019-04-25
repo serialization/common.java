@@ -122,7 +122,7 @@ public abstract class State implements AutoCloseable {
     /**
      * Types required for reflective IO
      */
-    protected final AnyRefType annotationType;
+    protected final AnyRefType anyRefType;
 
     /**
      * Path and mode management can be done for arbitrary states.
@@ -136,8 +136,8 @@ public abstract class State implements AutoCloseable {
         this.classes = init.classes.toArray(new Pool[init.classes.size()]);
         this.containers = init.containers.toArray(new HullType[init.containers.size()]);
         this.enums = init.enums.toArray(new EnumPool[init.enums.size()]);
-        this.annotationType = init.AnyRef;
-        annotationType.owner = this;
+        this.anyRefType = init.AnyRef;
+        anyRefType.owner = this;
 
         for (Pool<?> p : classes)
             p.owner = this;
