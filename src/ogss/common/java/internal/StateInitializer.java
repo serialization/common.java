@@ -91,7 +91,7 @@ public abstract class StateInitializer {
 
         SIFA = new FieldType[pb.sifaSize];
 
-        Strings = new StringPool(in);
+        Strings = new StringPool(in, pb.literals());
 
         classes = new ArrayList<>(pb.sifaSize);
         containers = new ArrayList<>();

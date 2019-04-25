@@ -2,17 +2,14 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.Semaphore;
 
-import ogss.common.java.api.StringAccess;
 import ogss.common.java.internal.exceptions.InvalidPoolIndexException;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
-import ogss.common.streams.InStream;
 import ogss.common.streams.MappedInStream;
 
 /**
@@ -21,7 +18,7 @@ import ogss.common.streams.MappedInStream;
  * @note String pool may contain duplicates, if strings have been added. This is a necessary behavior, if add should be
  *       an O(1) operation and Strings are loaded from file lazily.
  */
-final public class StringPool extends HullType<String> implements StringAccess {
+final public class StringPool extends HullType<String> {
     public static final int typeID = 9;
 
     public static final Charset utf8 = Charset.forName("UTF-8");
@@ -30,38 +27,35 @@ final public class StringPool extends HullType<String> implements StringAccess {
     private MappedInStream rb;
 
     /**
-     * the set of all known strings, i.e. strings which do not have an ID as well as strings that already have one
-     */
-    final HashSet<String> knownStrings = new HashSet<>();
-
-    /**
      * ID ⇀ (absolute offset|32, length|32) will be used if idMap contains a null reference
      *
      * @note there is a fake entry at ID 0
      */
     long[] positions;
 
-    StringPool(FileInputStream input) {
+    /**
+     * Strings used as names of types, fields or enum constants.
+     */
+    String[] literals;
+
+    StringPool(FileInputStream input, String[] literals) {
         super(typeID);
         rb = null == input ? null : input.map(-1);
-    }
-
-    void loadLazyData() {
-        if (null == rb)
-            return;
-
-        int id = idMap.size();
-        while (--id != 0) {
-            if (null == idMap.get(id))
-                get(id);
-        }
-
-        rb = null;
+        this.literals = literals;
     }
 
     /**
-     * write the string block to out and release the barrier when done, so that parallel creation of T and F can be
-     * written to out
+     * The state will ask to drop rb as soon as all strings must have been loaded, i.e. as soon as all other lazy field
+     * data has been loaded.
+     */
+    void dropRB() {
+        rb = null;
+        positions = null;
+    }
+
+    /**
+     * write the string literal block to out and release the barrier when done, so that parallel creation of T and F can
+     * be written to out
      * 
      * @note the parallel write operation is synchronized on this, hence the buffer flush has to be synchronized on this
      *       as well
@@ -70,7 +64,7 @@ final public class StringPool extends HullType<String> implements StringAccess {
         resetSerialization();
 
         // create inverse map
-        for (String s : knownStrings) {
+        for (String s : literals) {
             IDs.put(s, idMap.size());
             idMap.add(s);
         }
@@ -82,26 +76,12 @@ final public class StringPool extends HullType<String> implements StringAccess {
                 try {
                     // count
                     // @note idMap access performance hack
-                    hullOffset = idMap.size();
-                    final int count = hullOffset - 1;
+                    final int count = literals.length;
                     out.v64(count);
-
-                    // @note idMap access performance hack
-                    if (0 != count) {
-
-                        // note: getBytes is an expensive operation!
-                        final byte[][] images = new byte[count][];
-                        // lengths
-                        for (int i = 0; i < count; i++) {
-                            final byte[] img = idMap.get(i + 1).getBytes(utf8);
-                            images[i] = img;
-                            out.v64(img.length);
-                        }
-
-                        // data
-                        for (int i = 0; i < count; i++) {
-                            out.put(images[i]);
-                        }
+                    for (int i = 0; i < count; i++) {
+                        final byte[] img = literals[i].getBytes(utf8);
+                        out.v64(img.length);
+                        out.put(img);
                     }
                 } catch (IOException e) {
                     // should never happen!
@@ -114,10 +94,13 @@ final public class StringPool extends HullType<String> implements StringAccess {
         return writeBarrier;
     }
 
-    private int hullOffset;
-
+    /**
+     * Write HS
+     */
     @Override
     protected final boolean write(BufferedOutStream out) throws IOException {
+        // the null in idMap is not written and literals are written in SL
+        final int hullOffset = literals.length + 1;
         final int count = idMap.size() - hullOffset;
         if (0 == count)
             return true;
@@ -141,38 +124,21 @@ final public class StringPool extends HullType<String> implements StringAccess {
         return false;
     }
 
+    /**
+     * Read HS; we will not perform an actual read afterwards
+     */
     @Override
     protected void allocateInstances(int count, MappedInStream in) {
-        S(count, in);
-    }
-
-    /**
-     * Read a string block
-     * 
-     * @return the position behind the string block
-     */
-    int S(int count, InStream in) {
-        if (0 == count)
-            return in.position();
-
         // read offsets
         int[] offsets = new int[count];
         for (int i = 0; i < count; i++) {
             offsets[i] = in.v32();
         }
 
-        // resize string positions
-        int spi;
-        if (null == positions) {
-            positions = new long[1 + count];
-            positions[0] = -1L;
-            spi = 1;
-        } else {
-            spi = positions.length;
-            long[] sp = new long[spi + count];
-            System.arraycopy(positions, 0, sp, 0, spi);
-            positions = sp;
-        }
+        // create positions
+        int spi = idMap.size();
+        final long[] sp = new long[spi + count];
+        positions = sp;
 
         // store offsets
         // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
@@ -180,22 +146,65 @@ final public class StringPool extends HullType<String> implements StringAccess {
         int last = in.position(), len;
         for (int i = 0; i < count; i++) {
             len = offsets[i];
-            positions[spi++] = (((long) last) << 32L) | len;
+            sp[spi++] = (((long) last) << 32L) | len;
             idMap.add(null);
             last += len;
         }
+    }
 
-        return last;
+    /**
+     * Read the string literal block
+     */
+    void readSL(FileInputStream in) {
+        final int count = in.v32();
+        if (0 == count) {
+            // trivial merge
+            return;
+        }
+
+        // known/file literal index
+        int ki = 0, fi = 0;
+        String next = new String(in.bytes(-1, in.v32()), utf8);
+
+        // merge literals from file into literals
+        ArrayList<String> merged = new ArrayList<>(count);
+        boolean hasFI, hasKI;
+        while ((hasFI = fi < count) | (hasKI = ki < literals.length)) {
+            // note: we will intern the string only if it is unknown
+            final int cmp = hasFI ? (hasKI ? next.compareTo(literals[ki]) : 1) : -1;
+
+            if (0 <= cmp) {
+                if (0 == cmp) {
+                    // discard next
+                    next = literals[ki++];
+                } else {
+                    // use next
+                    next = next.intern();
+                }
+                merged.add(next);
+                idMap.add(next);
+
+                if (++fi < count)
+                    next = new String(in.bytes(-1, in.v32()), utf8);
+            } else {
+                merged.add(literals[ki++]);
+            }
+        }
+
+        // update literals if required
+        if (literals.length != merged.size()) {
+            literals = merged.toArray(new String[merged.size()]);
+        }
     }
 
     @Override
     protected void read() throws IOException {
-        throw new NoSuchMethodError();
+        // -done- read is lazy
     }
 
     @Override
     public int size() {
-        return knownStrings.size();
+        return idMap.size() - 1;
     }
 
     @Override
@@ -221,76 +230,22 @@ final public class StringPool extends HullType<String> implements StringAccess {
                 return result;
 
             // we have to load the string from disk
+            // @note this cannot happen if there was no HS, i.e. it is safe to access positions
             long off = positions[index];
             byte[] chars = rb.bytes((int) (off >> 32L), (int) off);
 
             result = new String(chars, utf8).intern();
             idMap.set(index, result);
-            knownStrings.add(result);
         }
         return result;
     }
 
     @Override
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
-    @Override
-    public boolean contains(Object o) {
-        return knownStrings.contains(o);
-    }
-
-    @Override
     public Iterator<String> iterator() {
-        return knownStrings.iterator();
-    }
-
-    @Override
-    public Object[] toArray() {
-        return knownStrings.toArray();
-    }
-
-    @Override
-    public <T> T[] toArray(T[] a) {
-        return knownStrings.toArray(a);
-    }
-
-    @Override
-    public boolean add(String e) {
-        if (e != null)
-            return knownStrings.add(e);
-        return false;
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        return knownStrings.remove(o);
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        return knownStrings.containsAll(c);
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends String> c) {
-        return knownStrings.addAll(c);
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        return knownStrings.removeAll(c);
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        return knownStrings.retainAll(c);
-    }
-
-    @Override
-    public void clear() {
-        knownStrings.clear();
+        Iterator<String> r = idMap.iterator();
+        // skip null-entry
+        r.next();
+        return r;
     }
 
     @Override

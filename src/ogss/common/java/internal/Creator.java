@@ -40,7 +40,6 @@ final public class Creator extends StateInitializer {
 
                     SIFA[nsID++] = p;
                     classes.add(p);
-                    Strings.add(p.name);
 
                     // set next
                     if (null != last) {
@@ -104,10 +103,6 @@ final public class Creator extends StateInitializer {
                 // create remaining known enums
                 while (null != nextName) {
                     r = new EnumPool(tid++, nextName, null, pb.enumMake(ki++));
-                    Strings.add(r.name);
-                    for (EnumProxy<?> n : r.values) {
-                        Strings.add(n.name);
-                    }
                     enums.add(r);
                     SIFA[nsID++] = r;
                     nextName = pb.enumName(ki);
@@ -116,10 +111,7 @@ final public class Creator extends StateInitializer {
 
             // Create Fields
             for (Pool<?> p : classes) {
-                String f;
-                for (int i = 0; null != (f = p.KFN(i)); i++) {
-                    Strings.add(f);
-
+                for (int i = 0; null != p.KFN(i); i++) {
                     final FieldDeclaration<?, ?> fd = p.KFC(i, SIFA, nextFieldID);
 
                     if (!(fd instanceof AutoField)) {

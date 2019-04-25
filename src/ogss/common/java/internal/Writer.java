@@ -140,7 +140,7 @@ final public class Writer {
 
             // write types
             for (Pool<?> p : state.classes) {
-                out.v64(string.id(p.name));
+                out.v64(string.IDs.get(p.name));
                 out.v64(p.staticDataInstances);
                 restrictions(p, out);
                 if (null == p.superPool)

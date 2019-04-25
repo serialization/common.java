@@ -12,6 +12,14 @@ public abstract class PoolBuilder {
     final int sifaSize;
 
     /**
+     * In contrast to C++, we will directly return an array of strings. This is a sane solution because of String.intern
+     * rules for literal strings in java. In consequence, by-name access is not required.
+     * 
+     * @return The lexically sorted array of strings returned as name of a type, field or enum constant.
+     */
+    protected abstract String[] literals();
+
+    /**
      * Known Container Constructor. Coded as kind|2 + sifaID|15 + sifaID|15. The IDs are relative to SIFA rather than
      * udts (note: has to include low IDs, i.e. sifaID is a shifted index)
      * 

@@ -10,9 +10,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import ogss.common.java.api.Access;
+import ogss.common.java.api.GeneralAccess;
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.OGSSException;
-import ogss.common.java.api.StringAccess;
 import ogss.common.streams.FileInputStream;
 import ogss.common.streams.FileOutputStream;
 
@@ -22,6 +22,24 @@ import ogss.common.streams.FileOutputStream;
  * @author Timm Felden
  */
 public abstract class State implements AutoCloseable {
+
+    static final int HD_Threshold = 16384;
+    static final int FD_Threshold = 1048576;
+
+    /**
+     * This pool is used for all asynchronous (de)serialization operations.
+     */
+    static ThreadPoolExecutor pool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
+            Runtime.getRuntime().availableProcessors(), 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
+            new ThreadFactory() {
+                @Override
+                public Thread newThread(Runnable r) {
+                    final Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    t.setName("OGSSWorker");
+                    return t;
+                }
+            });
 
     /**
      * the guard of the file must not contain \0-characters.
@@ -72,27 +90,12 @@ public abstract class State implements AutoCloseable {
      */
     private FileInputStream input;
 
-    /**
-     * This pool is used for all asynchronous (de)serialization operations.
-     */
-    static ThreadPoolExecutor pool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
-            Runtime.getRuntime().availableProcessors(), 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
-            new ThreadFactory() {
-                @Override
-                public Thread newThread(Runnable r) {
-                    final Thread t = new Thread(r);
-                    t.setDaemon(true);
-                    t.setName("OGSSWorker");
-                    return t;
-                }
-            });
-
     final StringPool strings;
 
     /**
      * @return access to known strings
      */
-    final public StringAccess Strings() {
+    final public GeneralAccess<String> Strings() {
         return strings;
     }
 
@@ -149,7 +152,7 @@ public abstract class State implements AutoCloseable {
      * @note this operation is kind of expensive
      */
     public final boolean contains(Obj ref) {
-        if (null != ref || 0 == ref.ID)
+        if (null != ref && 0 == ref.ID)
             try {
                 Pool<?> p = pool(ref);
 
@@ -213,14 +216,14 @@ public abstract class State implements AutoCloseable {
         if (null == input)
             return;
 
-        // ensure that strings are loaded
-        strings.loadLazyData();
-
         // ensure that lazy fields have been loaded
         for (Pool<?> p : classes)
             for (FieldDeclaration<?, ?> f : p.dataFields)
                 if (f instanceof LazyField<?, ?>)
                     ((LazyField<?, ?>) f).ensureLoaded();
+
+        // all strings have been loaded by now
+        strings.dropRB();
 
         // close the file input stream and ensure that it is not read again
         try {

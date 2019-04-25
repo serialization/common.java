@@ -81,17 +81,17 @@ abstract class Parser extends StateInitializer {
         // S
         try {
             fields.add(Strings);
-            int count = in.v32();
-
-            if (0 != count) {
-                in.jump(Strings.S(count, in));
-            }
+            Strings.readSL(in);
         } catch (Exception e) {
             throw new ParseException(in, e, "corrupted string block");
         }
 
         // T
-        typeBlock();
+        try {
+            typeBlock();
+        } catch (Exception e) {
+            throw new ParseException(in, e, "corrupted type block");
+        }
 
         fixContainerMD();
 
@@ -247,9 +247,7 @@ abstract class Parser extends StateInitializer {
             // read next pool from file if required
             if (moreFile) {
                 // name
-                name = Strings.r(in);
-                if (null == name)
-                    throw new ParseException(in, null, "corrupted file: nullptr in type name");
+                name = Strings.literals[in.v32() - 1];
 
                 // static size
                 count = in.v32();
@@ -360,9 +358,7 @@ abstract class Parser extends StateInitializer {
                     SIFA[nsID++] = p;
                     classes.add(p);
 
-                    if (keepFile) {
-                        Strings.add(p.name);
-                    } else {
+                    if (!keepFile) {
                         result = p;
                         fdts.add(result);
                     }
@@ -537,14 +533,14 @@ abstract class Parser extends StateInitializer {
         EnumPool<?> r;
         // create enums from file
         for (int count = in.v32(); count != 0; count--) {
-            String name = Strings.get(in.v32());
+            String name = Strings.literals[in.v32() - 1];
             int vcount = in.v32();
             if (vcount <= 0)
                 throw new ParseException(in, null, "Enum %s is too small.", name);
 
             String[] vs = new String[vcount];
             for (int i = 0; i < vcount; i++) {
-                vs[i] = Strings.get(in.v32());
+                vs[i] = Strings.literals[in.v32() - 1];
             }
 
             int cmp = null != nextName ? compare(name, nextName) : -1;
@@ -623,7 +619,7 @@ abstract class Parser extends StateInitializer {
         String kfn = p.KFN(0);
         while (0 != idx--) {
             // read field
-            final String name = Strings.r(in);
+            final String name = Strings.literals[in.v32() - 1];
             FieldType<?> t = fieldType();
             HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
             FieldDeclaration<?, ?> f = null;
@@ -649,8 +645,6 @@ abstract class Parser extends StateInitializer {
                 }
 
                 // else, it is a known fields not contained in the file
-                Strings.add(kfn);
-
                 f = p.KFC(ki++, SIFA, nextFieldID);
                 if (!(f instanceof AutoField)) {
                     nextFieldID++;

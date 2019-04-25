@@ -12,7 +12,7 @@ import ogss.common.streams.OutStream;
  * 
  * @author Timm Felden
  */
-public final class AnyRefType extends ByRefType<Object> {
+public final class AnyRefType extends ByRefType<Obj> {
 
     /**
      * @see ???
@@ -36,37 +36,29 @@ public final class AnyRefType extends ByRefType<Object> {
     }
 
     @Override
-    public Object r(InStream in) {
+    public Obj r(InStream in) {
         final int t = in.v32();
         if (0 == t)
             return null;
 
         final int f = in.v32();
-        if (1 == t)
-            return owner.Strings().get(f);
 
-        return types.get(t - 2).get(f);
+        return types.get(t - 1).get(f);
     }
 
     @Override
-    public boolean w(Object ref, OutStream out) throws IOException {
+    public boolean w(Obj ref, OutStream out) throws IOException {
         if (null == ref) {
             // magic trick!
             out.i8((byte) 0);
             return true;
         }
 
-        if (ref instanceof Obj) {
-            int stid = ((Obj) ref).stid();
-            Pool<?> p = -1 != stid ? (Pool<?>) owner.SIFA[stid] : ((NamedObj) ref).τp();
-            out.v64(p.typeID - typeID);
-            out.v64(((Obj) ref).ID());
-        } else if (ref instanceof String) {
-            out.i8((byte) 1);
-            out.v64(owner.strings.id((String) ref));
-        } else {
-            throw new Error("cannot store containers in anyRef");
-        }
+        int stid = ref.stid();
+        Pool<?> p = -1 != stid ? (Pool<?>) owner.SIFA[stid] : ((NamedObj) ref).τp();
+        out.v64(p.typeID - 9);
+        out.v64(ref.ID());
+
         return false;
     }
 
@@ -93,12 +85,12 @@ public final class AnyRefType extends ByRefType<Object> {
     }
 
     @Override
-    public Iterator<Object> iterator() {
+    public Iterator<Obj> iterator() {
         throw new Error("TODO");
     }
 
     @Override
-    public Object get(int ID) {
+    public Obj get(int ID) {
         throw new NoSuchMethodError();
     }
 }
