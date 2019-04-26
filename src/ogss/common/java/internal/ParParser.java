@@ -91,8 +91,7 @@ public final class ParParser extends Parser {
         /**
          * *************** * T Enum * ****************
          */
-        for (int count = in.v32(); count != 0; count--)
-            throw new Error("TODO");
+        TEnum();
 
         /**
          * *************** * F * ****************
@@ -121,8 +120,8 @@ public final class ParParser extends Parser {
 
             final int id = map.v32();
             final Object f = fields.get(id);
-            // overwrite entry to prevent duplicate read of the same field
-            fields.set(id, null);
+            
+            // TODO add a countermeasure against duplicate buckets / fieldIDs
 
             if (f instanceof HullType<?>) {
                 final int count = map.v32();
@@ -133,15 +132,17 @@ public final class ParParser extends Parser {
                 State.pool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        p.allocateInstances(count, map);
+                        int block = p.allocateInstances(count, map);
+
+                        // create hull read data task except for StringPool which is still lazy per element and eager
+                        // per offset
+                        if (!(p instanceof StringPool)) {
+                            jobs[id] = new HRT(p, block, map);
+                        }
+
                         barrier.release();
                     }
                 });
-
-                // create hull read data task except for StringPool which is still lazy per element and eager per offset
-                if (!(p instanceof StringPool)) {
-                    jobs[id] = new HRT(p);
-                }
 
             } else {
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
@@ -235,16 +236,20 @@ public final class ParParser extends Parser {
      */
     private final class HRT implements Runnable {
         private final HullType<?> t;
+        private final int block;
+        private final MappedInStream map;
 
-        HRT(HullType<?> t) {
+        HRT(HullType<?> t, int block, MappedInStream map) {
             this.t = t;
+            this.block = block;
+            this.map = map;
         }
 
         @Override
         public void run() {
             OGSSException ex = null;
             try {
-                t.read();
+                t.read(block, map);
             } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {

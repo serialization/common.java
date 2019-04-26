@@ -92,7 +92,7 @@ public final class SeqParser extends Parser {
 
         // we expect one HD-entry per field
         int remaining = fields.size();
-        Object[] jobs = new Object[remaining];
+        Job[] jobs = new Job[remaining];
 
         while (--remaining >= 0 & !in.eof()) {
             // create the map directly and use it for subsequent read-operations to avoid costly position and size
@@ -101,19 +101,19 @@ public final class SeqParser extends Parser {
 
             final int id = map.v32();
             final Object f = fields.get(id);
-            // overwrite entry to prevent duplicate read of the same field
-            fields.set(id, null);
+            
+            // TODO add a countermeasure against duplicate buckets / fieldIDs
 
             if (f instanceof HullType<?>) {
                 final int count = map.v32();
                 final HullType<?> p = (HullType<?>) f;
 
                 // start hull allocation job
-                p.allocateInstances(count, map);
+                int block = p.allocateInstances(count, map);
 
                 // create hull read data task except for StringPool which is still lazy per element and eager per offset
                 if (!(p instanceof StringPool)) {
-                    jobs[id] = p;
+                    jobs[id] = new HRT(p, block, map);
                 }
 
             } else {
@@ -124,13 +124,9 @@ public final class SeqParser extends Parser {
 
         // perform read tasks
         try {
-            for (Object j : jobs) {
+            for (Job j : jobs) {
                 if (null != j) {
-                    if (j instanceof ReadTask)
-                        ((ReadTask) j).run();
-                    else {
-                        ((HullType<?>) j).read();
-                    }
+                    j.run();
                 }
             }
         } catch (OGSSException t) {
@@ -147,7 +143,11 @@ public final class SeqParser extends Parser {
         // nothing to await
     }
 
-    private final class ReadTask {
+    private static abstract class Job {
+        abstract void run();
+    }
+
+    private final class ReadTask extends Job {
         private final FieldDeclaration<?, ?> f;
         private final MappedInStream map;
 
@@ -156,6 +156,7 @@ public final class SeqParser extends Parser {
             this.map = in;
         }
 
+        @Override
         void run() {
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
@@ -172,6 +173,29 @@ public final class SeqParser extends Parser {
 
             } catch (BufferUnderflowException e) {
                 throw new PoolSizeMissmatchError(bpo, end, f, e);
+            }
+        }
+    }
+
+    private final class HRT extends Job {
+        private final HullType<?> t;
+        private final int block;
+        private final MappedInStream map;
+
+        HRT(HullType<?> t, int block, MappedInStream map) {
+            this.t = t;
+            this.block = block;
+            this.map = map;
+        }
+
+        @Override
+        void run() {
+            try {
+                t.read(block, map);
+            } catch (OGSSException t) {
+                throw t;
+            } catch (Throwable t) {
+                throw new OGSSException("internal error: unexpected foreign exception", t);
             }
         }
     }

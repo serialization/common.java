@@ -15,7 +15,7 @@ import ogss.common.java.internal.fieldTypes.SetType;
 final public class Creator extends StateInitializer {
 
     Creator(PoolBuilder pb) {
-        super(null, pb);
+        super(pb);
 
         guard = "";
 

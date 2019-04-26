@@ -23,7 +23,6 @@ import ogss.common.streams.FileOutputStream;
  */
 public abstract class State implements AutoCloseable {
 
-    static final int HD_Threshold = 16384;
     static final int FD_Threshold = 1048576;
 
     /**
@@ -133,7 +132,7 @@ public abstract class State implements AutoCloseable {
     protected State(StateInitializer init) {
         this.strings = init.Strings;
         this.path = init.path;
-        this.input = init.in;
+        this.input = init instanceof Parser ? ((Parser) init).in : null;
         this.canWrite = init.canWrite;
         this.SIFA = init.SIFA;
         this.classes = init.classes.toArray(new Pool[init.classes.size()]);
@@ -245,6 +244,9 @@ public abstract class State implements AutoCloseable {
         // TODO type checks!
         // TODO type restrictions
         // TODO make pools check fields, because they can optimize checks per
+
+        // TODO check that idMaps do not contain unintended null-entries
+
         // instance and remove redispatching, if no
         // restrictions apply anyway
         for (Pool<?> p : classes)

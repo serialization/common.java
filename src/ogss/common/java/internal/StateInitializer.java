@@ -48,7 +48,6 @@ public abstract class StateInitializer {
     }
 
     Path path;
-    final FileInputStream in;
     boolean canWrite;
 
     // guard from file
@@ -86,12 +85,10 @@ public abstract class StateInitializer {
      */
     protected int nextFieldID = 1;
 
-    StateInitializer(FileInputStream in, PoolBuilder pb) {
-        this.in = in;
-
+    StateInitializer(PoolBuilder pb) {
         SIFA = new FieldType[pb.sifaSize];
 
-        Strings = new StringPool(in, pb.literals());
+        Strings = new StringPool(pb.literals());
 
         classes = new ArrayList<>(pb.sifaSize);
         containers = new ArrayList<>();

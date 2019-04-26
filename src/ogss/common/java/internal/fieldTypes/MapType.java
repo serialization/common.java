@@ -23,6 +23,13 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
+    public String name() {
+        StringBuilder sb = new StringBuilder("map<");
+        sb.append(keyType).append(",").append(valueType).append(">");
+        return sb.toString();
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof MapType<?, ?>)
             return keyType.equals(((MapType<?, ?>) obj).keyType) && valueType.equals(((MapType<?, ?>) obj).valueType);
@@ -30,10 +37,67 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
-    public String name() {
-        StringBuilder sb = new StringBuilder("map<");
-        sb.append(keyType).append(",").append(valueType).append(">");
-        return sb.toString();
+    protected int allocateInstances(int count, MappedInStream in) {
+        // check for buckets
+        if (count >= HD_Threshold) {
+            final int bucket = in.v32();
+            // initialize idMap with null to allow parallel updates
+            synchronized (this) {
+                if (1 == idMap.size()) {
+                    int c = count;
+                    while (c-- != 0)
+                        idMap.add(null);
+                }
+            }
+            int i = bucket * HD_Threshold;
+            final int end = Math.min(count, i + HD_Threshold);
+            while (i < end)
+                idMap.set(++i, new HashMap<>());
+
+            return bucket;
+        }
+        // else, no buckets
+        while (count-- != 0)
+            idMap.add(new HashMap<>());
+        return 0;
+    }
+
+    @Override
+    protected final void read(int bucket, MappedInStream in) {
+        int i = bucket * HD_Threshold;
+        final int end = Math.min(idMap.size(), i + HD_Threshold);
+        while (++i < end) {
+            HashMap<K, V> xs = idMap.get(i);
+            int s = in.v32();
+            while (s-- != 0) {
+                final K k = keyType.r(in);
+                final V v = valueType.r(in);
+                xs.put(k, v);
+            }
+        }
+    }
+
+    @Override
+    protected boolean write(int bucket, BufferedOutStream out) throws IOException {
+        final int count = idMap.size() - 1;
+        if (0 != count) {
+            out.v64(count);
+            if (count >= HD_Threshold) {
+                out.v64(bucket);
+            }
+            int i = bucket * HD_Threshold;
+            final int end = Math.min(idMap.size(), i + HD_Threshold);
+            while (++i < end) {
+                HashMap<K, V> xs = idMap.get(i);
+                out.v64(xs.size());
+                for (Entry<K, V> e : xs.entrySet()) {
+                    keyType.w(e.getKey(), out);
+                    valueType.w(e.getValue(), out);
+                }
+            }
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -49,46 +113,5 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     @Override
     public Iterator<HashMap<K, V>> iterator() {
         return IDs.keySet().iterator();
-    }
-
-    protected MappedInStream in;
-
-    @Override
-    protected void read() throws IOException {
-        final int count = idMap.size() - 1;
-        for (int i = 1; i <= count; i++) {
-            HashMap<K, V> xs = idMap.get(i);
-            int s = in.v32();
-            while (s-- != 0) {
-                final K k = keyType.r(in);
-                final V v = valueType.r(in);
-                xs.put(k, v);
-            }
-        }
-    }
-
-    @Override
-    protected boolean write(BufferedOutStream out) throws IOException {
-        final int count = idMap.size() - 1;
-        if (0 != count) {
-            out.v64(count);
-            for (int i = 1; i <= count; i++) {
-                HashMap<K, V> xs = idMap.get(i);
-                out.v64(xs.size());
-                for (Entry<K, V> e : xs.entrySet()) {
-                    keyType.w(e.getKey(), out);
-                    valueType.w(e.getValue(), out);
-                }
-            }
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    protected void allocateInstances(int count, MappedInStream in) {
-        this.in = in;
-        while (count-- != 0)
-            idMap.add(new HashMap<>());
     }
 }

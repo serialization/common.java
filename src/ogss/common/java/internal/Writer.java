@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.ArrayType;
@@ -35,8 +36,10 @@ final public class Writer {
     // async reads will post their errors in this queue
     Throwable writeErrors = null;
 
-    // our job synchronisation barrier
+    // our job synchronization barrier
     final Semaphore barrier = new Semaphore(0, false);
+
+    final AtomicInteger awaitBuffers = new AtomicInteger(0);
 
     // @note can be used to add buffers concurrently to the write queue
     // @note the permit is given after we added a buffer; therefore the reader
@@ -74,7 +77,7 @@ final public class Writer {
         final BufferedOutStream buffer = new BufferedOutStream();
 
         // @note here, the field data write tasks will be started already
-        int awaitBuffers = writeTF(buffer);
+        writeTF(buffer);
         SB.acquire();
 
         // write buffered TF-blocks
@@ -86,8 +89,7 @@ final public class Writer {
          */
 
         // await data from all HD tasks
-        while (awaitBuffers != 0) {
-            awaitBuffers--;
+        while (awaitBuffers.decrementAndGet() >= 0) {
             barrier.acquire();
             final BufferedOutStream buf = finishedBuffers.poll();
             if (null != buf) {
@@ -106,9 +108,9 @@ final public class Writer {
     }
 
     /**
-     * write T and F, start HD tasks, and return the number of buffers to await
+     * write T and F, start HD tasks and set awaitBuffers to the number of buffers if every block would have one bucket
      */
-    private int writeTF(BufferedOutStream out) throws Exception {
+    private void writeTF(BufferedOutStream out) throws Exception {
 
         int awaitHulls = 0;
         final ArrayList<FieldDeclaration<?, ?>> fieldQueue;
@@ -241,6 +243,6 @@ final public class Writer {
         out.close();
 
         // fields + hull types
-        return fieldQueue.size() + awaitHulls;
+        awaitBuffers.set(fieldQueue.size() + awaitHulls);
     }
 }

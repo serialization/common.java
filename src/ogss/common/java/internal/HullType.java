@@ -38,6 +38,17 @@ public abstract class HullType<T> extends ByRefType<T> {
     int maxDeps = 0;
 
     /**
+     * The current number of pending buckets. 0 If the HD is not split into buckets. This number is only meaningful
+     * while reading or writing a file.
+     */
+    int buckets;
+
+    /**
+     * The maximum size of a bucket.
+     */
+    protected static final int HD_Threshold = 16384;
+
+    /**
      * get object by ID
      */
     protected final ArrayList<T> idMap;
@@ -58,7 +69,7 @@ public abstract class HullType<T> extends ByRefType<T> {
      * @note the fieldID is written by the caller
      * @return true iff hull shall be discarded (i.e. it is empty)
      */
-    protected abstract void read() throws IOException;
+    protected abstract void read(int bucket, MappedInStream map) throws IOException;
 
     /**
      * Write the hull into the stream. Abstract, because the inner loop is type-dependent anyway.
@@ -66,7 +77,7 @@ public abstract class HullType<T> extends ByRefType<T> {
      * @note the fieldID is written by the caller
      * @return true iff hull shall be discarded (i.e. it is empty)
      */
-    protected abstract boolean write(BufferedOutStream out) throws IOException;
+    protected abstract boolean write(int bucket, BufferedOutStream out) throws IOException;
 
     protected HullType(int typeID) {
         super(typeID);
@@ -109,7 +120,13 @@ public abstract class HullType<T> extends ByRefType<T> {
         return false;
     }
 
-    protected abstract void allocateInstances(int count, MappedInStream map);
+    /**
+     * Allocate instances when reading a file.
+     * 
+     * @note map is positioned after count, i.e. the bucketID is still in the stream
+     * @return the bucketID belonging to this allocation
+     */
+    protected abstract int allocateInstances(int count, MappedInStream map);
 
     @Override
     public final State owner() {

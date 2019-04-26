@@ -38,6 +38,8 @@ abstract class Parser extends StateInitializer {
 
     final protected PoolBuilder pb;
 
+    final FileInputStream in;
+
     /**
      * This buffer provides the association of file fieldID to field.
      */
@@ -52,8 +54,9 @@ abstract class Parser extends StateInitializer {
     public OGSSException readErrors;
 
     Parser(FileInputStream in, PoolBuilder pb) {
-        super(in, pb);
+        super(pb);
         this.pb = pb;
+        this.in = in;
 
         // G
         {

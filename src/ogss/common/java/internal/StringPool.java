@@ -23,8 +23,10 @@ final public class StringPool extends HullType<String> {
 
     public static final Charset utf8 = Charset.forName("UTF-8");
 
-    // workaround for absurdly stupid ByteBuffer implementation
-    private MappedInStream rb;
+    /**
+     * keep the mapped in stream open until all strings have been read from input HS
+     */
+    private MappedInStream in;
 
     /**
      * ID ⇀ (absolute offset|32, length|32) will be used if idMap contains a null reference
@@ -38,18 +40,99 @@ final public class StringPool extends HullType<String> {
      */
     String[] literals;
 
-    StringPool(FileInputStream input, String[] literals) {
+    StringPool(String[] literals) {
         super(typeID);
-        rb = null == input ? null : input.map(-1);
         this.literals = literals;
     }
 
     /**
-     * The state will ask to drop rb as soon as all strings must have been loaded, i.e. as soon as all other lazy field
-     * data has been loaded.
+     * Read the string literal block
+     */
+    void readSL(FileInputStream in) {
+        final int count = in.v32();
+        if (0 == count) {
+            // trivial merge
+            return;
+        }
+
+        // known/file literal index
+        int ki = 0, fi = 0;
+        String next = new String(in.bytes(-1, in.v32()), utf8);
+
+        // merge literals from file into literals
+        ArrayList<String> merged = new ArrayList<>(count);
+        boolean hasFI, hasKI;
+        while ((hasFI = fi < count) | (hasKI = ki < literals.length)) {
+            // note: we will intern the string only if it is unknown
+            final int cmp = hasFI ? (hasKI ? next.compareTo(literals[ki]) : 1) : -1;
+
+            if (0 <= cmp) {
+                if (0 == cmp) {
+                    // discard next
+                    next = literals[ki++];
+                } else {
+                    // use next
+                    next = next.intern();
+                }
+                merged.add(next);
+                idMap.add(next);
+
+                if (++fi < count)
+                    next = new String(in.bytes(-1, in.v32()), utf8);
+            } else {
+                merged.add(literals[ki++]);
+            }
+        }
+
+        // update literals if required
+        if (literals.length != merged.size()) {
+            literals = merged.toArray(new String[merged.size()]);
+        }
+    }
+
+    /**
+     * Read HS; we will not perform an actual read afterwards
+     */
+    @Override
+    protected int allocateInstances(int count, MappedInStream in) {
+        this.in = in;
+
+        // read offsets
+        int[] offsets = new int[count];
+        for (int i = 0; i < count; i++) {
+            offsets[i] = in.v32();
+        }
+
+        // create positions
+        int spi = idMap.size();
+        final long[] sp = new long[spi + count];
+        positions = sp;
+
+        // store offsets
+        // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
+        // is done using absolute sizes
+        int last = in.position(), len;
+        for (int i = 0; i < count; i++) {
+            len = offsets[i];
+            sp[spi++] = (((long) last) << 32L) | len;
+            idMap.add(null);
+            last += len;
+        }
+
+        return 0;
+    }
+
+    @Override
+    protected void read(int bucket, MappedInStream map) throws IOException {
+        // -done- strings are lazy
+    }
+
+    /**
+     * The state will ask to drop the read buffer as soon as all strings must have been loaded, i.e. as soon as all
+     * other lazy field data has been loaded.
      */
     void dropRB() {
-        rb = null;
+        in = null;
         positions = null;
     }
 
@@ -98,7 +181,7 @@ final public class StringPool extends HullType<String> {
      * Write HS
      */
     @Override
-    protected final boolean write(BufferedOutStream out) throws IOException {
+    protected final boolean write(int bucket, BufferedOutStream out) throws IOException {
         // the null in idMap is not written and literals are written in SL
         final int hullOffset = literals.length + 1;
         final int count = idMap.size() - hullOffset;
@@ -122,84 +205,6 @@ final public class StringPool extends HullType<String> {
         }
 
         return false;
-    }
-
-    /**
-     * Read HS; we will not perform an actual read afterwards
-     */
-    @Override
-    protected void allocateInstances(int count, MappedInStream in) {
-        // read offsets
-        int[] offsets = new int[count];
-        for (int i = 0; i < count; i++) {
-            offsets[i] = in.v32();
-        }
-
-        // create positions
-        int spi = idMap.size();
-        final long[] sp = new long[spi + count];
-        positions = sp;
-
-        // store offsets
-        // @note this has to be done after reading all offsets, as sizes are relative to that point and decoding
-        // is done using absolute sizes
-        int last = in.position(), len;
-        for (int i = 0; i < count; i++) {
-            len = offsets[i];
-            sp[spi++] = (((long) last) << 32L) | len;
-            idMap.add(null);
-            last += len;
-        }
-    }
-
-    /**
-     * Read the string literal block
-     */
-    void readSL(FileInputStream in) {
-        final int count = in.v32();
-        if (0 == count) {
-            // trivial merge
-            return;
-        }
-
-        // known/file literal index
-        int ki = 0, fi = 0;
-        String next = new String(in.bytes(-1, in.v32()), utf8);
-
-        // merge literals from file into literals
-        ArrayList<String> merged = new ArrayList<>(count);
-        boolean hasFI, hasKI;
-        while ((hasFI = fi < count) | (hasKI = ki < literals.length)) {
-            // note: we will intern the string only if it is unknown
-            final int cmp = hasFI ? (hasKI ? next.compareTo(literals[ki]) : 1) : -1;
-
-            if (0 <= cmp) {
-                if (0 == cmp) {
-                    // discard next
-                    next = literals[ki++];
-                } else {
-                    // use next
-                    next = next.intern();
-                }
-                merged.add(next);
-                idMap.add(next);
-
-                if (++fi < count)
-                    next = new String(in.bytes(-1, in.v32()), utf8);
-            } else {
-                merged.add(literals[ki++]);
-            }
-        }
-
-        // update literals if required
-        if (literals.length != merged.size()) {
-            literals = merged.toArray(new String[merged.size()]);
-        }
-    }
-
-    @Override
-    protected void read() throws IOException {
-        // -done- read is lazy
     }
 
     @Override
@@ -230,9 +235,9 @@ final public class StringPool extends HullType<String> {
                 return result;
 
             // we have to load the string from disk
-            // @note this cannot happen if there was no HS, i.e. it is safe to access positions
+            // @note this cannot happen if there was no HS, i.e. it is safe to access in & positions
             long off = positions[index];
-            byte[] chars = rb.bytes((int) (off >> 32L), (int) off);
+            byte[] chars = in.bytes((int) (off >> 32L), (int) off);
 
             result = new String(chars, utf8).intern();
             idMap.set(index, result);
