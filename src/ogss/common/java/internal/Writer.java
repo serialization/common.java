@@ -1,6 +1,7 @@
 package ogss.common.java.internal;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
@@ -114,7 +115,7 @@ final public class Writer {
     }
 
     /**
-     * write T and F, start HD tasks and set awaitBuffers to the number of buffers if every block would have one bucket
+     * write T and F, start HD tasks and set awaitBuffers to the number of buffers if every entry had one block
      */
     private void writeTF(BufferedOutStream out) throws Exception {
 

@@ -38,9 +38,9 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
 
     @Override
     protected int allocateInstances(int count, MappedInStream in) {
-        // check for buckets
+        // check for blocks
         if (count >= HD_Threshold) {
-            final int bucket = in.v32();
+            final int block = in.v32();
             // initialize idMap with null to allow parallel updates
             synchronized (this) {
                 if (1 == idMap.size()) {
@@ -49,22 +49,22 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
                         idMap.add(null);
                 }
             }
-            int i = bucket * HD_Threshold;
+            int i = block * HD_Threshold;
             final int end = Math.min(count, i + HD_Threshold);
             while (i < end)
                 idMap.set(++i, new HashMap<>());
 
-            return bucket;
+            return block;
         }
-        // else, no buckets
+        // else, no blocks
         while (count-- != 0)
             idMap.add(new HashMap<>());
         return 0;
     }
 
     @Override
-    protected final void read(int bucket, MappedInStream in) {
-        int i = bucket * HD_Threshold;
+    protected final void read(int block, MappedInStream in) {
+        int i = block * HD_Threshold;
         final int end = Math.min(idMap.size(), i + HD_Threshold);
         while (++i < end) {
             HashMap<K, V> xs = idMap.get(i);
@@ -78,26 +78,27 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
-    protected boolean write(int bucket, BufferedOutStream out) throws IOException {
+    protected boolean write(int block, BufferedOutStream out) throws IOException {
         final int count = idMap.size() - 1;
-        if (0 != count) {
-            out.v64(count);
-            if (count >= HD_Threshold) {
-                out.v64(bucket);
-            }
-            int i = bucket * HD_Threshold;
-            final int end = Math.min(idMap.size(), i + HD_Threshold);
-            while (++i < end) {
-                HashMap<K, V> xs = idMap.get(i);
-                out.v64(xs.size());
-                for (Entry<K, V> e : xs.entrySet()) {
-                    keyType.w(e.getKey(), out);
-                    valueType.w(e.getValue(), out);
-                }
-            }
-            return false;
+        if (0 == count) {
+            return true;
         }
-        return true;
+
+        out.v64(count);
+        if (count >= HD_Threshold) {
+            out.v64(block);
+        }
+        int i = block * HD_Threshold;
+        final int end = Math.min(idMap.size(), i + HD_Threshold);
+        while (++i < end) {
+            HashMap<K, V> xs = idMap.get(i);
+            out.v64(xs.size());
+            for (Entry<K, V> e : xs.entrySet()) {
+                keyType.w(e.getKey(), out);
+                valueType.w(e.getValue(), out);
+            }
+        }
+        return false;
     }
 
     @Override

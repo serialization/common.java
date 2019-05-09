@@ -27,9 +27,9 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
 
     @Override
     protected int allocateInstances(int count, MappedInStream in) {
-        // check for buckets
+        // check for blocks
         if (count >= HD_Threshold) {
-            final int bucket = in.v32();
+            final int block = in.v32();
 
             // initialize idMap with null to allow parallel updates
             synchronized (this) {
@@ -39,23 +39,23 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
                         idMap.add(null);
                 }
             }
-            int i = bucket * HD_Threshold;
+            int i = block * HD_Threshold;
             final int end = Math.min(count, i + HD_Threshold);
 
             while (i < end)
                 idMap.set(++i, new LinkedList<>());
 
-            return bucket;
+            return block;
         }
-        // else, no buckets
+        // else, no blocks
         while (count-- != 0)
             idMap.add(new LinkedList<>());
         return 0;
     }
 
     @Override
-    protected final void read(int bucket, MappedInStream in) {
-        int i = bucket * HD_Threshold;
+    protected final void read(int block, MappedInStream in) {
+        int i = block * HD_Threshold;
         final int end = Math.min(idMap.size(), i + HD_Threshold);
         while (++i < end) {
             LinkedList<T> xs = idMap.get(i);
@@ -67,7 +67,7 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     }
 
     @Override
-    protected final boolean write(int bucket, BufferedOutStream out) throws IOException {
+    protected final boolean write(int block, BufferedOutStream out) throws IOException {
         final int count = idMap.size() - 1;
         if (0 == count) {
             return true;
@@ -75,9 +75,9 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
 
         out.v64(count);
         if (count >= HD_Threshold) {
-            out.v64(bucket);
+            out.v64(block);
         }
-        int i = bucket * HD_Threshold;
+        int i = block * HD_Threshold;
         final int end = Math.min(idMap.size(), i + HD_Threshold);
         while (++i < end) {
             LinkedList<T> xs = idMap.get(i);

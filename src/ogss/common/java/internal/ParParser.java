@@ -112,12 +112,11 @@ public final class ParParser extends Parser {
     final void processData() {
 
         // we expect one HD-entry per field
-        int remaining = fields.size();
-        jobs = new ArrayList<>(remaining);
+        jobs = new ArrayList<>(fields.size());
 
         int awaitHulls = 0;
 
-        while (--remaining >= 0 & !in.eof()) {
+        while (!in.eof()) {
             // create the map directly and use it for subsequent read-operations to avoid costly position and size
             // readjustments
             final MappedInStream map = in.map(in.v32() + 2);
@@ -136,12 +135,12 @@ public final class ParParser extends Parser {
                 State.pool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        int bucket = p.allocateInstances(count, map);
+                        int block = p.allocateInstances(count, map);
 
                         // create hull read data task except for StringPool which is still lazy per element and eager
                         // per offset
                         if (!(p instanceof StringPool)) {
-                            jobs.add(new HRT(p, bucket, map));
+                            jobs.add(new HRT(p, block, map));
                         }
 
                         barrier.release();
@@ -196,12 +195,12 @@ public final class ParParser extends Parser {
                 barrier.release();
                 return;
             }
-            final int bucket = f.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
+            final int block = f.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
 
             OGSSException ex = null;
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
-            final int first = bucket * FieldDeclaration.FD_Threshold;
+            final int first = block * FieldDeclaration.FD_Threshold;
             final int last = Math.min(owner.cachedSize, first + FieldDeclaration.FD_Threshold);
             try {
                 f.read(bpo + first, bpo + last, in);
@@ -235,12 +234,12 @@ public final class ParParser extends Parser {
      */
     private final class HRT implements Runnable {
         private final HullType<?> t;
-        private final int bucket;
+        private final int block;
         private final MappedInStream in;
 
-        HRT(HullType<?> t, int bucket, MappedInStream in) {
+        HRT(HullType<?> t, int block, MappedInStream in) {
             this.t = t;
-            this.bucket = bucket;
+            this.block = block;
             this.in = in;
         }
 
@@ -248,7 +247,7 @@ public final class ParParser extends Parser {
         public void run() {
             OGSSException ex = null;
             try {
-                t.read(bucket, in);
+                t.read(block, in);
             } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {

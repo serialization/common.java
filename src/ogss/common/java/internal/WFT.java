@@ -12,10 +12,10 @@ import ogss.common.streams.BufferedOutStream;
 final class WFT extends WJob {
     private final FieldDeclaration<?, ?> f;
     /**
-     * the bucket this task is responsible for; the task processing bucket 0 starts the other tasks and can therefore
-     * know that it is not just a task that has to process its bucket
+     * the block this task is responsible for; the task processing block 0 starts the other tasks and can therefore
+     * know that it is not just a task that has to process its block
      */
-    private int bucket;
+    private int block;
 
     WFT(Writer self, FieldDeclaration<?, ?> f) {
         super(self);
@@ -27,58 +27,58 @@ final class WFT extends WJob {
 
         final int count = f.owner.cachedSize;
 
-        final boolean hasBuckets;
+        final boolean hasblocks;
 
         // any empty field will be discarded
         if (count != 0) {
 
-            // iff we have bucketID zero we may need to split
-            if (0 == bucket) {
-                // split large FD blocks into buckets
+            // iff we have blockID zero we may need to split
+            if (0 == block) {
+                // split large FD blocks into blocks
                 if (count >= FieldDeclaration.FD_Threshold) {
-                    hasBuckets = true;
+                    hasblocks = true;
 
                     // we have to fork this task
-                    int bucketCount = count / FieldDeclaration.FD_Threshold;
-                    // @note we increment await by bucketCount - 1
+                    int blockCount = count / FieldDeclaration.FD_Threshold;
+                    // @note we increment await by blockCount - 1
                     synchronized (self) {
-                        self.awaitBuffers += bucketCount++;
+                        self.awaitBuffers += blockCount++;
                     }
 
-                    f.buckets = bucketCount;
-                    for (int i = 1; i < bucketCount; i++) {
+                    f.blocks = blockCount;
+                    for (int i = 1; i < blockCount; i++) {
                         WFT job = new WFT(self, f);
-                        job.bucket = i;
+                        job.block = i;
                         State.pool.execute(job);
                     }
                 } else {
-                    hasBuckets = false;
+                    hasblocks = false;
                 }
             } else {
-                hasBuckets = true;
+                hasblocks = true;
             }
 
             Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
-            int i = bucket * FieldDeclaration.FD_Threshold;
+            int i = block * FieldDeclaration.FD_Threshold;
             int h = Math.min(count, i + FieldDeclaration.FD_Threshold);
             i += bpo;
             h += bpo;
 
             buffer.v64(f.id);
             if (count >= FieldDeclaration.FD_Threshold) {
-                buffer.v64(bucket);
+                buffer.v64(block);
             }
             discard = f.write(i, h, buffer);
 
         } else {
-            hasBuckets = false;
+            hasblocks = false;
         }
 
         final boolean done;
-        if (hasBuckets) {
+        if (hasblocks) {
             synchronized (f) {
-                done = 0 == --f.buckets;
+                done = 0 == --f.blocks;
             }
         } else {
             done = true;

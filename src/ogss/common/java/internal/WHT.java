@@ -14,10 +14,10 @@ import ogss.common.streams.BufferedOutStream;
 final class WHT extends WJob {
     private final HullType<?> t;
     /**
-     * the bucket this task is responsible for; the task processing bucket 0 starts the other tasks and can therefore
-     * know that it is not just a task that has to process its bucket
+     * the block this task is responsible for; the task processing block 0 starts the other tasks and can therefore know
+     * that it is not just a task that has to process its block
      */
-    private int bucket;
+    private int block;
 
     WHT(Writer self, HullType<?> t) {
         super(self);
@@ -28,39 +28,39 @@ final class WHT extends WJob {
     protected void job(BufferedOutStream buffer) throws IOException {
         buffer.v64(t.fieldID);
 
-        final boolean hasBuckets;
+        final boolean hasblocks;
 
-        // iff we have bucketID zero we may need to split
-        if (0 == bucket) {
-            // split non-HS blocks that are too large into buckets
+        // iff we have blockID zero we may need to split
+        if (0 == block) {
+            // split non-HS blocks that are too large into blocks
             if (t.typeID != StringPool.typeID && t.idMap.size() >= HullType.HD_Threshold) {
-                hasBuckets = true;
+                hasblocks = true;
                 // we have to fork this task
-                int bucketCount = t.idMap.size() / HullType.HD_Threshold;
-                // @note we increment await by bucketCount - 1
+                int blockCount = t.idMap.size() / HullType.HD_Threshold;
+                // @note we increment await by blockCount - 1
                 synchronized (self) {
-                    self.awaitBuffers += bucketCount++;
+                    self.awaitBuffers += blockCount++;
                 }
 
-                t.buckets = bucketCount;
-                for (int i = 1; i < bucketCount; i++) {
+                t.blocks = blockCount;
+                for (int i = 1; i < blockCount; i++) {
                     WHT job = new WHT(self, t);
-                    job.bucket = i;
+                    job.block = i;
                     State.pool.execute(job);
                 }
             } else {
-                hasBuckets = false;
+                hasblocks = false;
             }
         } else {
-            hasBuckets = true;
+            hasblocks = true;
         }
 
-        discard = t.write(bucket, buffer);
+        discard = t.write(block, buffer);
 
         final boolean done;
-        if (hasBuckets) {
+        if (hasblocks) {
             synchronized (t) {
-                done = 0 == --t.buckets;
+                done = 0 == --t.blocks;
             }
         } else {
             done = true;

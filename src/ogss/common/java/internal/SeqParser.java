@@ -1,6 +1,7 @@
 package ogss.common.java.internal;
 
 import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
 
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
@@ -91,10 +92,9 @@ public final class SeqParser extends Parser {
     final void processData() {
 
         // we expect one HD-entry per field
-        int remaining = fields.size();
-        Job[] jobs = new Job[remaining];
+        final ArrayList<Job> jobs = new ArrayList<>(fields.size());
 
-        while (--remaining >= 0 & !in.eof()) {
+        while (!in.eof()) {
             // create the map directly and use it for subsequent read-operations to avoid costly position and size
             // readjustments
             final MappedInStream map = in.map(in.v32() + 2);
@@ -113,25 +113,22 @@ public final class SeqParser extends Parser {
 
                 // create hull read data task except for StringPool which is still lazy per element and eager per offset
                 if (!(p instanceof StringPool)) {
-                    jobs[id] = new HRT(p, block, map);
+                    jobs.add(new HRT(p, block, map));
                 }
 
             } else {
                 final FieldDeclaration<?, ?> fd = (FieldDeclaration<?, ?>) f;
-                int bucket = fd.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
+                int block = fd.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
 
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-                jobs[id] = new ReadTask(bucket, fd, map);
+                jobs.add(new ReadTask(block, fd, map));
             }
         }
 
         // perform read tasks
         try {
-            for (Job j : jobs) {
-                if (null != j) {
-                    j.run();
-                }
-            }
+            for (Job j : jobs)
+                j.run();
         } catch (OGSSException t) {
             throw t;
         } catch (Throwable t) {
@@ -151,12 +148,12 @@ public final class SeqParser extends Parser {
     }
 
     private final class ReadTask extends Job {
-        private final int bucket;
+        private final int block;
         private final FieldDeclaration<?, ?> f;
         private final MappedInStream in;
 
-        ReadTask(int bucket, FieldDeclaration<?, ?> f, MappedInStream in) {
-            this.bucket = bucket;
+        ReadTask(int block, FieldDeclaration<?, ?> f, MappedInStream in) {
+            this.block = block;
             this.f = f;
             this.in = in;
         }
@@ -170,7 +167,7 @@ public final class SeqParser extends Parser {
 
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
-            final int first = bucket * FieldDeclaration.FD_Threshold;
+            final int first = block * FieldDeclaration.FD_Threshold;
             final int last = Math.min(owner.cachedSize, first + FieldDeclaration.FD_Threshold);
             try {
                 f.read(bpo + first, bpo + last, in);

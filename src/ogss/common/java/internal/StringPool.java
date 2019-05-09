@@ -123,7 +123,7 @@ final public class StringPool extends HullType<String> {
     }
 
     @Override
-    protected void read(int bucket, MappedInStream map) throws IOException {
+    protected void read(int block, MappedInStream map) throws IOException {
         // -done- strings are lazy
     }
 
@@ -181,7 +181,7 @@ final public class StringPool extends HullType<String> {
      * Write HS
      */
     @Override
-    protected final boolean write(int bucket, BufferedOutStream out) throws IOException {
+    protected final boolean write(int block, BufferedOutStream out) throws IOException {
         // the null in idMap is not written and literals are written in SL
         final int hullOffset = literals.length + 1;
         final int count = idMap.size() - hullOffset;
