@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.ArrayType;
@@ -39,7 +38,10 @@ final public class Writer {
     // our job synchronization barrier
     final Semaphore barrier = new Semaphore(0, false);
 
-    final AtomicInteger awaitBuffers = new AtomicInteger(0);
+    /**
+     * the number of buffers that will be sent to the write job; synchronize on this to protect it on modification
+     */
+    int awaitBuffers = 0;
 
     // @note can be used to add buffers concurrently to the write queue
     // @note the permit is given after we added a buffer; therefore the reader
@@ -89,7 +91,11 @@ final public class Writer {
          */
 
         // await data from all HD tasks
-        while (awaitBuffers.decrementAndGet() >= 0) {
+        while (true) {
+            synchronized (this) {
+                if (--awaitBuffers < 0)
+                    break;
+            }
             barrier.acquire();
             final BufferedOutStream buf = finishedBuffers.poll();
             if (null != buf) {
@@ -243,6 +249,8 @@ final public class Writer {
         out.close();
 
         // fields + hull types
-        awaitBuffers.set(fieldQueue.size() + awaitHulls);
+        synchronized (this) {
+            awaitBuffers += (fieldQueue.size() + awaitHulls);
+        }
     }
 }

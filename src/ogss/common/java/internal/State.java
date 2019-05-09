@@ -23,8 +23,6 @@ import ogss.common.streams.FileOutputStream;
  */
 public abstract class State implements AutoCloseable {
 
-    static final int FD_Threshold = 1048576;
-
     /**
      * This pool is used for all asynchronous (de)serialization operations.
      */

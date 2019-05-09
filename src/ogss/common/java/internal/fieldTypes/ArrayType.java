@@ -30,6 +30,7 @@ public final class ArrayType<T> extends SingleArgumentType<ArrayList<T>, T> {
         // check for buckets
         if (count >= HD_Threshold) {
             final int bucket = in.v32();
+
             // initialize idMap with null to allow parallel updates
             synchronized (this) {
                 if (1 == idMap.size()) {
@@ -40,6 +41,7 @@ public final class ArrayType<T> extends SingleArgumentType<ArrayList<T>, T> {
             }
             int i = bucket * HD_Threshold;
             final int end = Math.min(count, i + HD_Threshold);
+
             while (i < end)
                 idMap.set(++i, new ArrayList<>());
 

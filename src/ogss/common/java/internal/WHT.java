@@ -28,27 +28,37 @@ final class WHT extends WJob {
     protected void job(BufferedOutStream buffer) throws IOException {
         buffer.v64(t.fieldID);
 
+        final boolean hasBuckets;
+
         // iff we have bucketID zero we may need to split
         if (0 == bucket) {
             // split non-HS blocks that are too large into buckets
             if (t.typeID != StringPool.typeID && t.idMap.size() >= HullType.HD_Threshold) {
+                hasBuckets = true;
                 // we have to fork this task
                 int bucketCount = t.idMap.size() / HullType.HD_Threshold;
                 // @note we increment await by bucketCount - 1
-                self.awaitBuffers.addAndGet(bucketCount++);
+                synchronized (self) {
+                    self.awaitBuffers += bucketCount++;
+                }
+
                 t.buckets = bucketCount;
-                for(int i = 1; i < bucketCount; i++) {
+                for (int i = 1; i < bucketCount; i++) {
                     WHT job = new WHT(self, t);
                     job.bucket = i;
                     State.pool.execute(job);
                 }
+            } else {
+                hasBuckets = false;
             }
+        } else {
+            hasBuckets = true;
         }
 
         discard = t.write(bucket, buffer);
 
-        boolean done;
-        if (0 != bucket) {
+        final boolean done;
+        if (hasBuckets) {
             synchronized (t) {
                 done = 0 == --t.buckets;
             }

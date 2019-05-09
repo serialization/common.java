@@ -1,6 +1,7 @@
 package ogss.common.java.internal;
 
 import java.nio.BufferUnderflowException;
+import java.util.ArrayList;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.OGSSException;
@@ -101,6 +102,9 @@ public final class ParParser extends Parser {
         }
     }
 
+    // jobs is a field as we need it for await
+    ArrayList<Runnable> jobs;
+
     /**
      * Jump through HD-entries to create read tasks
      */
@@ -109,7 +113,7 @@ public final class ParParser extends Parser {
 
         // we expect one HD-entry per field
         int remaining = fields.size();
-        Runnable[] jobs = new Runnable[remaining];
+        jobs = new ArrayList<>(remaining);
 
         int awaitHulls = 0;
 
@@ -120,7 +124,7 @@ public final class ParParser extends Parser {
 
             final int id = map.v32();
             final Object f = fields.get(id);
-            
+
             // TODO add a countermeasure against duplicate buckets / fieldIDs
 
             if (f instanceof HullType<?>) {
@@ -132,12 +136,12 @@ public final class ParParser extends Parser {
                 State.pool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        int block = p.allocateInstances(count, map);
+                        int bucket = p.allocateInstances(count, map);
 
                         // create hull read data task except for StringPool which is still lazy per element and eager
                         // per offset
                         if (!(p instanceof StringPool)) {
-                            jobs[id] = new HRT(p, block, map);
+                            jobs.add(new HRT(p, bucket, map));
                         }
 
                         barrier.release();
@@ -146,7 +150,7 @@ public final class ParParser extends Parser {
 
             } else {
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-                jobs[id] = new ReadTask((FieldDeclaration<?, ?>) f, map);
+                jobs.add(new ReadTask((FieldDeclaration<?, ?>) f, map));
             }
         }
 
@@ -158,17 +162,8 @@ public final class ParParser extends Parser {
         }
 
         // start read tasks
-        {
-            int skips = 0;
-            for (Runnable j : jobs) {
-                if (null != j)
-                    State.pool.execute(j);
-                else
-                    skips++;
-            }
-            if (0 != skips)
-                barrier.release(skips);
-        }
+        for (Runnable j : jobs)
+            State.pool.execute(j);
 
         // TODO start tasks that perform default initialization of fields not obtained from file
     }
@@ -177,7 +172,7 @@ public final class ParParser extends Parser {
     public void awaitResults() {
         // await read jobs and throw error if any occurred
         try {
-            barrier.acquire(fields.size());
+            barrier.acquire(jobs.size());
         } catch (InterruptedException e) {
             throw new OGSSException("internal error: unexpected foreign exception", e);
         }
@@ -187,31 +182,35 @@ public final class ParParser extends Parser {
 
     private final class ReadTask implements Runnable {
         private final FieldDeclaration<?, ?> f;
-        private final MappedInStream map;
+        private final MappedInStream in;
 
         ReadTask(FieldDeclaration<?, ?> f, MappedInStream in) {
             this.f = f;
-            this.map = in;
+            this.in = in;
         }
 
         @Override
         public void run() {
+            if (in.eof()) {
+                // TODO default initialization; this is a nop for now in Java
+                barrier.release();
+                return;
+            }
+            final int bucket = f.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
+
             OGSSException ex = null;
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
-            final int end = bpo + owner.cachedSize;
+            final int first = bucket * FieldDeclaration.FD_Threshold;
+            final int last = Math.min(owner.cachedSize, first + FieldDeclaration.FD_Threshold);
             try {
-                if (map.eof()) {
-                    // TODO default initialization; this is a nop for now in Java
-                } else {
-                    f.read(bpo, end, map);
-                }
+                f.read(bpo + first, bpo + last, in);
 
-                if (!map.eof() && !(f instanceof LazyField<?, ?>))
-                    ex = new PoolSizeMissmatchError(map.position(), bpo, end, f);
+                if (!in.eof() && !(f instanceof LazyField<?, ?>))
+                    ex = new PoolSizeMissmatchError(in.position(), bpo + first, bpo + last, f);
 
             } catch (BufferUnderflowException e) {
-                ex = new PoolSizeMissmatchError(bpo, end, f, e);
+                ex = new PoolSizeMissmatchError(bpo + first, bpo + last, f, e);
             } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {
@@ -236,20 +235,20 @@ public final class ParParser extends Parser {
      */
     private final class HRT implements Runnable {
         private final HullType<?> t;
-        private final int block;
-        private final MappedInStream map;
+        private final int bucket;
+        private final MappedInStream in;
 
-        HRT(HullType<?> t, int block, MappedInStream map) {
+        HRT(HullType<?> t, int bucket, MappedInStream in) {
             this.t = t;
-            this.block = block;
-            this.map = map;
+            this.bucket = bucket;
+            this.in = in;
         }
 
         @Override
         public void run() {
             OGSSException ex = null;
             try {
-                t.read(block, map);
+                t.read(bucket, in);
             } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {

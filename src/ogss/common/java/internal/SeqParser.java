@@ -101,7 +101,7 @@ public final class SeqParser extends Parser {
 
             final int id = map.v32();
             final Object f = fields.get(id);
-            
+
             // TODO add a countermeasure against duplicate buckets / fieldIDs
 
             if (f instanceof HullType<?>) {
@@ -117,8 +117,11 @@ public final class SeqParser extends Parser {
                 }
 
             } else {
+                final FieldDeclaration<?, ?> fd = (FieldDeclaration<?, ?>) f;
+                int bucket = fd.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
+
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-                jobs[id] = new ReadTask((FieldDeclaration<?, ?>) f, map);
+                jobs[id] = new ReadTask(bucket, fd, map);
             }
         }
 
@@ -148,31 +151,35 @@ public final class SeqParser extends Parser {
     }
 
     private final class ReadTask extends Job {
+        private final int bucket;
         private final FieldDeclaration<?, ?> f;
-        private final MappedInStream map;
+        private final MappedInStream in;
 
-        ReadTask(FieldDeclaration<?, ?> f, MappedInStream in) {
+        ReadTask(int bucket, FieldDeclaration<?, ?> f, MappedInStream in) {
+            this.bucket = bucket;
             this.f = f;
-            this.map = in;
+            this.in = in;
         }
 
         @Override
         void run() {
+            if (in.eof()) {
+                // TODO default initialization; this is a nop for now in Java
+                return;
+            }
+
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
-            final int end = bpo + owner.cachedSize;
+            final int first = bucket * FieldDeclaration.FD_Threshold;
+            final int last = Math.min(owner.cachedSize, first + FieldDeclaration.FD_Threshold);
             try {
-                if (map.eof()) {
-                    // TODO default initialization; this is a nop for now in Java
-                } else {
-                    f.read(bpo, end, map);
-                }
+                f.read(bpo + first, bpo + last, in);
 
-                if (!map.eof() && !(f instanceof LazyField<?, ?>))
-                    throw new PoolSizeMissmatchError(map.position(), bpo, end, f);
+                if (!in.eof() && !(f instanceof LazyField<?, ?>))
+                    throw new PoolSizeMissmatchError(in.position(), bpo + first, bpo + last, f);
 
             } catch (BufferUnderflowException e) {
-                throw new PoolSizeMissmatchError(bpo, end, f, e);
+                throw new PoolSizeMissmatchError(bpo + first, bpo + last, f, e);
             }
         }
     }

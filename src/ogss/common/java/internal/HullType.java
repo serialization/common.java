@@ -38,8 +38,8 @@ public abstract class HullType<T> extends ByRefType<T> {
     int maxDeps = 0;
 
     /**
-     * The current number of pending buckets. 0 If the HD is not split into buckets. This number is only meaningful
-     * while reading or writing a file.
+     * The current number of pending buckets. 0 if the HD is not split into buckets. This number is only meaningful
+     * while writing a file.
      */
     int buckets;
 

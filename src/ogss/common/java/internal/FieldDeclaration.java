@@ -39,9 +39,20 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
     final int id;
 
     /**
+     * The current number of pending buckets. 0 if FD is not split into buckets. This number is only meaningful while
+     * writing a file.
+     */
+    int buckets;
+
+    /**
+     * The maximum size of a bucket.
+     */
+    public static final int FD_Threshold = 1048576;
+
+    /**
      * the enclosing storage pool
      */
-    protected final Pool<Ref> owner;
+    public final Pool<Ref> owner;
 
     @Override
     public Pool<Ref> owner() {

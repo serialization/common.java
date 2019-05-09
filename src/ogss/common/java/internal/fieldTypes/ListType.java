@@ -30,6 +30,7 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
         // check for buckets
         if (count >= HD_Threshold) {
             final int bucket = in.v32();
+
             // initialize idMap with null to allow parallel updates
             synchronized (this) {
                 if (1 == idMap.size()) {
@@ -40,6 +41,7 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
             }
             int i = bucket * HD_Threshold;
             final int end = Math.min(count, i + HD_Threshold);
+
             while (i < end)
                 idMap.set(++i, new LinkedList<>());
 
@@ -67,22 +69,23 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     @Override
     protected final boolean write(int bucket, BufferedOutStream out) throws IOException {
         final int count = idMap.size() - 1;
-        if (0 != count) {
-            out.v64(count);
-            if (count >= HD_Threshold) {
-                out.v64(bucket);
-            }
-            int i = bucket * HD_Threshold;
-            final int end = Math.min(idMap.size(), i + HD_Threshold);
-            while (++i < end) {
-                LinkedList<T> xs = idMap.get(i);
-                out.v64(xs.size());
-                for (T x : xs) {
-                    base.w(x, out);
-                }
-            }
-            return false;
+        if (0 == count) {
+            return true;
         }
-        return true;
+
+        out.v64(count);
+        if (count >= HD_Threshold) {
+            out.v64(bucket);
+        }
+        int i = bucket * HD_Threshold;
+        final int end = Math.min(idMap.size(), i + HD_Threshold);
+        while (++i < end) {
+            LinkedList<T> xs = idMap.get(i);
+            out.v64(xs.size());
+            for (T x : xs) {
+                base.w(x, out);
+            }
+        }
+        return false;
     }
 }
