@@ -250,7 +250,7 @@ abstract class Parser extends StateInitializer {
             // read next pool from file if required
             if (moreFile) {
                 // name
-                name = Strings.literals[in.v32() - 1];
+                name = Strings.idMap.get(in.v32());
 
                 // static size
                 count = in.v32();
@@ -536,14 +536,14 @@ abstract class Parser extends StateInitializer {
         EnumPool<?> r;
         // create enums from file
         for (int count = in.v32(); count != 0; count--) {
-            String name = Strings.literals[in.v32() - 1];
+            String name = Strings.idMap.get(in.v32());
             int vcount = in.v32();
             if (vcount <= 0)
                 throw new ParseException(in, null, "Enum %s is too small.", name);
 
             String[] vs = new String[vcount];
             for (int i = 0; i < vcount; i++) {
-                vs[i] = Strings.literals[in.v32() - 1];
+                vs[i] = Strings.idMap.get(in.v32());
             }
 
             int cmp = null != nextName ? compare(name, nextName) : -1;
@@ -622,7 +622,7 @@ abstract class Parser extends StateInitializer {
         String kfn = p.KFN(0);
         while (0 != idx--) {
             // read field
-            final String name = Strings.literals[in.v32() - 1];
+            final String name = Strings.idMap.get(in.v32());
             FieldType<?> t = fieldType();
             HashSet<FieldRestriction<?>> rest = fieldRestrictions(t);
             FieldDeclaration<?, ?> f = null;

@@ -37,8 +37,10 @@ final public class StringPool extends HullType<String> {
 
     /**
      * Strings used as names of types, fields or enum constants.
+     * 
+     * @note literals are respective to the merged type system
      */
-    String[] literals;
+    private String[] literals;
 
     StringPool(String[] literals) {
         super(typeID);
