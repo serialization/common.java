@@ -160,11 +160,6 @@ public final class SeqParser extends Parser {
 
         @Override
         void run() {
-            if (in.eof()) {
-                // TODO default initialization; this is a nop for now in Java
-                return;
-            }
-
             final Pool<?> owner = f.owner;
             final int bpo = owner.bpo;
             final int first = block * FieldDeclaration.FD_Threshold;
