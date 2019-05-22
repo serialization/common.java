@@ -30,7 +30,7 @@ public final class ParParser extends Parser {
      */
     @Override
     final void typeBlock() {
-        // init barrier, because we are not allowed to do so in the constructor :-/
+        // Java initialization happens in wrong order :-(
         barrier = new Semaphore(0);
 
         /**

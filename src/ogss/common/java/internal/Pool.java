@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import ogss.common.java.api.Access;
+import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.streams.InStream;
 import ogss.common.streams.OutStream;
@@ -245,6 +246,10 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
      * @note Do not use objects managed by other OGFiles.
      */
     public final boolean add(T e) {
+        if (e.ID != 0)
+            throw new OGSSException(
+                    "the argument element already belongs to a state; you can transfer it by deleting in there first");
+
         e.ID = -1 - newObjects.size();
         return newObjects.add(e);
     }
@@ -257,10 +262,17 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
      * @note we type target using the erasure directly, because the Java type system is too weak to express correct
      *       typing, when taking the pool from a map
      */
-    final void delete(Obj target) {
-        if (!target.isDeleted()) {
-            target.ID = 0;
-            deletedCount++;
+    final void delete(final Obj target) {
+        final int ID = target.ID;
+        if (0 != ID) {
+            // check that target is in fact managed by this state
+            if ((0 < ID & null != data && ID <= data.length && target == data[ID - 1])
+                    || (ID < 0 & -ID <= newObjects.size() && target == newObjects.get(-1 - ID))) {
+                target.ID = 0;
+                deletedCount++;
+            } else {
+                throw new OGSSException("cannot delete an object that is not managed by this pool");
+            }
         }
     }
 

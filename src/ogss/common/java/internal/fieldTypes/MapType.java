@@ -102,17 +102,14 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
-    public int size() {
-        return IDs.size();
-    }
-
-    @Override
     public HashMap<K, V> get(int ID) {
         return idMap.get(ID);
     }
 
     @Override
     public Iterator<HashMap<K, V>> iterator() {
-        return IDs.keySet().iterator();
+        Iterator<HashMap<K, V>> r = idMap.iterator();
+        r.next(); // skip null
+        return r;
     }
 }

@@ -62,14 +62,22 @@ public abstract class State implements AutoCloseable {
 
     /**
      * @return the pool corresponding to the dynamic type of the argument Obj
+     * @note you might get a corresponding pool even if ref is not owned by it
+     * @note inv: result.owner == this || result == null
      */
     public Pool<?> pool(Obj ref) {
         if (null == ref) {
             return null;
-        } else if (ref instanceof NamedObj)
-            return ((NamedObj) ref).τp();
-        else
-            return (Pool<?>) SIFA[ref.stid()];
+        } else if (ref instanceof NamedObj) {
+            Pool<?> r = ((NamedObj) ref).τp();
+            if (r.owner == this)
+                return r;
+        } else {
+            final int TID = ref.stid();
+            if (TID < SIFA.length)
+                return (Pool<?>) SIFA[TID];
+        }
+        return null;
     }
 
     /**
@@ -144,24 +152,27 @@ public abstract class State implements AutoCloseable {
     }
 
     /**
-     * @return true, iff the argument object is managed by this state
-     * @note will return true, if argument is null
+     * @return true, iff the argument object is managed by this state and not marked deleted
+     * @note will return false if argument is null or deleted; an iterator can still return the argument deleted ref
+     *       unless a flush happened after the delete
      * @note this operation is kind of expensive
      */
     public final boolean contains(Obj ref) {
-        if (null != ref && 0 == ref.ID)
-            try {
-                Pool<?> p = pool(ref);
+        final int ID;
+        if (null == ref || 0 == (ID = ref.ID))
+            return false;
 
-                if (0 < ref.ID)
-                    return ref == p.data[ref.ID - 1];
+        try {
+            Pool<?> p = pool(ref);
 
-                return ref == p.newObjects.get(-1 - ref.ID);
-            } catch (Exception e) {
-                // out of bounds or similar mean its not one of ours
-                return false;
-            }
-        return true;
+            if (0 < ID)
+                return ref == p.data[ID - 1];
+
+            return ref == p.newObjects.get(-1 - ID);
+        } catch (Exception e) {
+            // out of bounds or similar mean its not one of ours
+            return false;
+        }
     }
 
     /**

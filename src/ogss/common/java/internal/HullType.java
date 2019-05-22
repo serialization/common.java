@@ -132,4 +132,9 @@ public abstract class HullType<T> extends ByRefType<T> {
     public final State owner() {
         throw new Error("TODO");
     }
+
+    @Override
+    public final int size() {
+        return idMap.size() - 1;
+    }
 }

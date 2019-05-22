@@ -20,13 +20,10 @@ public abstract class SingleArgumentType<T extends Collection<Base>, Base> exten
     }
 
     @Override
-    public int size() {
-        return IDs.size();
-    }
-
-    @Override
     public Iterator<T> iterator() {
-        return IDs.keySet().iterator();
+        Iterator<T> r = idMap.iterator();
+        r.next(); // skip null
+        return r;
     }
 
     @Override

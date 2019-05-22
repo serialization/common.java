@@ -209,10 +209,6 @@ final public class StringPool extends HullType<String> {
         return false;
     }
 
-    @Override
-    public int size() {
-        return idMap.size() - 1;
-    }
 
     @Override
     public int id(String ref) {
