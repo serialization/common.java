@@ -116,7 +116,10 @@ public abstract class StateInitializer {
      */
     protected void fixContainerMD() {
         // increase deps caused by containsers whose maxDeps is nonzero
-        for (HullType<?> c : containers) {
+        // @note we have to increase deps in reverse order, because used container containers appear after their bases
+        int i = containers.size();
+        while (i != 0) {
+            final HullType<?> c = containers.get(--i);
             if (c.maxDeps != 0) {
                 if (c instanceof SingleArgumentType<?, ?>) {
                     FieldType<?> b = ((SingleArgumentType<?, ?>) c).base;

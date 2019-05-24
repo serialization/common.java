@@ -680,8 +680,7 @@ abstract class Parser extends StateInitializer {
         // create remaining auto fields
         if (kfn != null)
             do {
-                // nextID wont be used anyway
-                p.KFC(ki, SIFA, 0);
+                p.KFC(ki, SIFA, nextFieldID++);
             } while (null != p.KFN(++ki));
     }
 

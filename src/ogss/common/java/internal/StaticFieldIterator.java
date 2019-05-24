@@ -16,7 +16,6 @@ public final class StaticFieldIterator implements Iterator<FieldDeclaration<?, ?
     StaticFieldIterator(Pool<?> p) {
         if (p.autoFields.length == 0 && 0 == p.dataFields.size()) {
             this.p = null;
-            this.i = 0;
         } else {
             this.p = p;
             this.i = -p.autoFields.length;

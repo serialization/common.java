@@ -66,7 +66,7 @@ final public class StringPool extends HullType<String> {
         boolean hasFI, hasKI;
         while ((hasFI = fi < count) | (hasKI = ki < literals.length)) {
             // note: we will intern the string only if it is unknown
-            final int cmp = hasFI ? (hasKI ? next.compareTo(literals[ki]) : 1) : -1;
+            final int cmp = hasFI ? (hasKI ? literals[ki].compareTo(next) : 1) : -1;
 
             if (0 <= cmp) {
                 if (0 == cmp) {
