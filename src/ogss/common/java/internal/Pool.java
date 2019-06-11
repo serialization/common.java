@@ -183,13 +183,21 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     protected abstract void allocateInstances();
 
     /**
-     * @return the instance matching argument object id
+     * Return an object by ID. Can only be used for objects with positive IDs.
+     *
+     * @note do not use this method if your understanding of Object IDs is not solid.
+     * @note We do not allow getting objects with negative IDs because negative IDs are monomorphic. The code required
+     *       to make them polymorphic is a straight forward access to owner.pool and to make a get there, but since get
+     *       is used a lot, we do not want to increase its size for as little benefit as it would be to the user. Also,
+     *       that solution would require a second argument of either type class or string.
+     * @throws nothrow
+     * @return the instance matching argument object id or null
      */
     @Override
     @SuppressWarnings("unchecked")
     final public T get(int ID) {
         int index = ID - 1;
-        if (index < 0 | data.length <= index)
+        if (null == data || (index < 0 | data.length <= index))
             return null;
         return (T) data[index];
     }
