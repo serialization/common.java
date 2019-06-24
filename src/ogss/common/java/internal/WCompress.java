@@ -50,14 +50,17 @@ final class WCompress implements Runnable {
                 }
             }
         }
-        
+
         // reset layout of distributed fields
         {
             Pool<?> p = base;
-            for(FieldDeclaration<?, ?> f : p.dataFields) {
-                if(f instanceof DistributedField<?, ?>) {
-                    ((DistributedField) f).compress(bpos[p.typeID - 10]);
+            while (null != p) {
+                for (FieldDeclaration<?, ?> f : p.dataFields) {
+                    if (f instanceof DistributedField<?, ?>) {
+                        ((DistributedField) f).compress(bpos[p.typeID - 10]);
+                    }
                 }
+                p = p.next;
             }
         }
 
