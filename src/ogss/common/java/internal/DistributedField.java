@@ -34,8 +34,12 @@ public class DistributedField<T, Ref extends Obj> extends FieldDeclaration<T, Re
      * compress this field
      * 
      * @note for now, deleted elements can survive in data
+     * @note at this stage, lazy fields have been
+     *  loaded
      */
-    void compress() {
+    final void compress(int newBPO) {
+        // TODO if we move to shifted arrays, we have to rebuild data here
+        // TODO this way of using data keeps deleted objects alive
         data.putAll(newData);
         newData.clear();
     }

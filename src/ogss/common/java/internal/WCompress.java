@@ -50,6 +50,16 @@ final class WCompress implements Runnable {
                 }
             }
         }
+        
+        // reset layout of distributed fields
+        {
+            Pool<?> p = base;
+            for(FieldDeclaration<?, ?> f : p.dataFields) {
+                if(f instanceof DistributedField<?, ?>) {
+                    ((DistributedField) f).compress(bpos[p.typeID - 10]);
+                }
+            }
+        }
 
         // note: we could move the object update to updateAfterCompress and
         // perform that in parallel (because it is much easier without append)
