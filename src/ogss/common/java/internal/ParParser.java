@@ -103,7 +103,7 @@ public final class ParParser extends Parser {
     }
 
     // jobs is a field as we need it for await
-    ArrayList<Runnable> jobs;
+    private ArrayList<Runnable> jobs;
 
     /**
      * Jump through HD-entries to create read tasks
@@ -116,40 +116,48 @@ public final class ParParser extends Parser {
 
         int awaitHulls = 0;
 
-        while (!in.eof()) {
-            // create the map directly and use it for subsequent read-operations to avoid costly position and size
-            // readjustments
-            final MappedInStream map = in.map(in.v32() + 2);
+        // use a big lock on jobs, because we are usually the only ones who insert anyway
+        synchronized (jobs) {
+            while (!in.eof()) {
+                // create the map directly and use it for subsequent read-operations to avoid costly position and size
+                // readjustments
+                final MappedInStream map = in.map(in.v32() + 2);
 
-            final int id = map.v32();
-            final Object f = fields.get(id);
+                final int id = map.v32();
+                final Object f = fields.get(id);
 
-            // TODO add a countermeasure against duplicate buckets / fieldIDs
+                // TODO add a countermeasure against duplicate buckets / fieldIDs
 
-            if (f instanceof HullType<?>) {
-                final int count = map.v32();
-                final HullType<?> p = (HullType<?>) f;
+                if (f instanceof HullType<?>) {
+                    final int count = map.v32();
+                    final HullType<?> p = (HullType<?>) f;
 
-                // start hull allocation job
-                awaitHulls++;
-                State.pool.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        int block = p.allocateInstances(count, map);
+                    // start hull allocation job
+                    awaitHulls++;
+                    State.pool.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            int block = p.allocateInstances(count, map);
 
-                        // create hull read data task except for StringPool which is still lazy per element and eager
-                        // per offset
-                        if (!(p instanceof StringPool)) {
-                            jobs.add(new HRT(p, block, map));
+                            // create hull read data task except for StringPool which is still lazy per element and
+                            // eager per offset
+                            if (!(p instanceof StringPool)) {
+                                // @note modification of the job queue requires synchronization
+                                synchronized (jobs) {
+                                    
+                                    jobs.add(new HRT(p, block, map));
+                                }
+                            }
+
+                            barrier.release();
                         }
+                    });
 
-                        barrier.release();
-                    }
-                });
-
-            } else {
-                // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
-                jobs.add(new ReadTask((FieldDeclaration<?, ?>) f, map));
+                } else {
+                    // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the
+                    // data)
+                    jobs.add(new ReadTask((FieldDeclaration<?, ?>) f, map));
+                }
             }
         }
 
