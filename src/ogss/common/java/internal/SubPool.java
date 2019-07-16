@@ -42,6 +42,13 @@ public final class SubPool<T extends Obj> extends Pool<T> {
 
     @Override
     public T make() throws OGSSException {
-        throw new OGSSException("allocation of unknown instances is considered an error");
+        final T rval;
+        try {
+            rval = cls.getConstructor(Pool.class, int.class).newInstance(this, 0);
+        } catch (Exception e) {
+            throw new OGSSException("reflective make failed", e);
+        }
+        add(rval);
+        return rval; 
     }
 }
