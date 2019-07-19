@@ -71,8 +71,7 @@ abstract class Parser extends StateInitializer {
             // guard is hash?
             else if (first == 0x23) {
                 ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                byte next = in.i8();
-                while (0 != next) {
+                for (byte next = in.i8(); 0 != next; next = in.i8()) {
                     buf.write(next);
                 }
                 guard = new String(buf.toByteArray(), StringPool.utf8);
@@ -411,7 +410,7 @@ abstract class Parser extends StateInitializer {
      * 
      * @return the UCC for a given kcc
      */
-    final int toUCC(int kind, FieldType<?> b1, FieldType<?> b2) {
+    final static int toUCC(int kind, FieldType<?> b1, FieldType<?> b2) {
         int baseTID1 = b1.typeID;
         int baseTID2 = null == b2 ? 0 : b2.typeID;
         if (baseTID2 < baseTID1)
@@ -672,7 +671,7 @@ abstract class Parser extends StateInitializer {
                 ((HullType<?>) f.type).maxDeps++;
             }
 
-            f.addRestriction(rest);
+            f.restrictions.addAll((HashSet) rest);
 
             fields.add(f);
         }

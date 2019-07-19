@@ -18,7 +18,6 @@ public class Builder<T extends Obj> {
     /**
      * registers the object and invalidates the builder
      * 
-     * @note abstract to work around JVM bug
      * @return the created object
      */
     public final T make() {

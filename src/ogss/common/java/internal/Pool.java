@@ -249,7 +249,7 @@ public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access
     }
 
     /**
-     * Add an existing instance as a new objects.
+     * Add an existing instance as a new object
      * 
      * @note Do not use objects managed by other OGFiles.
      */

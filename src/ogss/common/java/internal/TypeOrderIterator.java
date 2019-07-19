@@ -44,5 +44,4 @@ public class TypeOrderIterator<T extends Obj> implements Iterator<T> {
         }
         return result;
     }
-
 }

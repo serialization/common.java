@@ -64,11 +64,6 @@ abstract public class FieldDeclaration<T, Ref extends Obj> extends ogss.common.j
      */
     public final HashSet<FieldRestriction<T>> restrictions = new HashSet<>();
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public void addRestriction(HashSet<FieldRestriction<?>> r) {
-        restrictions.addAll((HashSet) r);
-    }
-
     /**
      * Check consistency of restrictions on this field.
      */

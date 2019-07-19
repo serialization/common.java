@@ -18,7 +18,7 @@ public final class LazyField<T, Ref extends Obj> extends DistributedField<T, Ref
     // deferred reading info: valid after read
     private int first;
     private int last;
-    // is loaded <-> chunkMap == null
+    // is loaded <-> buffer == null
     private MappedInStream buffer;
 
     // executes pending read operations

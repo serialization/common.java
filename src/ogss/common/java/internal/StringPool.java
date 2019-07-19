@@ -217,7 +217,7 @@ final public class StringPool extends HullType<String> {
 
     @Override
     public String get(int index) {
-        if (0L == index)
+        if (0 == index)
             return null;
 
         String result;

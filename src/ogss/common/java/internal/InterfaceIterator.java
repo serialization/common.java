@@ -19,6 +19,8 @@ public final class InterfaceIterator<T> implements Iterator<T> {
         ps = realizations;
         while (i < ps.length) {
             xs = ps[i++].iterator();
+            if (xs.hasNext())
+                break;
         }
     }
 
@@ -34,6 +36,8 @@ public final class InterfaceIterator<T> implements Iterator<T> {
         if (!xs.hasNext())
             while (i < ps.length) {
                 xs = ps[i++].iterator();
+                if (xs.hasNext())
+                    break;
             }
 
         return r;

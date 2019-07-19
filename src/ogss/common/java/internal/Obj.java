@@ -53,8 +53,7 @@ public abstract class Obj {
      */
     public final String prettyString(State sf) {
         StringBuilder sb = new StringBuilder("(this: ").append(this);
-        Pool<?> p = (Pool<?>) sf.SIFA[stid()];
-        FieldIterator fieldIterator = p.allFields();
+        FieldIterator fieldIterator = sf.pool(this).allFields();
         while (fieldIterator.hasNext()) {
             FieldDeclaration<?> f = fieldIterator.next();
             sb.append(", ").append(f.name()).append(": ").append(f.get(this));
