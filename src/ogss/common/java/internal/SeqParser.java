@@ -118,7 +118,7 @@ public final class SeqParser extends Parser {
 
             } else {
                 final FieldDeclaration<?, ?> fd = (FieldDeclaration<?, ?>) f;
-                int block = fd.owner.cachedSize >= FieldDeclaration.FD_Threshold ? map.v32() : 0;
+                int block = fd.owner.cachedSize > FieldDeclaration.FD_Threshold ? map.v32() : 0;
 
                 // create job with adjusted size that corresponds to the * in the specification (i.e. exactly the data)
                 jobs.add(new ReadTask(block, fd, map));

@@ -524,6 +524,47 @@ abstract class Parser extends StateInitializer {
             fields.add(r);
             fdts.add(r);
         }
+
+        // construct remaining known containers
+        while (-1 != kcc) {
+            final HullType<?> r;
+            switch (kkind) {
+            case 0:
+                r = new ArrayType<>(tid++, kb1);
+                break;
+            case 1:
+                r = new ListType<>(tid++, kb1);
+                break;
+            case 2:
+                r = new SetType<>(tid++, kb1);
+                break;
+
+            case 3:
+                r = new MapType<>(tid++, kb1, kb2);
+                break;
+
+            default:
+                throw new Error(); // dead
+            }
+            SIFA[nsID++] = r;
+            r.fieldID = nextFieldID++;
+            containers.add(r);
+
+            // check UCC order
+            if (lastUCC > kucc) {
+                throw new ParseException(in, null, "File is not UCC-ordered.");
+            }
+            lastUCC = kucc;
+
+            // move to next kcc
+            kcc = pb.kcc(++ki);
+            if (-1 != kcc) {
+                kkind = (kcc >> 30) & 3;
+                kb1 = SIFA[kcc & 0x7FFF];
+                kb2 = 3 == kkind ? SIFA[(kcc >> 15) & 0x7FFF] : null;
+                kucc = toUCC(kkind, kb1, kb2);
+            }
+        }
     }
 
     final void TEnum() {

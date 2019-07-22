@@ -203,7 +203,7 @@ public final class ParParser extends Parser {
                 barrier.release();
                 return;
             }
-            final int block = f.owner.cachedSize >= FieldDeclaration.FD_Threshold ? in.v32() : 0;
+            final int block = f.owner.cachedSize > FieldDeclaration.FD_Threshold ? in.v32() : 0;
 
             OGSSException ex = null;
             final Pool<?> owner = f.owner;

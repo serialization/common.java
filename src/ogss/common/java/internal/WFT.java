@@ -35,7 +35,7 @@ final class WFT extends WJob {
             // iff we have blockID zero we may need to split
             if (0 == block) {
                 // split large FD blocks into blocks
-                if (count >= FieldDeclaration.FD_Threshold) {
+                if (count > FieldDeclaration.FD_Threshold) {
                     hasblocks = true;
 
                     // we have to fork this task
