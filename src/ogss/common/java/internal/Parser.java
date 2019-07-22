@@ -703,13 +703,13 @@ abstract class Parser extends StateInitializer {
             if (null == f) {
                 // no known fields left, so it is obviously unknown
                 f = new LazyField<>(t, name, nextFieldID, p);
-            }
 
-            nextFieldID++;
+                nextFieldID++;
 
-            // increase maxDeps
-            if (f.type instanceof HullType<?>) {
-                ((HullType<?>) f.type).maxDeps++;
+                // increase maxDeps
+                if (f.type instanceof HullType<?>) {
+                    ((HullType<?>) f.type).maxDeps++;
+                }
             }
 
             f.restrictions.addAll((HashSet) rest);
