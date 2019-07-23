@@ -180,6 +180,7 @@ final public class Writer {
             // set deps and calculate count
             for (HullType<?> c : state.containers) {
                 if (c.maxDeps != 0) {
+                    c.resetSerialization();
                     c.deps = c.maxDeps;
                     count++;
                 }
