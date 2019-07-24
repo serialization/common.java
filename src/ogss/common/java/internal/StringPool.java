@@ -124,11 +124,6 @@ final public class StringPool extends HullType<String> {
         return 0;
     }
 
-    @Override
-    protected void read(int block, MappedInStream map) throws IOException {
-        // -done- strings are lazy
-    }
-
     /**
      * The state will ask to drop the read buffer as soon as all strings must have been loaded, i.e. as soon as all
      * other lazy field data has been loaded.
@@ -182,8 +177,10 @@ final public class StringPool extends HullType<String> {
     /**
      * Write HS
      */
-    @Override
-    protected final boolean write(int block, BufferedOutStream out) throws IOException {
+    final boolean write(BufferedOutStream out) throws IOException {
+        // write fieldID (always 0)
+        out.i8((byte) 0);
+
         // the null in idMap is not written and literals are written in SL
         final int hullOffset = literals.length + 1;
         final int count = idMap.size() - hullOffset;
@@ -208,7 +205,6 @@ final public class StringPool extends HullType<String> {
 
         return false;
     }
-
 
     @Override
     public int id(String ref) {

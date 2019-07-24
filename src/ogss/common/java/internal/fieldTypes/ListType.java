@@ -28,7 +28,7 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     @Override
     protected int allocateInstances(int count, MappedInStream in) {
         // check for blocks
-        if (count >= HD_Threshold) {
+        if (count > HD_Threshold) {
             final int block = in.v32();
 
             // initialize idMap with null to allow parallel updates
@@ -41,7 +41,6 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
             }
             int i = block * HD_Threshold;
             final int end = Math.min(count, i + HD_Threshold);
-
             while (i < end)
                 idMap.set(++i, new LinkedList<>());
 
@@ -54,11 +53,9 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     }
 
     @Override
-    protected final void read(int block, MappedInStream in) {
-        int i = block * HD_Threshold;
-        final int end = Math.min(idMap.size(), i + HD_Threshold);
-        while (++i < end) {
-            LinkedList<T> xs = idMap.get(i);
+    protected final void read(int i, final int end, MappedInStream in) throws IOException {
+        while (i < end) {
+            LinkedList<T> xs = idMap.get(++i);
             int s = in.v32();
             while (s-- != 0) {
                 xs.add(base.r(in));
@@ -67,25 +64,13 @@ public final class ListType<T> extends SingleArgumentType<LinkedList<T>, T> {
     }
 
     @Override
-    protected final boolean write(int block, BufferedOutStream out) throws IOException {
-        final int count = idMap.size() - 1;
-        if (0 == count) {
-            return true;
-        }
-
-        out.v64(count);
-        if (count >= HD_Threshold) {
-            out.v64(block);
-        }
-        int i = block * HD_Threshold;
-        final int end = Math.min(idMap.size(), i + HD_Threshold);
-        while (++i < end) {
-            LinkedList<T> xs = idMap.get(i);
+    protected final void write(int i, final int end, BufferedOutStream out) throws IOException {
+        while (i < end) {
+            LinkedList<T> xs = idMap.get(++i);
             out.v64(xs.size());
             for (T x : xs) {
                 base.w(x, out);
             }
         }
-        return false;
     }
 }

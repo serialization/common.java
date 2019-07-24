@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
-import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.InStream;
 import ogss.common.streams.MappedInStream;
 import ogss.common.streams.OutStream;
@@ -38,12 +37,6 @@ public abstract class HullType<T> extends ByRefType<T> {
     int maxDeps = 0;
 
     /**
-     * The current number of pending blocks. 0 if the HD is not split into blocks. This number is only meaningful while
-     * writing a file.
-     */
-    int blocks;
-
-    /**
      * The maximum size of a block.
      */
     protected static final int HD_Threshold = 16384;
@@ -62,22 +55,6 @@ public abstract class HullType<T> extends ByRefType<T> {
         idMap.clear();
         idMap.add(null);
     }
-
-    /**
-     * Read the hull data from the stream. Abstract, because the inner loop is type-dependent anyway.
-     * 
-     * @note the fieldID is written by the caller
-     * @return true iff hull shall be discarded (i.e. it is empty)
-     */
-    protected abstract void read(int block, MappedInStream map) throws IOException;
-
-    /**
-     * Write the hull into the stream. Abstract, because the inner loop is type-dependent anyway.
-     * 
-     * @note the fieldID is written by the caller
-     * @return true iff hull shall be discarded (i.e. it is empty)
-     */
-    protected abstract boolean write(int block, BufferedOutStream out) throws IOException;
 
     protected HullType(int typeID) {
         super(typeID);

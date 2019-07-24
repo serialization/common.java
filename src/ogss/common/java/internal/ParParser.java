@@ -141,11 +141,10 @@ public final class ParParser extends Parser {
 
                             // create hull read data task except for StringPool which is still lazy per element and
                             // eager per offset
-                            if (!(p instanceof StringPool)) {
+                            if (p instanceof ContainerType<?>) {
                                 // @note modification of the job queue requires synchronization
                                 synchronized (jobs) {
-                                    
-                                    jobs.add(new HRT(p, block, map));
+                                    jobs.add(new HRT((ContainerType<?>) p, block, map));
                                 }
                             }
 
@@ -241,11 +240,11 @@ public final class ParParser extends Parser {
      * @author Timm Felden
      */
     private final class HRT implements Runnable {
-        private final HullType<?> t;
+        private final ContainerType<?> t;
         private final int block;
         private final MappedInStream in;
 
-        HRT(HullType<?> t, int block, MappedInStream in) {
+        HRT(ContainerType<?> t, int block, MappedInStream in) {
             this.t = t;
             this.block = block;
             this.in = in;
@@ -255,7 +254,9 @@ public final class ParParser extends Parser {
         public void run() {
             OGSSException ex = null;
             try {
-                t.read(block, in);
+                int i = block * HullType.HD_Threshold;
+                final int end = Math.min(t.idMap.size() - 1, i + HullType.HD_Threshold);
+                t.read(i, end, in);
             } catch (OGSSException t) {
                 ex = t;
             } catch (Throwable t) {

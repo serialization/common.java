@@ -2,15 +2,14 @@ package ogss.common.java.internal.fieldTypes;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map.Entry;
 
+import ogss.common.java.internal.ContainerType;
 import ogss.common.java.internal.FieldType;
-import ogss.common.java.internal.HullType;
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.MappedInStream;
 
-public final class MapType<K, V> extends HullType<HashMap<K, V>> {
+public final class MapType<K, V> extends ContainerType<HashMap<K, V>> {
 
     public final FieldType<K> keyType;
     public final FieldType<V> valueType;
@@ -39,7 +38,7 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     @Override
     protected int allocateInstances(int count, MappedInStream in) {
         // check for blocks
-        if (count >= HD_Threshold) {
+        if (count > HD_Threshold) {
             final int block = in.v32();
             // initialize idMap with null to allow parallel updates
             synchronized (this) {
@@ -63,11 +62,9 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
-    protected final void read(int block, MappedInStream in) {
-        int i = block * HD_Threshold;
-        final int end = Math.min(idMap.size(), i + HD_Threshold);
-        while (++i < end) {
-            HashMap<K, V> xs = idMap.get(i);
+    protected final void read(int i, final int end, MappedInStream in) throws IOException {
+        while (i < end) {
+            HashMap<K, V> xs = idMap.get(++i);
             int s = in.v32();
             while (s-- != 0) {
                 final K k = keyType.r(in);
@@ -78,38 +75,14 @@ public final class MapType<K, V> extends HullType<HashMap<K, V>> {
     }
 
     @Override
-    protected boolean write(int block, BufferedOutStream out) throws IOException {
-        final int count = idMap.size() - 1;
-        if (0 == count) {
-            return true;
-        }
-
-        out.v64(count);
-        if (count >= HD_Threshold) {
-            out.v64(block);
-        }
-        int i = block * HD_Threshold;
-        final int end = Math.min(idMap.size(), i + HD_Threshold);
-        while (++i < end) {
-            HashMap<K, V> xs = idMap.get(i);
+    protected final void write(int i, final int end, BufferedOutStream out) throws IOException {
+        while (i < end) {
+            HashMap<K, V> xs = idMap.get(++i);
             out.v64(xs.size());
             for (Entry<K, V> e : xs.entrySet()) {
                 keyType.w(e.getKey(), out);
                 valueType.w(e.getValue(), out);
             }
         }
-        return false;
-    }
-
-    @Override
-    public HashMap<K, V> get(int ID) {
-        return idMap.get(ID);
-    }
-
-    @Override
-    public Iterator<HashMap<K, V>> iterator() {
-        Iterator<HashMap<K, V>> r = idMap.iterator();
-        r.next(); // skip null
-        return r;
     }
 }

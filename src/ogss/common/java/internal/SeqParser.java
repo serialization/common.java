@@ -112,8 +112,8 @@ public final class SeqParser extends Parser {
                 int block = p.allocateInstances(count, map);
 
                 // create hull read data task except for StringPool which is still lazy per element and eager per offset
-                if (!(p instanceof StringPool)) {
-                    jobs.add(new HRT(p, block, map));
+                if (p instanceof ContainerType<?>) {
+                    jobs.add(new HRT((ContainerType<?>) p, block, map));
                 }
 
             } else {
@@ -177,11 +177,11 @@ public final class SeqParser extends Parser {
     }
 
     private final class HRT extends Job {
-        private final HullType<?> t;
+        private final ContainerType<?> t;
         private final int block;
         private final MappedInStream map;
 
-        HRT(HullType<?> t, int block, MappedInStream map) {
+        HRT(ContainerType<?> t, int block, MappedInStream map) {
             this.t = t;
             this.block = block;
             this.map = map;
@@ -190,7 +190,9 @@ public final class SeqParser extends Parser {
         @Override
         void run() {
             try {
-                t.read(block, map);
+                int i = block * HullType.HD_Threshold;
+                final int end = Math.min(t.idMap.size() - 1, i + HullType.HD_Threshold);
+                t.read(i, end, map);
             } catch (OGSSException t) {
                 throw t;
             } catch (Throwable t) {
