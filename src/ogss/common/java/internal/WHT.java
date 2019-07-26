@@ -114,9 +114,7 @@ final class WHT extends WJob {
                 }
             }
         } else {
-            if (ht.idMap.size() != 0) {
-                discard = ((StringPool) ht).write(buffer);
-            }
+            discard = ((StringPool) ht).write(buffer);
         }
     }
 }
