@@ -178,14 +178,14 @@ final public class StringPool extends HullType<String> {
      * Write HS
      */
     final boolean write(BufferedOutStream out) throws IOException {
-        // write fieldID (always 0)
-        out.i8((byte) 0);
-
         // the null in idMap is not written and literals are written in SL
         final int hullOffset = literals.length + 1;
         final int count = idMap.size() - hullOffset;
         if (0 == count)
             return true;
+
+        // write fieldID (always 0)
+        out.i8((byte) 0);
 
         out.v64(count);
 
