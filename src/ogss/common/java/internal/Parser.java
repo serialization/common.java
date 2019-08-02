@@ -703,13 +703,13 @@ abstract class Parser extends StateInitializer {
             if (null == f) {
                 // no known fields left, so it is obviously unknown
                 f = new LazyField<>(t, name, nextFieldID, p);
+            }
 
-                nextFieldID++;
+            nextFieldID++;
 
-                // increase maxDeps
-                if (f.type instanceof HullType<?>) {
-                    ((HullType<?>) f.type).maxDeps++;
-                }
+            // increase maxDeps
+            if (f.type instanceof HullType<?>) {
+                ((HullType<?>) f.type).maxDeps++;
             }
 
             f.restrictions.addAll((HashSet) rest);
@@ -717,11 +717,19 @@ abstract class Parser extends StateInitializer {
             fields.add(f);
         }
 
-        // create remaining auto fields
-        if (kfn != null)
-            do {
-                p.KFC(ki, SIFA, nextFieldID++);
-            } while (null != p.KFN(++ki));
+        // create remaining known fields
+        while (null != p.KFN(ki)) {
+            FieldDeclaration<?, ?> f = p.KFC(ki, SIFA, nextFieldID);
+            if (!(f instanceof AutoField)) {
+                nextFieldID++;
+
+                // increase maxDeps
+                if (f.type instanceof HullType<?>) {
+                    ((HullType<?>) f.type).maxDeps++;
+                }
+            }
+            ki++;
+        }
     }
 
     /**

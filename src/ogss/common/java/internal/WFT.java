@@ -66,7 +66,7 @@ final class WFT extends WJob {
             h += bpo;
 
             buffer.v64(f.id);
-            if (size >= FieldDeclaration.FD_Threshold) {
+            if (size > FieldDeclaration.FD_Threshold) {
                 buffer.v64(block);
             }
             discard = f.write(i, h, buffer);
