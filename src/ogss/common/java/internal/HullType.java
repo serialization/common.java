@@ -1,12 +1,12 @@
 package ogss.common.java.internal;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-
 import ogss.common.streams.InStream;
 import ogss.common.streams.MappedInStream;
 import ogss.common.streams.OutStream;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
 
 /**
  * This type subsumes all types whose serialization uses a hull-field.
@@ -17,6 +17,8 @@ public abstract class HullType<T> extends ByRefType<T> {
 
     /**
      * The field ID used by this hull on write.
+     *
+     * @note 0 iff maxDeps == 0
      */
     int fieldID;
 

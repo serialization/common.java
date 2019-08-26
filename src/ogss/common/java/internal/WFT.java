@@ -65,7 +65,7 @@ final class WFT extends WJob {
             i += bpo;
             h += bpo;
 
-            buffer.v64(f.id);
+            buffer.v64(self.FFID[f.id]);
             if (size > FieldDeclaration.FD_Threshold) {
                 buffer.v64(block);
             }

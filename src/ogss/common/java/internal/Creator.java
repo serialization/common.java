@@ -70,7 +70,7 @@ final public class Creator extends StateInitializer {
             {
                 int kcc;
                 for (int i = 0; -1 != (kcc = pb.kcc(i)); i++) {
-                    HullType<?> r;
+                    ContainerType<?> r;
                     switch ((kcc >> 30) & 3) {
                     case 0:
                         r = new ArrayType<>(tid++, SIFA[kcc & 0x7FFF]);

@@ -1,10 +1,5 @@
 package ogss.common.java.internal;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Semaphore;
-
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
@@ -14,7 +9,29 @@ import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.FileOutputStream;
 import ogss.common.streams.OutStream;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
+
 final public class Writer {
+
+    /**
+     * The outgoing file type ids.
+     * There is one entry per TID in the runtime type system.
+     *
+     * @note this table is required, because we can drop types and we want the runtime TIDs to be immutable unique and ordered
+     */
+    private final int[] FTID;
+    /**
+     * This FTID is assigned to a type when it introduces a new TID in the outgoing type system
+     */
+    private int nextFTID = 10;
+
+    /**
+     * The outgoing file field IDs.
+     */
+    final int[] FFID;
 
     private final State state;
 
@@ -52,6 +69,38 @@ final public class Writer {
 
     public Writer(State state, FileOutputStream out) throws Exception {
         this.state = state;
+
+        // create and initialize FTID; we start in a world where every type is dropped unless it has been written
+        this.FTID = new int[10 + state.classes.length + state.containers.length + state.enums.length];
+        for (int i = 0; i < 10; i++)
+            FTID[i] = i;
+
+        // create FFID table
+        {
+            //next FFID, because 0 is always the string pool, even if not used later on
+            int nextFFID = 1;
+
+            // we do not keep a last FFID, so we have to create an array buffer first
+            ArrayList<Integer> ids = new ArrayList<>();
+            // string -> string
+            ids.add(0);
+            // containers
+            for (ContainerType<?> c : state.containers) {
+                ids.add(c.maxDeps == 0 ? -1 : nextFFID++);
+            }
+            // data fields
+            for (Pool<?> p : state.classes) {
+                for (FieldDeclaration<?, ?> f : p.dataFields) {
+                    assert (f.id == ids.size());
+                    ids.add(nextFFID++);
+                }
+            }
+            // fix IDs
+            FFID = new int[ids.size()];
+            for (int i = 0; i < ids.size(); i++) {
+                FFID[i] = ids.get(i);
+            }
+        }
 
         /**
          * *************** * G * ****************
@@ -148,6 +197,8 @@ final public class Writer {
 
             // write types
             for (Pool<?> p : state.classes) {
+                FTID[p.typeID] = nextFTID++;
+
                 out.v64(string.IDs.get(p.name));
                 out.v64(p.staticDataInstances);
                 restrictions(p, out);
@@ -194,23 +245,24 @@ final public class Writer {
             out.v64(count);
             for (HullType<?> c : state.containers) {
                 if (c.maxDeps != 0) {
+                    FTID[c.typeID] = nextFTID++;
                     if (c instanceof ArrayType<?>) {
                         ArrayType<?> t = (ArrayType<?>) c;
                         out.i8((byte) 0);
-                        out.v64(t.base.typeID);
+                        out.v64(FTID[t.base.typeID]);
                     } else if (c instanceof ListType<?>) {
                         ListType<?> t = (ListType<?>) c;
                         out.i8((byte) 1);
-                        out.v64(t.base.typeID);
+                        out.v64(FTID[t.base.typeID]);
                     } else if (c instanceof SetType<?>) {
                         SetType<?> t = (SetType<?>) c;
                         out.i8((byte) 2);
-                        out.v64(t.base.typeID);
+                        out.v64(FTID[t.base.typeID]);
                     } else if (c instanceof MapType<?, ?>) {
                         MapType<?, ?> t = (MapType<?, ?>) c;
                         out.i8((byte) 3);
-                        out.v64(t.keyType.typeID);
-                        out.v64(t.valueType.typeID);
+                        out.v64(FTID[t.keyType.typeID]);
+                        out.v64(FTID[t.valueType.typeID]);
                     }
                 }
             }
@@ -229,6 +281,7 @@ final public class Writer {
         // write count of the type block
         out.v64(state.enums.length);
         for (EnumPool<?> p : state.enums) {
+            FTID[p.typeID] = nextFTID++;
             out.v64(string.id(p.name));
             out.v64(p.values.length);
             for (EnumProxy<?> v : p.values) {
@@ -243,7 +296,7 @@ final public class Writer {
         for (FieldDeclaration<?, ?> f : fieldQueue) {
             // write info
             out.v64(string.id(f.name));
-            out.v64(f.type.typeID);
+            out.v64(FTID[f.type.typeID]);
             restrictions(f, out);
         }
 

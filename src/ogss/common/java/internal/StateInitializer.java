@@ -1,23 +1,14 @@
 package ogss.common.java.internal;
 
+import ogss.common.java.api.Mode;
+import ogss.common.java.api.OGSSException;
+import ogss.common.java.internal.fieldTypes.*;
+import ogss.common.streams.FileInputStream;
+
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-
-import ogss.common.java.api.Mode;
-import ogss.common.java.api.OGSSException;
-import ogss.common.java.internal.fieldTypes.BoolType;
-import ogss.common.java.internal.fieldTypes.F32;
-import ogss.common.java.internal.fieldTypes.F64;
-import ogss.common.java.internal.fieldTypes.I16;
-import ogss.common.java.internal.fieldTypes.I32;
-import ogss.common.java.internal.fieldTypes.I64;
-import ogss.common.java.internal.fieldTypes.I8;
-import ogss.common.java.internal.fieldTypes.MapType;
-import ogss.common.java.internal.fieldTypes.SingleArgumentType;
-import ogss.common.java.internal.fieldTypes.V64;
-import ogss.common.streams.FileInputStream;
 
 /**
  * Initializes a state. One of Creator, Parser, SequentialParser.
@@ -58,7 +49,7 @@ public abstract class StateInitializer {
 
     // types
     final ArrayList<Pool<?>> classes;
-    final ArrayList<HullType<?>> containers;
+    final ArrayList<ContainerType<?>> containers;
     final ArrayList<EnumPool<?>> enums;
     final AnyRefType AnyRef;
 

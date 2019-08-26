@@ -1,5 +1,12 @@
 package ogss.common.java.internal;
 
+import ogss.common.java.api.Access;
+import ogss.common.java.api.GeneralAccess;
+import ogss.common.java.api.Mode;
+import ogss.common.java.api.OGSSException;
+import ogss.common.streams.FileInputStream;
+import ogss.common.streams.FileOutputStream;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -8,13 +15,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import ogss.common.java.api.Access;
-import ogss.common.java.api.GeneralAccess;
-import ogss.common.java.api.Mode;
-import ogss.common.java.api.OGSSException;
-import ogss.common.streams.FileInputStream;
-import ogss.common.streams.FileOutputStream;
 
 /**
  * Implementation common to all OGSS states independent of type declarations.
@@ -117,7 +117,7 @@ public abstract class State implements AutoCloseable {
 
     // types in type order
     final protected Pool<?>[] classes;
-    final protected HullType<?>[] containers;
+    final protected ContainerType<?>[] containers;
     final protected EnumPool<?>[] enums;
 
     /**
@@ -142,7 +142,7 @@ public abstract class State implements AutoCloseable {
         this.canWrite = init.canWrite;
         this.SIFA = init.SIFA;
         this.classes = init.classes.toArray(new Pool[init.classes.size()]);
-        this.containers = init.containers.toArray(new HullType[init.containers.size()]);
+        this.containers = init.containers.toArray(new ContainerType[init.containers.size()]);
         this.enums = init.enums.toArray(new EnumPool[init.enums.size()]);
         this.anyRefType = init.AnyRef;
         anyRefType.owner = this;

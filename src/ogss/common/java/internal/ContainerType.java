@@ -1,10 +1,10 @@
 package ogss.common.java.internal;
 
-import java.io.IOException;
-import java.util.Iterator;
-
 import ogss.common.streams.BufferedOutStream;
 import ogss.common.streams.MappedInStream;
+
+import java.io.IOException;
+import java.util.Iterator;
 
 public abstract class ContainerType<T> extends HullType<T> {
     public ContainerType(int typeID) {
@@ -19,17 +19,17 @@ public abstract class ContainerType<T> extends HullType<T> {
 
     /**
      * Read the hull data from the stream. Abstract, because the inner loop is type-dependent anyway.
-     * 
-     * @note the fieldID is written by the caller
+     *
      * @return true iff hull shall be discarded (i.e. it is empty)
+     * @note the fieldID is written by the caller
      */
     protected abstract void read(int i, final int end, MappedInStream in) throws IOException;
 
     /**
      * Write the hull into the stream. Abstract, because the inner loop is type-dependent anyway.
-     * 
-     * @note the fieldID is written by the caller
+     *
      * @return true iff hull shall be discarded (i.e. it is empty)
+     * @note the fieldID is written by the caller
      */
     protected abstract void write(int i, final int end, BufferedOutStream out) throws IOException;
 

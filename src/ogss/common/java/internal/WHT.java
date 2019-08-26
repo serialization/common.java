@@ -1,14 +1,14 @@
 package ogss.common.java.internal;
 
-import java.io.IOException;
-
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SingleArgumentType;
 import ogss.common.streams.BufferedOutStream;
 
+import java.io.IOException;
+
 /**
  * A job that writes a hull type to a buffer.
- * 
+ *
  * @author Timm Felden
  */
 final class WHT extends WJob {
@@ -57,7 +57,7 @@ final class WHT extends WJob {
                     hasblocks = true;
                 }
 
-                buffer.v64(t.fieldID);
+                buffer.v64(self.FFID[t.fieldID]);
                 buffer.v64(size);
                 if (size > HullType.HD_Threshold) {
                     buffer.v64(block);

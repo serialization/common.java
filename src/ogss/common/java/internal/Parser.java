@@ -1,30 +1,19 @@
 package ogss.common.java.internal;
 
-import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.ParseException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
-import ogss.common.java.internal.fieldTypes.ArrayType;
-import ogss.common.java.internal.fieldTypes.BoolType;
-import ogss.common.java.internal.fieldTypes.F32;
-import ogss.common.java.internal.fieldTypes.F64;
-import ogss.common.java.internal.fieldTypes.I16;
-import ogss.common.java.internal.fieldTypes.I32;
-import ogss.common.java.internal.fieldTypes.I64;
-import ogss.common.java.internal.fieldTypes.I8;
-import ogss.common.java.internal.fieldTypes.ListType;
-import ogss.common.java.internal.fieldTypes.MapType;
-import ogss.common.java.internal.fieldTypes.SetType;
-import ogss.common.java.internal.fieldTypes.V64;
+import ogss.common.java.internal.fieldTypes.*;
 import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.java.restrictions.NonNull;
 import ogss.common.java.restrictions.Range;
 import ogss.common.java.restrictions.TypeRestriction;
 import ogss.common.streams.FileInputStream;
+
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 
 /**
  * @author Timm Felden
@@ -444,7 +433,7 @@ abstract class Parser extends StateInitializer {
             final FieldType<?> fb2 = (3 == fkind) ? fieldType() : null;
             final int fucc = toUCC(fkind, fb1, fb2);
 
-            HullType<?> r = null;
+            ContainerType<?> r = null;
             int cmp = -1;
 
             // construct known containers until we hit the state of the file
@@ -527,7 +516,7 @@ abstract class Parser extends StateInitializer {
 
         // construct remaining known containers
         while (-1 != kcc) {
-            final HullType<?> r;
+            final ContainerType<?> r;
             switch (kkind) {
             case 0:
                 r = new ArrayType<>(tid++, kb1);
