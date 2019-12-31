@@ -20,295 +20,328 @@ import ogss.common.streams.OutStream;
  *            static type of instances
  * @note Pools are created by a StateInitializer, only
  */
-public abstract class Pool<T extends Obj> extends ByRefType<T> implements Access<T> {
+public abstract class Pool<T extends Obj> extends ByRefType<T>
+      implements Access<T> {
 
-    public final String name;
+   public final String name;
 
-    protected State owner;
+   protected State owner;
 
-    @Override
-    public final State owner() {
-        return owner;
-    }
+   @Override
+   public final State owner() {
+      return owner;
+   }
 
-    // type hierarchy
-    public final Pool<? super T> superPool, basePool;
-    /**
-     * the number of super pools aka the height of the type hierarchy
-     */
-    public final int THH;
+   /**
+    * Allow generated pool implementations to overwrite OGSS IDs of objects
+    * managed by them.
+    */
+   protected void setID(T ref, int ID) {
+      ref.ID = ID;
+   }
 
-    @Override
-    final public Pool<? super T> superType() {
-        return superPool;
-    }
+   // type hierarchy
+   public final Pool<? super T> superPool, basePool;
+   /**
+    * the number of super pools aka the height of the type hierarchy
+    */
+   public final int THH;
 
-    /**
-     * the next pool; used for efficient type hierarchy traversal.
-     * 
-     * @note on setting nextPool, the bpo of nextPool will be adjusted iff it is 0 to allow insertion of types from the
-     *       tool specification
-     */
-    Pool<?> next;
+   @Override
+   final public Pool<? super T> superType() {
+      return superPool;
+   }
 
-    /**
-     * pointer to base-pool-managed data array
-     */
-    protected Obj[] data;
+   /**
+    * the next pool; used for efficient type hierarchy traversal.
+    * 
+    * @note on setting nextPool, the bpo of nextPool will be adjusted iff it is
+    *       0 to allow insertion of types from the
+    *       tool specification
+    */
+   Pool<?> next;
 
-    /**
-     * names of known fields, the actual field information is given in the generated addKnownFiled method.
-     */
-    protected String KFN(int id) {
-        return null;
-    }
+   /**
+    * pointer to base-pool-managed data array
+    */
+   protected Obj[] data;
 
-    /**
-     * construct the known field with the given id
-     */
-    protected FieldDeclaration<?, T> KFC(int id, FieldType<?>[] SIFA, int nextFID) {
-        return null;
-    }
+   /**
+    * names of known fields, the actual field information is given in the
+    * generated addKnownFiled method.
+    */
+   protected String KFN(int id) {
+      return null;
+   }
 
-    /**
-     * all fields that are declared as auto, including ObjectID
-     * 
-     * @note stores fields at index "-f.index"
-     * @note sub-constructor adds auto fields from super types to this array; this is an optimization to make iteration
-     *       O(1); the array cannot change anyway
-     * @note the initial type constructor will already allocate an array of the correct size, because the right size is
-     *       statically known (a generation time constant)
-     */
-    protected final AutoField<?, T>[] autoFields;
-    /**
-     * used as placeholder, if there are no auto fields at all to optimize allocation time and memory usage
-     */
-    private static final AutoField<?, ?>[] noAutoFields = new AutoField<?, ?>[0];
+   /**
+    * construct the known field with the given id
+    */
+   protected FieldDeclaration<?, T> KFC(int id, FieldType<?>[] SIFA,
+         int nextFID) {
+      return null;
+   }
 
-    /**
-     * all fields that hold actual data
-     * 
-     * @note stores fields at index "f.index-1"
-     */
-    protected final ArrayList<FieldDeclaration<?, T>> dataFields;
+   /**
+    * all fields that are declared as auto, including ObjectID
+    * 
+    * @note stores fields at index "-f.index"
+    * @note sub-constructor adds auto fields from super types to this array;
+    *       this is an optimization to make iteration
+    *       O(1); the array cannot change anyway
+    * @note the initial type constructor will already allocate an array of the
+    *       correct size, because the right size is
+    *       statically known (a generation time constant)
+    */
+   protected final AutoField<?, T>[] autoFields;
+   /**
+    * used as placeholder, if there are no auto fields at all to optimize
+    * allocation time and memory usage
+    */
+   private static final AutoField<?, ?>[] noAutoFields = new AutoField<?, ?>[0];
 
-    @Override
-    public StaticFieldIterator fields() {
-        return new StaticFieldIterator(this);
-    }
+   /**
+    * all fields that hold actual data
+    * 
+    * @note stores fields at index "f.index-1"
+    */
+   protected final ArrayList<FieldDeclaration<?, T>> dataFields;
 
-    @Override
-    public FieldIterator allFields() {
-        return new FieldIterator(this);
-    }
+   @Override
+   public StaticFieldIterator fields() {
+      return new StaticFieldIterator(this);
+   }
 
-    /**
-     * The BPO of this pool relative to data.
-     */
-    protected int bpo;
+   @Override
+   public FieldIterator allFields() {
+      return new FieldIterator(this);
+   }
 
-    /**
-     * All stored objects, which have exactly the type T. Objects are stored as arrays of field entries. The types of
-     * the respective fields can be retrieved using the fieldTypes map.
-     */
-    final ArrayList<T> newObjects;
+   /**
+    * The BPO of this pool relative to data.
+    */
+   protected int bpo;
 
-    /**
-     * Ensures that at least capacity many new objects can be stored in this pool without moving references.
-     */
-    public final void hintNewObjectsSize(int capacity) {
-        newObjects.ensureCapacity(capacity);
-    }
+   /**
+    * All stored objects, which have exactly the type T. Objects are stored as
+    * arrays of field entries. The types of
+    * the respective fields can be retrieved using the fieldTypes map.
+    */
+   protected final ArrayList<T> newObjects;
 
-    /**
-     * Number of static instances of T in data. Managed by read/compress.
-     */
-    protected int staticDataInstances;
+   /**
+    * Ensures that at least capacity many new objects can be stored in this pool
+    * without moving references.
+    */
+   public final void hintNewObjectsSize(int capacity) {
+      newObjects.ensureCapacity(capacity);
+   }
 
-    /**
-     * the number of instances of exactly this type, excluding sub-types
-     * 
-     * @return size excluding subtypes
-     */
-    final public int staticSize() {
-        return staticDataInstances + newObjects.size();
-    }
+   /**
+    * Number of static instances of T in data. Managed by read/compress.
+    */
+   protected int staticDataInstances;
 
-    @Override
-    public final StaticDataIterator<T> staticInstances() {
-        return new StaticDataIterator<>(this);
-    }
+   /**
+    * the number of instances of exactly this type, excluding sub-types
+    * 
+    * @return size excluding subtypes
+    */
+   final public int staticSize() {
+      return staticDataInstances + newObjects.size();
+   }
 
-    /**
-     * size that is only valid in fixed state
-     * 
-     * @note in contrast to SKilL/Java, we maintain this as an internal invariant only!
-     */
-    int cachedSize;
+   @Override
+   public final StaticDataIterator<T> staticInstances() {
+      return new StaticDataIterator<>(this);
+   }
 
-    /**
-     * number of deleted objects in this state
-     */
-    int deletedCount = 0;
+   /**
+    * size that is only valid in fixed state
+    * 
+    * @note in contrast to SKilL/Java, we maintain this as an internal invariant
+    *       only!
+    */
+   int cachedSize;
 
-    @Override
-    final public String name() {
-        return name;
-    }
+   /**
+    * number of deleted objects in this state
+    */
+   int deletedCount = 0;
 
-    /**
-     * @note the unchecked cast is required, because we can not supply this as an argument in a super constructor, thus
-     *       the base pool can not be an argument to the constructor. The cast will never fail anyway.
-     */
-    @SuppressWarnings("unchecked")
-    protected Pool(int poolIndex, String name, Pool<? super T> superPool, int afSize) {
-        super(10 + poolIndex);
-        this.name = name;
+   @Override
+   final public String name() {
+      return name;
+   }
 
-        this.superPool = superPool;
-        if (null == superPool) {
-            this.THH = 0;
-            this.basePool = this;
-        } else {
-            this.THH = superPool.THH + 1;
-            this.basePool = superPool.basePool;
-        }
+   /**
+    * @note the unchecked cast is required, because we can not supply this as an
+    *       argument in a super constructor, thus
+    *       the base pool can not be an argument to the constructor. The cast
+    *       will never fail anyway.
+    */
+   @SuppressWarnings("unchecked")
+   protected Pool(int poolIndex, String name, Pool<? super T> superPool,
+         int afSize) {
+      super(10 + poolIndex);
+      this.name = name;
 
-        dataFields = new ArrayList<>();
-        this.autoFields = 0 == afSize ? (AutoField[]) noAutoFields : new AutoField[afSize];
+      this.superPool = superPool;
+      if (null == superPool) {
+         this.THH = 0;
+         this.basePool = this;
+      } else {
+         this.THH = superPool.THH + 1;
+         this.basePool = superPool.basePool;
+      }
 
-        this.newObjects = new ArrayList<>();
-    }
+      dataFields = new ArrayList<>();
+      this.autoFields = 0 == afSize ? (AutoField[]) noAutoFields
+            : new AutoField[afSize];
 
-    protected abstract void allocateInstances();
+      this.newObjects = new ArrayList<>();
+   }
 
-    /**
-     * Return an object by ID. Can only be used for objects with positive IDs.
-     *
-     * @note do not use this method if your understanding of Object IDs is not solid.
-     * @note We do not allow getting objects with negative IDs because negative IDs are monomorphic. The code required
-     *       to make them polymorphic is a straight forward access to owner.pool and to make a get there, but since get
-     *       is used a lot, we do not want to increase its size for as little benefit as it would be to the user. Also,
-     *       that solution would require a second argument of either type class or string.
-     * @throws nothrow
-     * @return the instance matching argument object id or null
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    final public T get(int ID) {
-        int index = ID - 1;
-        if (null == data || (index < 0 | data.length <= index))
-            return null;
-        return (T) data[index];
-    }
+   protected abstract void allocateInstances();
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public final T r(InStream in) {
-        int index = in.v32() - 1;
-        if (index < 0 | data.length <= index)
-            return null;
-        return (T) data[index];
-    }
+   /**
+    * Return an object by ID. Can only be used for objects with positive IDs.
+    *
+    * @note do not use this method if your understanding of Object IDs is not
+    *       solid.
+    * @note We do not allow getting objects with negative IDs because negative
+    *       IDs are monomorphic. The code required
+    *       to make them polymorphic is a straight forward access to owner.pool
+    *       and to make a get there, but since get
+    *       is used a lot, we do not want to increase its size for as little
+    *       benefit as it would be to the user. Also,
+    *       that solution would require a second argument of either type class
+    *       or string.
+    * @throws nothrow
+    * @return the instance matching argument object id or null
+    */
+   @Override
+   @SuppressWarnings("unchecked")
+   final public T get(int ID) {
+      int index = ID - 1;
+      if (null == data || (index < 0 | data.length <= index))
+         return null;
+      return (T) data[index];
+   }
 
-    @Override
-    public final boolean w(T ref, OutStream out) throws IOException {
-        if (null == ref) {
-            out.i8((byte) 0);
-            return true;
-        }
+   @SuppressWarnings("unchecked")
+   @Override
+   public final T r(InStream in) {
+      int index = in.v32() - 1;
+      if (index < 0 | data.length <= index)
+         return null;
+      return (T) data[index];
+   }
 
-        out.v64(ref.ID);
-        return false;
-    }
+   @Override
+   public final boolean w(T ref, OutStream out) throws IOException {
+      if (null == ref) {
+         out.i8((byte) 0);
+         return true;
+      }
 
-    /**
-     * @return size including subtypes
-     */
-    @Override
-    final public int size() {
-        int size = 0;
-        TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
-        while (ts.hasNext())
-            size += ts.next().staticSize();
-        return size;
-    }
+      out.v64(ref.ID);
+      return false;
+   }
 
-    @Override
-    final public Stream<T> stream() {
-        return StreamSupport.stream(spliterator(), false);
-    }
+   /**
+    * @return size including subtypes
+    */
+   @Override
+   final public int size() {
+      int size = 0;
+      TypeHierarchyIterator<T> ts = new TypeHierarchyIterator<>(this);
+      while (ts.hasNext())
+         size += ts.next().staticSize();
+      return size;
+   }
 
-    public T[] toArray(T[] a) {
-        final T[] rval = Arrays.copyOf(a, size());
-        DynamicDataIterator<T> is = iterator();
-        for (int i = 0; i < rval.length; i++) {
-            rval[i] = is.next();
-        }
-        return rval;
-    }
+   @Override
+   final public Stream<T> stream() {
+      return StreamSupport.stream(spliterator(), false);
+   }
 
-    /**
-     * Add an existing instance as a new object
-     * 
-     * @note Do not use objects managed by other OGFiles.
-     */
-    public final boolean add(T e) {
-        if (e.ID != 0)
+   public T[] toArray(T[] a) {
+      final T[] rval = Arrays.copyOf(a, size());
+      DynamicDataIterator<T> is = iterator();
+      for (int i = 0; i < rval.length; i++) {
+         rval[i] = is.next();
+      }
+      return rval;
+   }
+
+   /**
+    * Add an existing instance as a new object
+    * 
+    * @note Do not use objects managed by other OGFiles.
+    */
+   public final boolean add(T e) {
+      if (e.ID != 0)
+         throw new OGSSException(
+               "the argument element already belongs to a state; you can transfer it by deleting in there first");
+
+      e.ID = -1 - newObjects.size();
+      return newObjects.add(e);
+   }
+
+   /**
+    * Delete shall only be called from OGSS state
+    * 
+    * @param target
+    *               the object to be deleted
+    * @note we type target using the erasure directly, because the Java type
+    *       system is too weak to express correct
+    *       typing, when taking the pool from a map
+    */
+   final void delete(final Obj target) {
+      final int ID = target.ID;
+      if (0 != ID) {
+         // check that target is in fact managed by this state
+         if ((0 < ID & null != data && ID <= data.length
+               && target == data[ID - 1])
+               || (ID < 0 & -ID <= newObjects.size()
+                     && target == newObjects.get(-1 - ID))) {
+            target.ID = 0;
+            deletedCount++;
+         } else {
             throw new OGSSException(
-                    "the argument element already belongs to a state; you can transfer it by deleting in there first");
+                  "cannot delete an object that is not managed by this pool");
+         }
+      }
+   }
 
-        e.ID = -1 - newObjects.size();
-        return newObjects.add(e);
-    }
+   @Override
+   final public DynamicDataIterator<T> iterator() {
+      return new DynamicDataIterator<>(this);
+   }
 
-    /**
-     * Delete shall only be called from OGSS state
-     * 
-     * @param target
-     *            the object to be deleted
-     * @note we type target using the erasure directly, because the Java type system is too weak to express correct
-     *       typing, when taking the pool from a map
-     */
-    final void delete(final Obj target) {
-        final int ID = target.ID;
-        if (0 != ID) {
-            // check that target is in fact managed by this state
-            if ((0 < ID & null != data && ID <= data.length && target == data[ID - 1])
-                    || (ID < 0 & -ID <= newObjects.size() && target == newObjects.get(-1 - ID))) {
-                target.ID = 0;
-                deletedCount++;
-            } else {
-                throw new OGSSException("cannot delete an object that is not managed by this pool");
-            }
-        }
-    }
+   /**
+    * Get the name of known sub pool with argument local id. Return null, if id
+    * is invalid.
+    */
+   protected String nameSub(int id) {
+      return null;
+   }
 
-    @Override
-    final public DynamicDataIterator<T> iterator() {
-        return new DynamicDataIterator<>(this);
-    }
+   /**
+    * Create the known sub pool with argument local id. Return null, if id is
+    * invalid.
+    */
+   protected Pool<? extends T> makeSub(int id, int index) {
+      return null;
+   }
 
-    /**
-     * Get the name of known sub pool with argument local id. Return null, if id is invalid.
-     */
-    protected String nameSub(int id) {
-        return null;
-    }
-
-    /**
-     * Create the known sub pool with argument local id. Return null, if id is invalid.
-     */
-    protected Pool<? extends T> makeSub(int id, int index) {
-        return null;
-    }
-
-    /**
-     * Create an unknown sub pool with the argument name
-     */
-    @SuppressWarnings("unchecked")
-    protected Pool<? extends T> makeSub(int index, String name) {
-        return (Pool<? extends T>) new SubPool<UnknownObject>(index, name, UnknownObject.class,
-                (Pool<? super UnknownObject>) this);
-    }
+   /**
+    * Create an unknown sub pool with the argument name
+    */
+   @SuppressWarnings("unchecked")
+   protected Pool<? extends T> makeSub(int index, String name) {
+      return (Pool<? extends T>) new SubPool<UnknownObject>(index, name,
+            UnknownObject.class, (Pool<? super UnknownObject>) this);
+   }
 }
