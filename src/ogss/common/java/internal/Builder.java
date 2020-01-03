@@ -7,7 +7,7 @@ package ogss.common.java.internal;
  * @note the generic co-hierarchy is used to compress the builder hierarchy where possible
  */
 public class Builder<T extends Obj> {
-    private Pool<T> p;
+    protected Pool<T> p;
     public final T self;
 
     protected Builder(Pool<T> pool, T self) {
