@@ -9,8 +9,8 @@ import java.util.stream.StreamSupport;
 import ogss.common.java.api.Access;
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldDeclarations.AutoField;
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.OutStream;
 
 /**
  * Top level implementation of all storage pools.

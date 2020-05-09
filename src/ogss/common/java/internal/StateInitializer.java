@@ -3,7 +3,7 @@ package ogss.common.java.internal;
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.fieldTypes.*;
-import ogss.common.streams.FileInputStream;
+import ogss.common.jvm.streams.FileInputStream;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;

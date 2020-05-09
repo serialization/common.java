@@ -6,8 +6,8 @@ import ogss.common.java.internal.FieldDeclaration;
 import ogss.common.java.internal.FieldType;
 import ogss.common.java.internal.Obj;
 import ogss.common.java.internal.Pool;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * This trait marks auto fields.

@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.util.IdentityHashMap;
 
 import ogss.common.java.internal.fieldTypes.BoolType;
-import ogss.common.streams.BoolOutWrapper;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BoolOutWrapper;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * The fields data is distributed into an array (for now its a hash map) holding its instances.

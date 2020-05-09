@@ -6,8 +6,8 @@ import java.util.concurrent.Semaphore;
 
 import ogss.common.java.api.OGSSException;
 import ogss.common.java.internal.exceptions.PoolSizeMissmatchError;
-import ogss.common.streams.FileInputStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.FileInputStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * The parallel version of Parser.

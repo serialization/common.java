@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SingleArgumentType;
-import ogss.common.streams.BufferedOutStream;
+import ogss.common.jvm.streams.BufferedOutStream;
 
 import java.io.IOException;
 

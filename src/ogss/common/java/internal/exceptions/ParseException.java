@@ -1,7 +1,7 @@
 package ogss.common.java.internal.exceptions;
 
 import ogss.common.java.api.OGSSException;
-import ogss.common.streams.InStream;
+import ogss.common.jvm.streams.InStream;
 
 /**
  * This exception is used if byte stream related errors occur.

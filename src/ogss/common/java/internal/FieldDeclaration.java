@@ -6,8 +6,8 @@ import java.util.HashSet;
 
 import ogss.common.java.internal.fieldDeclarations.AutoField;
 import ogss.common.java.restrictions.FieldRestriction;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * Actual implementation as used by all bindings.

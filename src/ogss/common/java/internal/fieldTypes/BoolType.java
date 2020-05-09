@@ -3,9 +3,9 @@ package ogss.common.java.internal.fieldTypes;
 import java.io.IOException;
 
 import ogss.common.java.internal.FieldType;
-import ogss.common.streams.InStream;
-import ogss.common.streams.MappedInStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.MappedInStream;
+import ogss.common.jvm.streams.OutStream;
 
 public final class BoolType extends FieldType<Boolean> {
     private static final BoolType instance = new BoolType();

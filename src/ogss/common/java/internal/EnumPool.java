@@ -3,8 +3,8 @@ package ogss.common.java.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.OutStream;
 
 /**
  * This pool holds all instances of an enum from the perspective of a file.

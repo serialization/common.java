@@ -1,7 +1,7 @@
 package ogss.common.java.internal;
 
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 import java.io.IOException;
 import java.util.Iterator;

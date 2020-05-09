@@ -1,6 +1,6 @@
 package ogss.common.java.internal;
 
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * The field is distributed and loaded on demand. Unknown fields are lazy as well.

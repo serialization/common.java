@@ -8,7 +8,7 @@ import ogss.common.java.restrictions.FieldRestriction;
 import ogss.common.java.restrictions.NonNull;
 import ogss.common.java.restrictions.Range;
 import ogss.common.java.restrictions.TypeRestriction;
-import ogss.common.streams.FileInputStream;
+import ogss.common.jvm.streams.FileInputStream;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;

@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.HashSet;
 
 import ogss.common.java.internal.FieldType;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 public final class SetType<T> extends SingleArgumentType<HashSet<T>, T> {
 

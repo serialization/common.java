@@ -5,9 +5,9 @@ import ogss.common.java.internal.fieldTypes.ArrayType;
 import ogss.common.java.internal.fieldTypes.ListType;
 import ogss.common.java.internal.fieldTypes.MapType;
 import ogss.common.java.internal.fieldTypes.SetType;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.FileOutputStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.FileOutputStream;
+import ogss.common.jvm.streams.OutStream;
 
 import java.io.IOException;
 import java.util.ArrayList;

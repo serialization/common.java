@@ -7,10 +7,10 @@ import java.util.Iterator;
 import java.util.concurrent.Semaphore;
 
 import ogss.common.java.internal.exceptions.InvalidPoolIndexException;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.FileInputStream;
-import ogss.common.streams.FileOutputStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.FileInputStream;
+import ogss.common.jvm.streams.FileOutputStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * @author Timm Felden

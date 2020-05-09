@@ -1,8 +1,8 @@
 package ogss.common.java.internal;
 
-import ogss.common.streams.InStream;
-import ogss.common.streams.MappedInStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.MappedInStream;
+import ogss.common.jvm.streams.OutStream;
 
 import java.io.IOException;
 import java.util.ArrayList;

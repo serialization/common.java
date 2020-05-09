@@ -2,8 +2,8 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.OutStream;
 
 /**
  * Top level implementation of a field type, the runtime representation of a fields type.

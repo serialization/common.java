@@ -1,6 +1,6 @@
 package ogss.common.java.internal.fieldDeclarations;
 
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 /**
  * This trait marks ignored fields.

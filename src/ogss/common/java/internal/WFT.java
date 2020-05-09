@@ -2,7 +2,7 @@ package ogss.common.java.internal;
 
 import java.io.IOException;
 
-import ogss.common.streams.BufferedOutStream;
+import ogss.common.jvm.streams.BufferedOutStream;
 
 /**
  * A job that writes field data to a buffer.

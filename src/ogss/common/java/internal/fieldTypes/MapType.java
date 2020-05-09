@@ -6,8 +6,8 @@ import java.util.Map.Entry;
 
 import ogss.common.java.internal.ContainerType;
 import ogss.common.java.internal.FieldType;
-import ogss.common.streams.BufferedOutStream;
-import ogss.common.streams.MappedInStream;
+import ogss.common.jvm.streams.BufferedOutStream;
+import ogss.common.jvm.streams.MappedInStream;
 
 public final class MapType<K, V> extends ContainerType<HashMap<K, V>> {
 

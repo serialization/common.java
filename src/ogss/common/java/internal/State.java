@@ -4,8 +4,8 @@ import ogss.common.java.api.Access;
 import ogss.common.java.api.GeneralAccess;
 import ogss.common.java.api.Mode;
 import ogss.common.java.api.OGSSException;
-import ogss.common.streams.FileInputStream;
-import ogss.common.streams.FileOutputStream;
+import ogss.common.jvm.streams.FileInputStream;
+import ogss.common.jvm.streams.FileOutputStream;
 
 import java.io.IOException;
 import java.nio.file.Path;

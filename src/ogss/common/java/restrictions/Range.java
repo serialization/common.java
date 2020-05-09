@@ -1,7 +1,7 @@
 package ogss.common.java.restrictions;
 
 import ogss.common.java.api.OGSSException;
-import ogss.common.streams.InStream;
+import ogss.common.jvm.streams.InStream;
 
 /**
  * Factory and implementations for all range restrictions

@@ -3,8 +3,8 @@ package ogss.common.java.internal;
 import java.io.IOException;
 
 import ogss.common.java.api.GeneralAccess;
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.OutStream;
 
 /**
  * Holds interface instances. Serves as an API realization. Ensures correctness of reflective type system.

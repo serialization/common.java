@@ -2,8 +2,8 @@ package ogss.common.java.internal.fieldTypes;
 
 import java.io.IOException;
 
-import ogss.common.streams.InStream;
-import ogss.common.streams.OutStream;
+import ogss.common.jvm.streams.InStream;
+import ogss.common.jvm.streams.OutStream;
 
 public final class F64 extends FloatType<Double> {
 
