@@ -60,7 +60,7 @@ public final class EnumPool<T extends Enum<T>> extends FieldType {
                 this.staticValues = new EnumProxy[known.length];
 
                 // merge file values and statically known values
-                ArrayList<EnumProxy<T>> vs = new ArrayList<>();
+                ArrayList<EnumProxy<T>> vs = new ArrayList<>(known.length);
 
                 int id = 0, vi = 0, ki = 0;
                 EnumProxy<T> p;

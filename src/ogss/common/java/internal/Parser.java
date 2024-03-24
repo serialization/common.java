@@ -396,7 +396,7 @@ abstract class Parser extends StateInitializer {
 
     /**
      * turn kcc into ucc; this is always possible for the next type
-     * 
+     *
      * @return the UCC for a given kcc
      */
     final static int toUCC(int kind, FieldType<?> b1, FieldType<?> b2) {
@@ -676,7 +676,7 @@ abstract class Parser extends StateInitializer {
                     break;
                 }
 
-                // else, it is a known fields not contained in the file
+                // else, it is a known field not contained in the file
                 f = p.KFC(ki++, SIFA, nextFieldID);
                 if (!(f instanceof AutoField)) {
                     nextFieldID++;

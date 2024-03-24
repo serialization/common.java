@@ -1,50 +1,50 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project basedir="." default="build" name="jvmCommon">
-    <property environment="env"/>
-    <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.8"/>
-    <property name="source" value="1.8"/>
-    <path id="javaCommon.classpath">
-        <pathelement location="bin"/>
-        <pathelement location="lib/ogss.common.jvm.jar"/>
-    </path>
+	<property environment="env" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<property name="target" value="1.8" />
+	<property name="source" value="1.8" />
+	<path id="javaCommon.classpath">
+		<pathelement location="bin" />
+		<pathelement location="lib/ogss.common.jvm.jar" />
+	</path>
 
-    <target name="init">
-        <mkdir dir="bin"/>
-        <copy includeemptydirs="false" todir="bin">
-            <fileset dir="src">
-                <exclude name="**/*.launch"/>
-                <exclude name="**/*.java"/>
-            </fileset>
-        </copy>
-    </target>
+	<target name="init">
+		<mkdir dir="bin" />
+		<copy includeemptydirs="false" todir="bin">
+			<fileset dir="src">
+				<exclude name="**/*.launch" />
+				<exclude name="**/*.java" />
+			</fileset>
+		</copy>
+	</target>
 
-    <target name="clean">
-        <delete dir="bin"/>
-    </target>
+	<target name="clean">
+		<delete dir="bin" />
+	</target>
 
-    <target depends="clean" name="cleanall"/>
+	<target depends="clean" name="cleanall" />
 
-    <target depends="build-subprojects,build-project" name="build"/>
+	<target depends="build-subprojects,build-project" name="build" />
 
-    <target name="build-subprojects"/>
+	<target name="build-subprojects" />
 
-    <target depends="init" name="build-project">
-        <echo message="${ant.project.name}: ${ant.file}"/>
-        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" includeantruntime="false" source="${source}" target="${target}">
-            <src path="src"/>
-            <classpath refid="javaCommon.classpath"/>
-        </javac>
-    </target>
+	<target depends="init" name="build-project">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" includeantruntime="false" source="${source}" target="${target}">
+			<src path="src" />
+			<classpath refid="javaCommon.classpath" />
+		</javac>
+	</target>
 
-    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+	<target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects" />
 
-  <target depends="build-project" name="build-jar">
-    <jar destfile="ogss.common.java.jar"
-      basedir="bin"
-      includes=""
-      excludes="">
-      <fileset dir="src" includes="**/*.java"/>
-    </jar>
-  </target>
+	<target depends="build-project" name="build-jar">
+		<jar destfile="ogss.common.java.jar" basedir="bin" includes="" excludes="">
+            <manifest>
+                <attribute name="Automatic-Module-Name" value="ogss.common.java" />
+            </manifest>
+			<fileset dir="src" includes="**/*.java" />
+		</jar>
+	</target>
 </project>
